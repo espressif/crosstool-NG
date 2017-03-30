@@ -1,0 +1,185 @@
+diff -BNburp gcc-5.2.0/gcc/config/xtensa/xtensa.c gcc-5.2.0-new/gcc/config/xtensa/xtensa.c
+--- gcc-5.2.0/gcc/config/xtensa/xtensa.c	2017-03-20 19:19:44.066968820 +0800
++++ gcc-5.2.0-new/gcc/config/xtensa/xtensa.c	2017-03-20 19:20:14.866869103 +0800
+@@ -91,7 +91,8 @@ along with GCC; see the file COPYING3.
+ #include "dumpfile.h"
+ #include "hw-doloop.h"
+ #include "rtl-iter.h"
+-
++#include "tree-pass.h"
++#include "context.h"
+ 
+ /* Enumeration for all of the relational tests, so that we can build
+    arrays indexed by the test type, and not worry about the order
+@@ -2203,6 +2204,95 @@ xtensa_return_in_msb (const_tree valtype
+ }
+ 
+ 
++#define USEFUL_INSN_P(INSN)                     \
++  (NONDEBUG_INSN_P (INSN)                       \
++   && GET_CODE (PATTERN (INSN)) != USE                  \
++   && GET_CODE (PATTERN (INSN)) != CLOBBER)
++
++
++/*
++Xtensa does a load/store inversion when a load and a store to the same address is found in the
++(5-stage) pipeline: with a load done _after_ the store in code, the Xtensa will move it _before_ the
++store in execution. Unfortunately, the ESP32 PSRAM cache messes up handling these when an interrupt
++happens during these. This reorg step inserts nops between loads and stores so this never occurs.
++*/
++
++//Pipeline is 5 long; load/store is one
++#define LOAD_STORE_OFF 4
++
++static void xtensa_psram_cache_fix_reorg()
++{
++	rtx_insn *insn, *next_insn, *store_insn=NULL;
++	int insns_since_store=0;
++	for (insn = get_insns(); insn != 0; insn = next_insn) {
++		next_insn = NEXT_INSN (insn);
++		if (USEFUL_INSN_P (insn)) {
++			enum attr_type attr_type = get_attr_type (insn);
++			if (attr_type == TYPE_STORE) {
++				//Store
++				insns_since_store = 0;
++				store_insn = insn;
++			} else if (attr_type == TYPE_LOAD) {
++				//Load
++				if (store_insn) {
++					while (insns_since_store++ < LOAD_STORE_OFF) {
++						emit_insn_before (gen_nop(), insn);
++					}
++				}
++			} else if (attr_type == TYPE_JUMP || attr_type == TYPE_CALL) {
++				store_insn = NULL; //Pipeline gets cleared; any load is inconsequential
++			} else {
++				insns_since_store++;
++			}
++		}
++	}
++}
++
++static unsigned int xtensa_machine_reorg(void) {
++	if (TARGET_ESP32_PSRAM_FIX) {
++		xtensa_psram_cache_fix_reorg();
++	}
++	return 0;
++}
++
++
++namespace {
++
++const pass_data pass_data_xtensa_psram_nops =
++{
++  RTL_PASS, /* type */
++  "xtensa-psram-nops", /* name */
++  OPTGROUP_NONE, /* optinfo_flags */
++  TV_MACH_DEP, /* tv_id */
++  0, /* properties_required */
++  0, /* properties_provided */
++  0, /* properties_destroyed */
++  0, /* todo_flags_start */
++  0, /* todo_flags_finish */
++};
++
++class pass_xtensa_psram_nops : public rtl_opt_pass
++{
++public:
++  pass_xtensa_psram_nops(gcc::context *ctxt)
++    : rtl_opt_pass(pass_data_xtensa_psram_nops, ctxt)
++  {}
++
++  /* opt_pass methods: */
++  virtual unsigned int execute (function *) { return xtensa_machine_reorg (); }
++
++}; // class pass_mips_machine_reorg2
++
++} // anon namespace
++
++rtl_opt_pass *
++make_pass_xtensa_psram_nops (gcc::context *ctxt)
++{
++  return new pass_xtensa_psram_nops (ctxt);
++}
++
++
++
+ static void
+ xtensa_option_override (void)
+ {
+@@ -2261,6 +2351,19 @@ xtensa_option_override (void)
+   if (flag_pic && !flag_pie)
+     flag_shlib = 1;
+ 
++  /* Register machine specific reorg for optional nop insertion to
++     fix psram cache bug on esp32 v0/v1 silicon  */
++  opt_pass *new_pass = make_pass_xtensa_psram_nops (g);
++  struct register_pass_info insert_pass_xtensa_psram_nops =
++    {
++      new_pass,		/* pass */
++      "dbr",			/* reference_pass_name */
++      1,			/* ref_pass_instance_number */
++      PASS_POS_INSERT_AFTER	/* po_op */
++    };
++  register_pass (&insert_pass_xtensa_psram_nops);
++
++
+   /* Hot/cold partitioning does not work on this architecture, because of
+      constant pools (the load instruction cannot necessarily reach that far).
+      Therefore disable it on this architecture.  */
+diff -BNburp gcc-5.2.0/gcc/config/xtensa/xtensa.md gcc-5.2.0-new/gcc/config/xtensa/xtensa.md
+--- gcc-5.2.0/gcc/config/xtensa/xtensa.md	2015-03-04 01:44:01.000000000 +0800
++++ gcc-5.2.0-new/gcc/config/xtensa/xtensa.md	2017-03-20 19:22:02.618561027 +0800
+@@ -108,14 +108,38 @@
+ ;; reservations in the pipeline description below.  The Xtensa can
+ ;; issue one instruction per cycle, so defining CPU units is unnecessary.
+ 
++(define_cpu_unit "loadstore")
++
+ (define_insn_reservation "xtensa_any_insn" 1
+-			 (eq_attr "type" "!load,fload,rsr,mul16,mul32,fmadd,fconv")
++			 (eq_attr "type" "!load,fload,store,fstore,rsr,mul16,mul32,fmadd,fconv")
++			 "nothing")
++
++(define_insn_reservation "xtensa_memory_load" 2
++			 (and (not (match_test "TARGET_ESP32_PSRAM_FIX"))
++			 (eq_attr "type" "load,fload"))
+ 			 "nothing")
+ 
+-(define_insn_reservation "xtensa_memory" 2
+-			 (eq_attr "type" "load,fload")
++(define_insn_reservation "xtensa_memory_store" 1
++			 (and (not (match_test "TARGET_ESP32_PSRAM_FIX"))
++			 (eq_attr "type" "store,fstore"))
+ 			 "nothing")
+ 
++;; If psram cache issue needs fixing, it's better to keep 
++;; stores far from loads from the same address. We cannot encode
++;; that behaviour entirely here (or maybe we can, but at least 
++;; not easily), but we can try to get everything that smells like 
++;; load or store up to a pipeline length apart from each other.
++
++(define_insn_reservation "xtensa_memory_load_psram_fix" 2
++			 (and (match_test "TARGET_ESP32_PSRAM_FIX")
++			 (eq_attr "type" "load,fload"))
++			 "loadstore*5")
++
++(define_insn_reservation "xtensa_memory_store_psram_fix" 1
++			 (and (match_test "TARGET_ESP32_PSRAM_FIX")
++			 (eq_attr "type" "store,fstore"))
++			 "loadstore*5")
++
+ (define_insn_reservation "xtensa_sreg" 2
+ 			 (eq_attr "type" "rsr")
+ 			 "nothing")
+diff -BNburp gcc-5.2.0/gcc/config/xtensa/xtensa.opt gcc-5.2.0-new/gcc/config/xtensa/xtensa.opt
+--- gcc-5.2.0/gcc/config/xtensa/xtensa.opt	2015-01-05 20:33:28.000000000 +0800
++++ gcc-5.2.0-new/gcc/config/xtensa/xtensa.opt	2017-03-20 19:20:14.866869103 +0800
+@@ -41,3 +41,7 @@ Intersperse literal pools with code in t
+ mserialize-volatile
+ Target Report Mask(SERIALIZE_VOLATILE)
+ -mno-serialize-volatile	Do not serialize volatile memory references with MEMW instructions
++
++mfix-esp32-psram-cache-issue
++Target Report Mask(ESP32_PSRAM_FIX)
++Fix esp32 psram cache issue
