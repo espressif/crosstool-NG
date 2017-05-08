@@ -1,6 +1,6 @@
-diff -NBNburp gcc-5.2.0/gcc/config/xtensa/xtensa.c gcc-5.2.0-new/gcc/config/xtensa/xtensa.c
+diff -BNburp gcc-5.2.0/gcc/config/xtensa/xtensa.c gcc-5.2.0-new/gcc/config/xtensa/xtensa.c
 --- gcc-5.2.0/gcc/config/xtensa/xtensa.c	2017-03-20 19:19:44.066968820 +0800
-+++ gcc-5.2.0-new/gcc/config/xtensa/xtensa.c	2017-04-14 15:18:42.618316655 +0800
++++ gcc-5.2.0-new/gcc/config/xtensa/xtensa.c	2017-05-08 11:57:01.548475457 +0800
 @@ -91,7 +91,8 @@ along with GCC; see the file COPYING3.
  #include "dumpfile.h"
  #include "hw-doloop.h"
@@ -11,7 +11,7 @@ diff -NBNburp gcc-5.2.0/gcc/config/xtensa/xtensa.c gcc-5.2.0-new/gcc/config/xten
  
  /* Enumeration for all of the relational tests, so that we can build
     arrays indexed by the test type, and not worry about the order
-@@ -2203,6 +2204,184 @@ xtensa_return_in_msb (const_tree valtype
+@@ -2203,6 +2204,185 @@ xtensa_return_in_msb (const_tree valtype
  }
  
  
@@ -73,14 +73,15 @@ diff -NBNburp gcc-5.2.0/gcc/config/xtensa/xtensa.c gcc-5.2.0-new/gcc/config/xten
 +	"TYPE_MAC16", "TYPE_RSR", "TYPE_WSR", "TYPE_ENTRY", "TYPE_TRAP"};
 +
 +
++
 +static void handle_fix_reorg_insn(rtx_insn *insn) {
 +	enum attr_type attr_type = get_attr_type (insn);
-+	if (attr_type == TYPE_STORE) {
++	if (attr_type == TYPE_STORE || attr_type == TYPE_FSTORE) {
 +		rtx x=XEXP(PATTERN(insn), 0);
 +		//Store
 +		insns_since_store = 0;
 +		store_insn = insn;
-+		if (GET_MODE(x)==HImode || GET_MODE(x)==QImode) {
++		if (attr_type == TYPE_STORE && (GET_MODE(x)==HImode || GET_MODE(x)==QImode)) {
 +			//This is an 16- or 8-bit store, record it.
 +			last_hiqi_store=insn;
 +		} else {
@@ -88,7 +89,7 @@ diff -NBNburp gcc-5.2.0/gcc/config/xtensa/xtensa.c gcc-5.2.0-new/gcc/config/xten
 +			//because it forces those stores to finish.
 +			last_hiqi_store=NULL;
 +		}
-+	} else if (attr_type == TYPE_LOAD) {
++	} else if (attr_type == TYPE_LOAD || attr_type == TYPE_FLOAD) {
 +		//Load
 +		if (store_insn) {
 +			while (insns_since_store++ < LOAD_STORE_OFF) {
@@ -100,7 +101,7 @@ diff -NBNburp gcc-5.2.0/gcc/config/xtensa/xtensa.c gcc-5.2.0-new/gcc/config/xten
 +	} else {
 +		insns_since_store++;
 +	}
-+	if (attr_type == TYPE_LOAD || attr_type == TYPE_JUMP || attr_type == TYPE_CALL) {
++	if (attr_type == TYPE_LOAD || attr_type == TYPE_FLOAD || attr_type == TYPE_JUMP || attr_type == TYPE_CALL) {
 +		if (last_hiqi_store) {
 +			//Need to memory barrier the s8i/s16i instruction.
 +			emit_insn_after(gen_memory_barrier(), last_hiqi_store);
@@ -196,7 +197,7 @@ diff -NBNburp gcc-5.2.0/gcc/config/xtensa/xtensa.c gcc-5.2.0-new/gcc/config/xten
  static void
  xtensa_option_override (void)
  {
-@@ -2261,6 +2440,19 @@ xtensa_option_override (void)
+@@ -2261,6 +2441,19 @@ xtensa_option_override (void)
    if (flag_pic && !flag_pie)
      flag_shlib = 1;
  
@@ -216,7 +217,7 @@ diff -NBNburp gcc-5.2.0/gcc/config/xtensa/xtensa.c gcc-5.2.0-new/gcc/config/xten
    /* Hot/cold partitioning does not work on this architecture, because of
       constant pools (the load instruction cannot necessarily reach that far).
       Therefore disable it on this architecture.  */
-diff -NBNburp gcc-5.2.0/gcc/config/xtensa/xtensa.md gcc-5.2.0-new/gcc/config/xtensa/xtensa.md
+diff -BNburp gcc-5.2.0/gcc/config/xtensa/xtensa.md gcc-5.2.0-new/gcc/config/xtensa/xtensa.md
 --- gcc-5.2.0/gcc/config/xtensa/xtensa.md	2015-03-04 01:44:01.000000000 +0800
 +++ gcc-5.2.0-new/gcc/config/xtensa/xtensa.md	2017-03-20 19:22:02.618561027 +0800
 @@ -108,14 +108,38 @@
@@ -261,7 +262,7 @@ diff -NBNburp gcc-5.2.0/gcc/config/xtensa/xtensa.md gcc-5.2.0-new/gcc/config/xte
  (define_insn_reservation "xtensa_sreg" 2
  			 (eq_attr "type" "rsr")
  			 "nothing")
-diff -NBNburp gcc-5.2.0/gcc/config/xtensa/xtensa.opt gcc-5.2.0-new/gcc/config/xtensa/xtensa.opt
+diff -BNburp gcc-5.2.0/gcc/config/xtensa/xtensa.opt gcc-5.2.0-new/gcc/config/xtensa/xtensa.opt
 --- gcc-5.2.0/gcc/config/xtensa/xtensa.opt	2015-01-05 20:33:28.000000000 +0800
 +++ gcc-5.2.0-new/gcc/config/xtensa/xtensa.opt	2017-03-27 14:38:21.437710236 +0800
 @@ -41,3 +41,11 @@ Intersperse literal pools with code in t
