@@ -84,8 +84,6 @@ build_windows:
     - echo "CT_LOG_LEVEL_MAX=\"EXTRA\"" >> .config
     # Override options specific for Windows
     - echo "CT_CANADIAN=y" >> .config
-    - echo "CT_WANTS_STATIC_LINK=y" >> .config
-    - echo "CT_STATIC_TOOLCHAIN=y" >> .config
     - echo "CT_HOST=\"i686-pc-mingw32\"" >> .config
     - echo "CT_HOST_PREFIX=\"i686-w64-mingw32-\"" >> .config
     - echo "CT_HOST_SUFFIX=\"\"" >> .config
