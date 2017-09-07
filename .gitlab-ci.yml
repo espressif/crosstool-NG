@@ -15,7 +15,7 @@ build_linux:
     expire_in: 2 weeks
 
   variables:
-    GIT_STRATEGY: fetch
+    GIT_STRATEGY: clone
 
   script:
     # Configure and install crosstool-NG
