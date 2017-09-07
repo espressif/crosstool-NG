@@ -87,7 +87,6 @@ build_windows:
     - echo "CT_HOST=\"i686-pc-mingw32\"" >> .config
     - echo "CT_HOST_PREFIX=\"i686-w64-mingw32-\"" >> .config
     - echo "CT_HOST_SUFFIX=\"\"" >> .config
-    - echo "CT_GDB_CROSS_STATIC=y" >> .config
     - echo "# CT_GDB_CROSS_PYTHON is not set" >> .config
     # Update .config file
     - ./ct-ng oldconfig
