@@ -1,19 +1,7 @@
-From 2164b6d6d01b004f7ef14c650f454c94e939ee0f Mon Sep 17 00:00:00 2001
-From: Jeroen Domburg <jeroen@espressif.com>
-Date: Sat, 12 Aug 2017 23:10:12 +0800
-Subject: [PATCH 7/9] xtensa: add workaround for pSRAM cache issue in ESP32
-
----
- gcc/config/xtensa/xtensa.c   | 195 ++++++++++++++++++++++++++++++++++++++++++-
- gcc/config/xtensa/xtensa.md  |  30 ++++++-
- gcc/config/xtensa/xtensa.opt |   8 ++
- 3 files changed, 229 insertions(+), 4 deletions(-)
-
-diff --git a/gcc/config/xtensa/xtensa.c b/gcc/config/xtensa/xtensa.c
-index 6a73082a7fa..a4b0bb1efe4 100644
---- a/gcc/config/xtensa/xtensa.c
-+++ b/gcc/config/xtensa/xtensa.c
-@@ -91,7 +91,8 @@ along with GCC; see the file COPYING3.  If not see
+diff -BNburp gcc-5.2.0-org/gcc/config/xtensa/xtensa.c gcc-5.2.0/gcc/config/xtensa/xtensa.c
+--- gcc-5.2.0-org/gcc/config/xtensa/xtensa.c	2017-11-23 16:37:51.415168835 +0100
++++ gcc-5.2.0/gcc/config/xtensa/xtensa.c	2017-11-23 21:27:57.923818628 +0100
+@@ -91,7 +91,8 @@ along with GCC; see the file COPYING3.
  #include "dumpfile.h"
  #include "hw-doloop.h"
  #include "rtl-iter.h"
@@ -23,7 +11,7 @@ index 6a73082a7fa..a4b0bb1efe4 100644
  
  /* Enumeration for all of the relational tests, so that we can build
     arrays indexed by the test type, and not worry about the order
-@@ -2209,6 +2210,185 @@ xtensa_return_in_msb (const_tree valtype)
+@@ -2208,6 +2209,188 @@ xtensa_return_in_msb (const_tree valtype
  }
  
  
@@ -109,7 +97,10 @@ index 6a73082a7fa..a4b0bb1efe4 100644
 +			}
 +		}
 +	} else if (attr_type == TYPE_JUMP || attr_type == TYPE_CALL) {
-+		store_insn = NULL; //Pipeline gets cleared; any load is inconsequential
++		enum attr_condjmp attr_condjmp = get_attr_condjmp(insn);
++		if (attr_condjmp == CONDJMP_COND) {
++			store_insn = NULL; //Pipeline gets cleared; any load is inconsequential
++		}
 +	} else {
 +		insns_since_store++;
 +	}
@@ -209,7 +200,7 @@ index 6a73082a7fa..a4b0bb1efe4 100644
  static void
  xtensa_option_override (void)
  {
-@@ -2267,6 +2447,19 @@ xtensa_option_override (void)
+@@ -2266,6 +2449,19 @@ xtensa_option_override (void)
    if (flag_pic && !flag_pie)
      flag_shlib = 1;
  
@@ -229,11 +220,21 @@ index 6a73082a7fa..a4b0bb1efe4 100644
    /* Hot/cold partitioning does not work on this architecture, because of
       constant pools (the load instruction cannot necessarily reach that far).
       Therefore disable it on this architecture.  */
-diff --git a/gcc/config/xtensa/xtensa.md b/gcc/config/xtensa/xtensa.md
-index 9b2cde9d6a4..399aa231ca8 100644
---- a/gcc/config/xtensa/xtensa.md
-+++ b/gcc/config/xtensa/xtensa.md
-@@ -108,14 +108,38 @@
+diff -BNburp gcc-5.2.0-org/gcc/config/xtensa/xtensa.md gcc-5.2.0/gcc/config/xtensa/xtensa.md
+--- gcc-5.2.0-org/gcc/config/xtensa/xtensa.md	2017-11-23 16:37:51.415168835 +0100
++++ gcc-5.2.0/gcc/config/xtensa/xtensa.md	2017-11-23 21:30:05.800955801 +0100
+@@ -93,6 +93,10 @@
+   "unknown,none,QI,HI,SI,DI,SF,DF,BL"
+   (const_string "unknown"))
+ 
++(define_attr "condjmp"
++  "na,cond,uncond"
++  (const_string "na"))
++
+ (define_attr "length" "" (const_int 1))
+ 
+ ;; Describe a user's asm statement.
+@@ -108,14 +112,38 @@
  ;; reservations in the pipeline description below.  The Xtensa can
  ;; issue one instruction per cycle, so defining CPU units is unnecessary.
  
@@ -242,20 +243,20 @@ index 9b2cde9d6a4..399aa231ca8 100644
  (define_insn_reservation "xtensa_any_insn" 1
 -			 (eq_attr "type" "!load,fload,rsr,mul16,mul32,fmadd,fconv")
 +			 (eq_attr "type" "!load,fload,store,fstore,rsr,mul16,mul32,fmadd,fconv")
-+			 "nothing")
-+
+ 			 "nothing")
+ 
+-(define_insn_reservation "xtensa_memory" 2
+-			 (eq_attr "type" "load,fload")
 +(define_insn_reservation "xtensa_memory_load" 2
 +			 (and (not (match_test "TARGET_ESP32_PSRAM_FIX"))
 +			 (eq_attr "type" "load,fload"))
  			 "nothing")
  
--(define_insn_reservation "xtensa_memory" 2
--			 (eq_attr "type" "load,fload")
 +(define_insn_reservation "xtensa_memory_store" 1
 +			 (and (not (match_test "TARGET_ESP32_PSRAM_FIX"))
 +			 (eq_attr "type" "store,fstore"))
- 			 "nothing")
- 
++			 "nothing")
++
 +;; If psram cache issue needs fixing, it's better to keep 
 +;; stores far from loads from the same address. We cannot encode
 +;; that behaviour entirely here (or maybe we can, but at least 
@@ -275,11 +276,154 @@ index 9b2cde9d6a4..399aa231ca8 100644
  (define_insn_reservation "xtensa_sreg" 2
  			 (eq_attr "type" "rsr")
  			 "nothing")
-diff --git a/gcc/config/xtensa/xtensa.opt b/gcc/config/xtensa/xtensa.opt
-index 21c6e962abb..c31f8f9374b 100644
---- a/gcc/config/xtensa/xtensa.opt
-+++ b/gcc/config/xtensa/xtensa.opt
-@@ -45,3 +45,11 @@ Relax literals in assembler and place them automatically in the text section
+@@ -1158,6 +1186,7 @@
+ }
+   [(set_attr "type"	"jump,jump")
+    (set_attr "mode"	"none")
++   (set_attr "condjmp" "cond")
+    (set_attr "length"	"3,3")])
+ 
+ (define_insn "*bfalse"
+@@ -1173,6 +1202,7 @@
+ }
+   [(set_attr "type"	"jump,jump")
+    (set_attr "mode"	"none")
++   (set_attr "condjmp" "cond")
+    (set_attr "length"	"3,3")])
+ 
+ (define_insn "*ubtrue"
+@@ -1188,6 +1218,7 @@
+ }
+   [(set_attr "type"	"jump,jump")
+    (set_attr "mode"	"none")
++   (set_attr "condjmp" "cond")
+    (set_attr "length"	"3,3")])
+ 
+ (define_insn "*ubfalse"
+@@ -1203,6 +1234,7 @@
+ }
+   [(set_attr "type"	"jump,jump")
+    (set_attr "mode"	"none")
++   (set_attr "condjmp" "cond")
+    (set_attr "length"	"3,3")])
+ 
+ ;; Branch patterns for bit testing
+@@ -1223,6 +1255,7 @@
+ }
+   [(set_attr "type"	"jump")
+    (set_attr "mode"	"none")
++   (set_attr "condjmp" "cond")
+    (set_attr "length"	"3")])
+ 
+ (define_insn "*bitfalse"
+@@ -1241,6 +1274,7 @@
+ }
+   [(set_attr "type"	"jump")
+    (set_attr "mode"	"none")
++   (set_attr "condjmp" "cond")
+    (set_attr "length"	"3")])
+ 
+ (define_insn "*masktrue"
+@@ -1262,6 +1296,7 @@
+ }
+   [(set_attr "type"	"jump")
+    (set_attr "mode"	"none")
++   (set_attr "condjmp" "cond")
+    (set_attr "length"	"3")])
+ 
+ (define_insn "*maskfalse"
+@@ -1283,6 +1318,7 @@
+ }
+   [(set_attr "type"	"jump")
+    (set_attr "mode"	"none")
++   (set_attr "condjmp" "cond")
+    (set_attr "length"	"3")])
+ 
+ 
+@@ -1307,6 +1343,7 @@
+   "loop\t%0, %l1_LEND"
+   [(set_attr "type"	"jump")
+    (set_attr "mode"	"none")
++   (set_attr "condjmp" "cond")
+    (set_attr "length"	"3")])
+ 
+ (define_insn "zero_cost_loop_end"
+@@ -1343,6 +1380,7 @@
+ }
+   [(set_attr "type"	"jump")
+    (set_attr "mode"	"none")
++   (set_attr "condjmp" "cond")
+    (set_attr "length"	"0")])
+ 
+ (define_split
+@@ -1540,6 +1578,7 @@
+   "j\t%l0"
+   [(set_attr "type"	"jump")
+    (set_attr "mode"	"none")
++   (set_attr "condjmp" "uncond")
+    (set_attr "length"	"3")])
+ 
+ (define_expand "indirect_jump"
+@@ -1561,6 +1600,7 @@
+   "jx\t%0"
+   [(set_attr "type"	"jump")
+    (set_attr "mode"	"none")
++   (set_attr "condjmp" "uncond")
+    (set_attr "length"	"3")])
+ 
+ 
+@@ -1590,6 +1630,7 @@
+   "jx\t%0"
+   [(set_attr "type"	"jump")
+    (set_attr "mode"	"none")
++   (set_attr "condjmp" "uncond")
+    (set_attr "length"	"3")])
+ 
+ 
+@@ -1622,6 +1663,7 @@
+ }
+   [(set_attr "type"	"call")
+    (set_attr "mode"	"none")
++   (set_attr "condjmp" "uncond")
+    (set_attr "length"	"3")])
+ 
+ (define_expand "call_value"
+@@ -1648,6 +1690,7 @@
+ }
+   [(set_attr "type"	"call")
+    (set_attr "mode"	"none")
++   (set_attr "condjmp" "uncond")
+    (set_attr "length"	"3")])
+ 
+ (define_insn "entry"
+@@ -1671,6 +1714,7 @@
+ }
+   [(set_attr "type"	"jump")
+    (set_attr "mode"	"none")
++   (set_attr "condjmp" "uncond")
+    (set_attr "length"	"2")])
+ 
+ 
+@@ -1907,6 +1951,7 @@
+ }
+   [(set_attr "type"	"jump")
+    (set_attr "mode"	"none")
++   (set_attr "condjmp" "cond")
+    (set_attr "length"	"3")])
+ 
+ (define_insn "*boolfalse"
+@@ -1925,6 +1970,7 @@
+ }
+   [(set_attr "type"	"jump")
+    (set_attr "mode"	"none")
++   (set_attr "condjmp" "cond")
+    (set_attr "length"	"3")])
+ 
+ 
+diff -BNburp gcc-5.2.0-org/gcc/config/xtensa/xtensa.opt gcc-5.2.0/gcc/config/xtensa/xtensa.opt
+--- gcc-5.2.0-org/gcc/config/xtensa/xtensa.opt	2017-11-23 16:37:51.415168835 +0100
++++ gcc-5.2.0/gcc/config/xtensa/xtensa.opt	2017-11-23 16:38:05.463313513 +0100
+@@ -45,3 +45,11 @@ Relax literals in assembler and place th
  mserialize-volatile
  Target Report Mask(SERIALIZE_VOLATILE)
  -mno-serialize-volatile	Do not serialize volatile memory references with MEMW instructions
@@ -291,6 +435,3 @@ index 21c6e962abb..c31f8f9374b 100644
 +malways-memw
 +Target Report Mask(ESP32_ALWAYS_MEMMARRIER)
 +Always emit a MEMW before a load or store operation. Used to debug memory coherency issues.
--- 
-2.11.0 (Apple Git-81)
-
