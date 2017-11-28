@@ -98,7 +98,7 @@ diff -BNburp gcc-5.2.0-org/gcc/config/xtensa/xtensa.c gcc-5.2.0/gcc/config/xtens
 +		}
 +	} else if (attr_type == TYPE_JUMP || attr_type == TYPE_CALL) {
 +		enum attr_condjmp attr_condjmp = get_attr_condjmp(insn);
-+		if (attr_condjmp == CONDJMP_COND) {
++		if (attr_condjmp == CONDJMP_UNCOND) {
 +			store_insn = NULL; //Pipeline gets cleared; any load is inconsequential
 +		}
 +	} else {
