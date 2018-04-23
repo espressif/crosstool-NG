@@ -1,0 +1,79 @@
+From cf4b8d4697b7c2c29d839d462607ef589f64f588 Mon Sep 17 00:00:00 2001
+From: Dmitry <Dmitry@espressif.com>
+Date: Mon, 23 Apr 2018 13:29:24 +0300
+Subject: [PATCH 2/2] Access to register changed
+
+---
+ gdb/regcache.c    | 10 +++++-----
+ gdb/remote.c      |  3 ++-
+ gdb/xtensa-tdep.c | 11 ++++++++++-
+ 3 files changed, 17 insertions(+), 7 deletions(-)
+
+diff --git a/gdb/regcache.c b/gdb/regcache.c
+index 86e648ae3d..17cc8cedcc 100644
+--- a/gdb/regcache.c
++++ b/gdb/regcache.c
+@@ -447,11 +447,11 @@ regcache_register_status (const struct regcache *regcache, int regnum)
+ {
+   gdb_assert (regcache != NULL);
+   gdb_assert (regnum >= 0);
+-  if (regcache->readonly_p)
+-    gdb_assert (regnum < regcache->descr->nr_cooked_registers);
+-  else
+-    gdb_assert (regnum < regcache->descr->nr_raw_registers);
+-
++  /* Remove assert*/
++//  if (regcache->readonly_p)
++//    gdb_assert (regnum < regcache->descr->nr_cooked_registers);
++//  else
++//    gdb_assert (regnum < regcache->descr->nr_raw_registers);
+   return regcache->register_status[regnum];
+ }
+ 
+diff --git a/gdb/remote.c b/gdb/remote.c
+index 610da1eb32..6ccd3be768 100644
+--- a/gdb/remote.c
++++ b/gdb/remote.c
+@@ -774,8 +774,9 @@ packet_reg_from_regnum (struct remote_arch_state *rsa, long regnum)
+   else
+     {
+       struct packet_reg *r = &rsa->regs[regnum];
+-
++      /* */
+       gdb_assert (r->regnum == regnum);
++    
+       return r;
+     }
+ }
+diff --git a/gdb/xtensa-tdep.c b/gdb/xtensa-tdep.c
+index 55e7d9816f..966ac26f5d 100644
+--- a/gdb/xtensa-tdep.c
++++ b/gdb/xtensa-tdep.c
+@@ -2801,6 +2801,7 @@ execute_code (struct gdbarch *gdbarch, CORE_ADDR current_pc, CORE_ADDR wb)
+ 
+   uint32_t at, as, offset;
+ 
++  DEBUGTRACE ("execute_code (current_pc = 0x%08x, wb = 0x%08x)\n", (int) current_pc, (int) wb);
+   /* WindowUnderflow12 = true, when inside _WindowUnderflow12.  */ 
+   int WindowUnderflow12 = (current_pc & 0x1ff) >= 0x140; 
+ 
+@@ -2972,7 +2973,15 @@ Unable to decode Xtensa Window Interrupt Handler's code."));
+   epc1_regnum = xtensa_find_register_by_name (gdbarch,"epc1");
+   if (epc1_regnum < 0)
+     error(_("Unable to read Xtensa register EPC1"));
+-  cache->ra = xtensa_read_register (epc1_regnum);
++  
++  /* xtensa_read_register not works because try to read regsters from cache.
++    xtensa_read_register will be changed to regcache_cooked_read_unsigned to
++    read register inplace.
++  */
++  //cache->ra = xtensa_read_register (epc1_regnum);
++  regcache_cooked_read_unsigned (get_current_regcache (), regnum, &cache->ra);
++  DEBUGTRACE ("xtensa_window_interrupt_frame_cache: epc1 = 0x%08x\n", (int) cache->ra);
++  
+   cache->pc = get_frame_func (this_frame);
+ }
+ 
+-- 
+2.16.1.windows.4
+
