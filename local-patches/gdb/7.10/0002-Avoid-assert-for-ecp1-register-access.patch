@@ -1,19 +1,18 @@
-From cf4b8d4697b7c2c29d839d462607ef589f64f588 Mon Sep 17 00:00:00 2001
+From 0eb42a9752a61d7767fc0b6cb3b570e8878f8fd6 Mon Sep 17 00:00:00 2001
 From: Dmitry <Dmitry@espressif.com>
-Date: Mon, 23 Apr 2018 13:29:24 +0300
-Subject: [PATCH 2/2] Access to register changed
+Date: Thu, 26 Apr 2018 11:54:14 +0300
+Subject: [PATCH 2/2] Avoid assert for ecp1 register access.
 
 ---
- gdb/regcache.c    | 10 +++++-----
- gdb/remote.c      |  3 ++-
- gdb/xtensa-tdep.c | 11 ++++++++++-
- 3 files changed, 17 insertions(+), 7 deletions(-)
+ gdb/regcache.c    | 13 ++++++++-----
+ gdb/xtensa-tdep.c | 10 +++++++++-
+ 2 files changed, 17 insertions(+), 6 deletions(-)
 
 diff --git a/gdb/regcache.c b/gdb/regcache.c
-index 86e648ae3d..17cc8cedcc 100644
+index 86e648ae3d..fdecddcf36 100644
 --- a/gdb/regcache.c
 +++ b/gdb/regcache.c
-@@ -447,11 +447,11 @@ regcache_register_status (const struct regcache *regcache, int regnum)
+@@ -447,11 +447,14 @@ regcache_register_status (const struct regcache *regcache, int regnum)
  {
    gdb_assert (regcache != NULL);
    gdb_assert (regnum >= 0);
@@ -23,6 +22,9 @@ index 86e648ae3d..17cc8cedcc 100644
 -    gdb_assert (regnum < regcache->descr->nr_raw_registers);
 -
 +  /* Remove assert*/
++  /* Here some readonly registers marked as not readonly.
++     That's why value out of range.
++  */
 +//  if (regcache->readonly_p)
 +//    gdb_assert (regnum < regcache->descr->nr_cooked_registers);
 +//  else
@@ -30,34 +32,11 @@ index 86e648ae3d..17cc8cedcc 100644
    return regcache->register_status[regnum];
  }
  
-diff --git a/gdb/remote.c b/gdb/remote.c
-index 610da1eb32..6ccd3be768 100644
---- a/gdb/remote.c
-+++ b/gdb/remote.c
-@@ -774,8 +774,9 @@ packet_reg_from_regnum (struct remote_arch_state *rsa, long regnum)
-   else
-     {
-       struct packet_reg *r = &rsa->regs[regnum];
--
-+      /* */
-       gdb_assert (r->regnum == regnum);
-+    
-       return r;
-     }
- }
 diff --git a/gdb/xtensa-tdep.c b/gdb/xtensa-tdep.c
-index 55e7d9816f..966ac26f5d 100644
+index 55e7d9816f..acfc0f4c84 100644
 --- a/gdb/xtensa-tdep.c
 +++ b/gdb/xtensa-tdep.c
-@@ -2801,6 +2801,7 @@ execute_code (struct gdbarch *gdbarch, CORE_ADDR current_pc, CORE_ADDR wb)
- 
-   uint32_t at, as, offset;
- 
-+  DEBUGTRACE ("execute_code (current_pc = 0x%08x, wb = 0x%08x)\n", (int) current_pc, (int) wb);
-   /* WindowUnderflow12 = true, when inside _WindowUnderflow12.  */ 
-   int WindowUnderflow12 = (current_pc & 0x1ff) >= 0x140; 
- 
-@@ -2972,7 +2973,15 @@ Unable to decode Xtensa Window Interrupt Handler's code."));
+@@ -2972,7 +2972,15 @@ Unable to decode Xtensa Window Interrupt Handler's code."));
    epc1_regnum = xtensa_find_register_by_name (gdbarch,"epc1");
    if (epc1_regnum < 0)
      error(_("Unable to read Xtensa register EPC1"));

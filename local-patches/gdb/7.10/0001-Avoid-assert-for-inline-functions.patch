@@ -1,0 +1,48 @@
+From fdf6ab4d8c72baa1729223d60d1506e5589b463f Mon Sep 17 00:00:00 2001
+From: Dmitry <Dmitry@espressif.com>
+Date: Thu, 26 Apr 2018 11:52:36 +0300
+Subject: [PATCH 1/2] Avoid assert for inline functions.
+
+---
+ gdb/frame.c        | 9 ++++++++-
+ gdb/inline-frame.c | 3 ++-
+ 2 files changed, 10 insertions(+), 2 deletions(-)
+
+diff --git a/gdb/frame.c b/gdb/frame.c
+index da5bfb9ee4..9605bfbe8e 100644
+--- a/gdb/frame.c
++++ b/gdb/frame.c
+@@ -580,8 +580,15 @@ frame_id_p (struct frame_id l)
+   /* The frame is valid iff it has a valid stack address.  */
+   p = l.stack_status != FID_STACK_INVALID;
+   /* outer_frame_id is also valid.  */
+-  if (!p && memcmp (&l, &outer_frame_id, sizeof (l)) == 0)
++  // artificial_depth should not be used to compare
++  if (l.artificial_depth == 0)
++  {
++    if (!p && memcmp (&l, &outer_frame_id, sizeof (l)) == 0)
++      p = 1;
++  } else 
++  {
+     p = 1;
++  }
+   if (frame_debug)
+     {
+       fprintf_unfiltered (gdb_stdlog, "{ frame_id_p (l=");
+diff --git a/gdb/inline-frame.c b/gdb/inline-frame.c
+index e5d7360f98..600b0d7215 100644
+--- a/gdb/inline-frame.c
++++ b/gdb/inline-frame.c
+@@ -168,7 +168,8 @@ inline_frame_this_id (struct frame_info *this_frame,
+ 
+   /* For now, require we don't match outer_frame_id either (see
+      comment above).  */
+-  gdb_assert (!frame_id_eq (*this_id, outer_frame_id));
++  /* This compare is useless */
++  //gdb_assert (!frame_id_eq (*this_id, outer_frame_id));
+ 
+   /* Future work NOTE: Alexandre Oliva applied a patch to GCC 4.3
+      which generates DW_AT_entry_pc for inlined functions when
+-- 
+2.16.1.windows.4
+
