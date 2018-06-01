@@ -49,6 +49,10 @@ before_script:
   echo "# CT_INSTALL_DIR_RO is not set" >> .config
   echo "CT_LOG_EXTRA=y" >> .config
   echo "CT_LOG_LEVEL_MAX=\"EXTRA\"" >> .config
+  echo "CT_NEWLIB_DEVEL_URL=\"${GITLAB_SSH_SERVER}/idf/newlib-cygwin.git\"" >> .config
+  echo "CT_GCC_DEVEL_URL=\"${GITLAB_SSH_SERVER}/idf/gcc.git\"" >> .config
+  echo "CT_BINUTILS_DEVEL_URL=\"${GITLAB_SSH_SERVER}/idf/binutils-gdb.git\"" >> .config
+  echo "CT_GDB_DEVEL_URL=\"${GITLAB_SSH_SERVER}/idf/binutils-gdb.git\"" >> .config
 
 # Configuration specific to Docker
 .configure_docker: &configure_docker |
