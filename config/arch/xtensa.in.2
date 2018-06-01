@@ -21,12 +21,3 @@ config ARCH_XTENSA_CUSTOM_NAME
 	  For more information about this option, please also consult
 	  section 'Using crosstool-NG to build Xtensa toolchains' in the
 	  docs/C - Misc. tutorials.txt
-	  
-config ARCH_XTENSA_CUSTOM_OVERLAY_LOCATION
-	string "Full path to custom Xtensa processor configurations"
-	depends on XTENSA_CUSTOM
-	default ""
-	help
-	  Enter the path to the directory for the custom processor
-	  configuration file or leave blank to use the default location:
-	  CT_CUSTOM_LOCATION_ROOT_DIR
