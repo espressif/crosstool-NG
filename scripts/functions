@@ -1831,6 +1831,7 @@ CT_GetVersion_git()
     fi
 
     devel_branch="${devel_branch:-master}"
+    git_shallow_branch="${devel_branch}"
     if [ -z "${devel_revision}" ]; then
         local matches=`git ls-remote --exit-code "${devel_url}" --refs "${devel_branch}" \
             || echo "not found"`
@@ -1858,6 +1859,7 @@ CT_GetVersion_git()
             best="${matches}"
         fi
         devel_revision=`echo "${best}" | cut -c1-8`
+        git_shallow_branch=`echo "${best}" | sed -n "s|^.*refs/heads/\(.*\)$|\1|p"`
         CT_DoLog DEBUG "ref ${devel_branch} at ${devel_url} has cset of ${devel_revision}"
     fi
     unique_id="${devel_revision}"
@@ -1867,9 +1869,15 @@ CT_GetVersion_git()
 CT_Download_git()
 {
     # Git does not allow making a shallow clone of a specific commit.
-    CT_DoExecLog ALL git clone "${devel_url}" "${pkg_name}"
-    CT_Pushd "${pkg_name}"
-    CT_DoExecLog ALL git checkout "${devel_revision}" --
+    if [ -z "${git_shallow_branch}" ]; then
+        CT_DoExecLog ALL git clone "${devel_url}" "${pkg_name}"
+        CT_Pushd "${pkg_name}"
+        CT_DoExecLog ALL git checkout "${devel_revision}" --
+    else
+        CT_DoLog EXTRA "Using git_shallow_branch = ${git_shallow_branch}"
+        CT_DoExecLog ALL git clone --depth 1 --branch "${git_shallow_branch}" "${devel_url}" "${pkg_name}"
+        CT_Pushd "${pkg_name}"
+    fi
     CT_DoExecLog ALL rm -rf .git
     CT_Popd
 }
