@@ -12,9 +12,6 @@ variables:
   UNARCHIVE_TOOL: "tar xvf"
   ARCHIVE_EXT: "tar.gz"
 
-  TARBALLS_NAME: ct-ng-v1.22.0-tarballs-1.tar
-# Local tarball address is TARBALLS_URL
-
 before_script:
   - set -o errexit; set -o pipefail; set -o nounset
 
@@ -29,7 +26,7 @@ before_script:
 # Prepare release name/number
 .get_release_name: &get_release_name |
   VER_DESC=$(git describe | sed -E -n 's|.*crosstool-ng-([0-9]+).([0-9]+).([0-9]+)-([0-9]+)-g([0-9a-f]{7}).*|\1.\2.\3-\4-g\5|gp')
-  REL_NAME=xtensa-esp32-elf-${PLATFORM_NAME}-${VER_DESC}-5.2.0
+  REL_NAME=xtensa-esp32-elf-${PLATFORM_NAME}-${VER_DESC}-8.1.0
   ARCHIVE_NAME=${REL_NAME}.${ARCHIVE_EXT}
   echo "PLATFORM_NAME: $PLATFORM_NAME"
   echo "VER_DESC: $VER_DESC"
@@ -49,6 +46,9 @@ before_script:
   echo "# CT_INSTALL_DIR_RO is not set" >> .config
   echo "CT_LOG_EXTRA=y" >> .config
   echo "CT_LOG_LEVEL_MAX=\"EXTRA\"" >> .config
+  echo "CT_USE_MIRROR=y" >> .config
+  echo "CT_FORCE_MIRROR=y" >> .config
+  echo "CT_MIRROR_BASE_URL=\"${MIRROR_BASE}\"" >> .config
   echo "CT_NEWLIB_DEVEL_URL=\"${GITLAB_SSH_SERVER}/idf/newlib-cygwin.git\"" >> .config
   echo "CT_GCC_DEVEL_URL=\"${GITLAB_SSH_SERVER}/idf/gcc.git\"" >> .config
   echo "CT_BINUTILS_DEVEL_URL=\"${GITLAB_SSH_SERVER}/idf/binutils-gdb.git\"" >> .config
@@ -76,18 +76,6 @@ before_script:
   # No support Python in GDB in cross-compilation now,
   # see https://stackoverflow.com/questions/33512541/cross-compiling-gdb-for-arm-with-python-failed#34625177
   echo "# CT_GDB_CROSS_PYTHON is not set" >> .config
-
-# Download tarballs and extract them into build directory
-.get_tarballs: &get_tarballs |
-  echo Downloading tarballs...
-  wget --no-verbose ${TARBALLS_URL}/${TARBALLS_NAME}
-  wget --no-verbose ${TARBALLS_URL}/${TARBALLS_NAME}.sha256
-  echo Checking sum...
-  sha256sum -c ${TARBALLS_NAME}.sha256 || exit 1
-  mkdir -p .build/tarballs
-  pushd .build/tarballs
-  tar xvf ../../${TARBALLS_NAME}
-  popd
 
 # Actual build
 .build_toolchain: &build_toolchain |
@@ -125,7 +113,7 @@ before_script:
     - *configure_common
     - *configure_docker
     - *configure_linux_no_pie
-    - *get_tarballs
+    - *add_gitlab_key
     - *build_toolchain
     - *package_toolchain
 
@@ -153,11 +141,7 @@ build_macos:
     - *configure_common
     - *configure_docker
     - *configure_crossbuild
-    - *get_tarballs
-
-    # To work around the issue ".build/src/gcc-5.2.0/gcc/system.h:493:20: fatal error: malloc.h: No such file or directory"
-    - ln -s -r /opt/osxcross/target/SDK/MacOSX10.8.sdk/usr/include/{malloc/,}malloc.h
-
+    - *add_gitlab_key
     - *build_toolchain
     - *package_toolchain
 
@@ -173,7 +157,7 @@ build_windows:
     - *configure_common
     - *configure_docker
     - *configure_crossbuild
-    - *get_tarballs
+    - *add_gitlab_key
     - *build_toolchain
     - *package_toolchain
 
@@ -191,16 +175,17 @@ build_linux_armel:
     - *configure_linux_no_pie
     - *configure_crossbuild
 
+    # TODO
     # To avoid the issue caused by running armel-binary on the armhf platform (RPi3):
     # "liblto_plugin.so: cannot open shared object file: No such file or directory"
     # This is a common case for dynamically linked binaries, not specfic liblto_plugin only
-    - echo "CT_STATIC_TOOLCHAIN=y" >> .config
+    #- echo "CT_STATIC_TOOLCHAIN=y" >> .config
 
-    - *get_tarballs
+    - *add_gitlab_key
     - *build_toolchain
     - *package_toolchain
 
-test_arm_rpi:
+.test_arm_rpi:
   stage: test
   tags:
     - rpi-shell
