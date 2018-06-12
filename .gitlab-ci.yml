@@ -1,6 +1,9 @@
 stages:
   - build
   - test
+  - manual_action
+
+image: ${CI_DOCKER_REGISTRY}/esp32-ci-env
 
 variables:
   MAKEFLAGS: "-j5 --no-keep-going"
@@ -8,31 +11,24 @@ variables:
   CONF_BUILD: "x86_64-linux-gnu"
   CONF_TARGET: "xtensa-esp32-elf"
 
-  ARCHIVE_TOOL: "tar czvf"
+  ARCHIVE_TOOL: "tar cJvf"
   UNARCHIVE_TOOL: "tar xvf"
-  ARCHIVE_EXT: "tar.gz"
-
-  TARBALLS_NAME: ct-ng-v1.22.0-tarballs-1.tar
-# Local tarball address is TARBALLS_URL
+  ARCHIVE_EXT: "tar.xz"
 
 before_script:
-  - set -o errexit; set -o pipefail; set -o nounset
-
-# Add a key to clone from GITLAB_SSH_SERVER
-.add_gitlab_key: &add_gitlab_key |
-  command -v ssh-agent >/dev/null
-  eval $(ssh-agent -s)
-  printf '%s\n' "${GITLAB_KEY}" | tr -d '\r' | ssh-add - > /dev/null
-  mkdir -p ~/.ssh && chmod 700 ~/.ssh
-  [[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config || true
+  # Use CI Tools
+  - curl -sSL ${CIT_LOADER_URL} | sh
+  - source citools/import_functions
 
 # Prepare release name/number
 .get_release_name: &get_release_name |
-  VER_DESC=$(git describe | sed -E -n 's|.*crosstool-ng-([0-9]+).([0-9]+).([0-9]+)-([0-9]+)-g([0-9a-f]{7}).*|\1.\2.\3-\4-g\5|gp')
-  REL_NAME=xtensa-esp32-elf-${PLATFORM_NAME}-${VER_DESC}-5.2.0
+  # using annotated tags
+  REL_NUM=$(git describe --abbrev=6)
+  REL_SFX="gcc8_1_0"
+  REL_NAME=xtensa-esp32-elf-${REL_SFX}-${REL_NUM}-${PLATFORM_NAME}
   ARCHIVE_NAME=${REL_NAME}.${ARCHIVE_EXT}
   echo "PLATFORM_NAME: $PLATFORM_NAME"
-  echo "VER_DESC: $VER_DESC"
+  echo "REL_NUM: $REL_NUM"
   echo "REL_NAME: $REL_NAME"
   echo "ARCHIVE_NAME: $ARCHIVE_NAME"
 
@@ -46,9 +42,12 @@ before_script:
 # ct-ng options common for all platforms
 .configure_common: &configure_common |
   echo "# CT_LOG_PROGRESS_BAR is not set" >> .config
-  echo "# CT_INSTALL_DIR_RO is not set" >> .config
+  echo "# CT_PREFIX_DIR_RO is not set" >> .config
   echo "CT_LOG_EXTRA=y" >> .config
   echo "CT_LOG_LEVEL_MAX=\"EXTRA\"" >> .config
+  echo "CT_USE_MIRROR=y" >> .config
+  echo "CT_FORCE_MIRROR=y" >> .config
+  echo "CT_MIRROR_BASE_URL=\"${MIRROR_BASE}\"" >> .config
   echo "CT_NEWLIB_DEVEL_URL=\"${GITLAB_SSH_SERVER}/idf/newlib-cygwin.git\"" >> .config
   echo "CT_GCC_DEVEL_URL=\"${GITLAB_SSH_SERVER}/idf/gcc.git\"" >> .config
   echo "CT_BINUTILS_DEVEL_URL=\"${GITLAB_SSH_SERVER}/idf/binutils-gdb.git\"" >> .config
@@ -77,20 +76,10 @@ before_script:
   # see https://stackoverflow.com/questions/33512541/cross-compiling-gdb-for-arm-with-python-failed#34625177
   echo "# CT_GDB_CROSS_PYTHON is not set" >> .config
 
-# Download tarballs and extract them into build directory
-.get_tarballs: &get_tarballs |
-  echo Downloading tarballs...
-  wget --no-verbose ${TARBALLS_URL}/${TARBALLS_NAME}
-  wget --no-verbose ${TARBALLS_URL}/${TARBALLS_NAME}.sha256
-  echo Checking sum...
-  sha256sum -c ${TARBALLS_NAME}.sha256 || exit 1
-  mkdir -p .build/tarballs
-  pushd .build/tarballs
-  tar xvf ../../${TARBALLS_NAME}
-  popd
-
 # Actual build
 .build_toolchain: &build_toolchain |
+  # Need to download our branches for GCC, newlib etc
+  cit_add_ssh_key "${GITLAB_KEY}" "$(cit_parse_url_host ${GITLAB_SSH_SERVER})" "$(cit_parse_url_port ${GITLAB_SSH_SERVER})"
   ./ct-ng oldconfig
   ./ct-ng build
 
@@ -98,7 +87,7 @@ before_script:
 .package_toolchain: &package_toolchain |
   mkdir -p dist
   pushd builds
-  rm ${CONF_TARGET}/build.log.bz2
+  rm -f ${CONF_TARGET}/build.log.bz2
   ${ARCHIVE_TOOL} ${ARCHIVE_NAME} ${CONF_TARGET}/
   mv ${ARCHIVE_NAME} ../dist/
   echo "${ARCHIVE_NAME}" > ../dist/archive_name_${PLATFORM_NAME}
@@ -125,21 +114,27 @@ before_script:
     - *configure_common
     - *configure_docker
     - *configure_linux_no_pie
-    - *get_tarballs
     - *build_toolchain
     - *package_toolchain
 
-build_linux:
+.manual_action: &manual_action
+  stage: manual_action
+  tags:
+    - deploy
+  when: manual
+  allow_failure: true
+
+build_linux_amd64:
   <<: *build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain
   variables:
-    PLATFORM_NAME: "linux64"
+    PLATFORM_NAME: "linux-amd64"
 
-build_linux_x86:
+build_linux_i686:
   <<: *build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
   variables:
-    PLATFORM_NAME: "linux32"
+    PLATFORM_NAME: "linux-i686"
 
 build_macos:
   <<: *build_template
@@ -147,17 +142,13 @@ build_macos:
   variables:
     CONF_HOST: "x86_64-apple-darwin12"
     PLATFORM_NAME: "macos"
+    MACOSX_DEPLOYMENT_TARGET: "10.8"
   script:
     - *get_release_name
     - *build_ctng
     - *configure_common
     - *configure_docker
     - *configure_crossbuild
-    - *get_tarballs
-
-    # To work around the issue ".build/src/gcc-5.2.0/gcc/system.h:493:20: fatal error: malloc.h: No such file or directory"
-    - ln -s -r /opt/osxcross/target/SDK/MacOSX10.8.sdk/usr/include/{malloc/,}malloc.h
-
     - *build_toolchain
     - *package_toolchain
 
@@ -167,13 +158,14 @@ build_windows:
   variables:
     CONF_HOST: "i686-w64-mingw32"
     PLATFORM_NAME: "win32"
+    ARCHIVE_TOOL: "zip -r"
+    ARCHIVE_EXT: "zip"
   script:
     - *get_release_name
     - *build_ctng
     - *configure_common
     - *configure_docker
     - *configure_crossbuild
-    - *get_tarballs
     - *build_toolchain
     - *package_toolchain
 
@@ -196,7 +188,6 @@ build_linux_armel:
     # This is a common case for dynamically linked binaries, not specfic liblto_plugin only
     - echo "CT_STATIC_TOOLCHAIN=y" >> .config
 
-    - *get_tarballs
     - *build_toolchain
     - *package_toolchain
 
@@ -218,12 +209,24 @@ test_arm_rpi:
     - ${UNARCHIVE_TOOL} dist/${ARCHIVE_NAME}
     - file xtensa-esp32-elf/bin/xtensa-esp32-elf-gcc
     - ./xtensa-esp32-elf/bin/xtensa-esp32-elf-gcc -v
-    - *add_gitlab_key
+    # Add key for our gitlab
+    - cit_add_ssh_key "${GITLAB_KEY}" "$(cit_parse_url_host ${GITLAB_SSH_SERVER})" "$(cit_parse_url_port ${GITLAB_SSH_SERVER})"
     - rm -rf ${IDF_PATH}
-    - git clone --depth 1 ${GITLAB_SSH_SERVER}/idf/esp-idf ${IDF_PATH}
+    - git clone --depth 1 --branch feature/ct-ng123-gcc8-newlib3 ${GITLAB_SSH_SERVER}/idf/esp-idf ${IDF_PATH}
     - cd ${IDF_PATH}
     - ./tools/ci/mirror-submodule-update.sh
     - export PATH="${CI_PROJECT_DIR}/xtensa-esp32-elf/bin:${PATH}"
     - cd ${IDF_PATH}/examples/get-started/hello_world
     - make defconfig
     - make
+
+upload_to_http:
+  <<: *manual_action
+  script:
+    - cit_add_ssh_key "${HTTP_UPLOAD_KEY}" "$(cit_parse_url_host ${HTTP_UPLOAD_DIR})"
+    # List of archives in dist/
+    - FILES=$(find dist -name archive_name_\* -exec cat {} \+)
+    - cd dist
+    - scp ${FILES} ${HTTP_UPLOAD_DIR}
+    # Show info
+    - echo -e "\nArchives were published there:\n\n$(for n in ${FILES}; do echo "${HTTP_PUBLIC_DIR}/${n}"; done)\n"
