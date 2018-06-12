@@ -109,8 +109,8 @@ do_debug_gdb_build() {
             cross_LDFLAGS+=" -static"
         fi
 
-        case "${CT_HOST}" in
-            *darwin*)
+        case "${CT_CC}" in
+            *clang*)
                 # FIXME: Really, we should be testing for host compiler being clang.
                 cross_CFLAGS+=" -Qunused-arguments"
                 cross_CXXFLAGS+=" -Qunused-arguments"
