@@ -205,3 +205,36 @@ config LIBC_NEWLIB_EXTRA_CONFIG_ARRAY
     default ""
     help
       Extra flags to pass onto ./configure when configuring the newlib.
+
+config LIBC_NEWLIB_AUX_BUILD
+    bool
+    prompt "Build an auxiliary copy of newlib with own options"
+    default n
+    depends on LIBC_NEWLIB
+    help
+      Build an auxiliary copy of newlib with own options
+
+config LIBC_NEWLIB_AUX_BUILD_NAME
+    string
+    prompt "Name and suffix for the auxiliary build"
+    depends on LIBC_NEWLIB_AUX_BUILD
+    help
+      Sets identifier and suffix for auxiliary build.
+      Libraries become look like "libc_<suffix>.a"
+
+config LIBC_NEWLIB_AUX_BUILD_EXTRA_CONFIG_ARRAY
+    string
+    prompt "Configure options for the auxiliary build"
+    depends on LIBC_NEWLIB_AUX_BUILD
+    help
+      Flags to pass onto ./configure when configuring the auxiliary newlib build.
+
+config LIBC_NEWLIB_AUX_BUILD_TARGET_CFLAGS
+    string
+    prompt "CFLAGS for the auxiliary build"
+    depends on LIBC_NEWLIB_AUX_BUILD
+    help
+      Used to add specific options when compiling the target libraries of
+      auxiliary newlib, which can't be defined
+      in global TARGET_CFLAGS, because they shall be not used for the
+      gcc target libraries. See LIBC_NEWLIB_TARGET_CFLAGS also.
