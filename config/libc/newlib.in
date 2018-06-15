@@ -215,3 +215,32 @@ config LIBC_NEWLIB_EXTRA_CONFIG_ARRAY
     default ""
     help
       Extra flags to pass onto ./configure when configuring the newlib.
+
+config LIBC_NEWLIB_AUX_BUILD
+    bool
+    prompt "Build an auxiliary copy of newlib with own options"
+    default n
+    depends on LIBC_NEWLIB
+    help
+      Build an auxiliary copy of newlib with own options
+
+config LIBC_NEWLIB_AUX_BUILD_NAME
+    string
+    prompt "aux name"
+    depends on LIBC_NEWLIB_AUX_BUILD
+    help
+      Todo
+
+config LIBC_NEWLIB_AUX_BUILD_OPTS
+    string
+    prompt "aux configure options"
+    depends on LIBC_NEWLIB_AUX_BUILD
+    help
+      Todo
+
+config LIBC_NEWLIB_AUX_BUILD_TARGET_CFLAGS
+    string
+    prompt "aux cflags"
+    depends on LIBC_NEWLIB_AUX_BUILD
+    help
+      Todo
