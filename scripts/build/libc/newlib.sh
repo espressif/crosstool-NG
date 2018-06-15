@@ -19,6 +19,12 @@ newlib_headers()
 
 newlib_main()
 {
+    # It is important to build a auxiliary library before a main one
+    # because the auxiliary library creates and replace the libc.a (which it is renamed to different name later)
+    if [ "${CT_LIBC_NEWLIB_AUX_BUILD}" = "y" ]; then
+        newlib_AUX_BUILD
+    fi
+
     local -a newlib_opts
     local cflags_for_target
 
@@ -131,5 +137,49 @@ ENABLE_TARGET_OPTSPACE:target-optspace
     fi
 
     CT_Popd
+    CT_EndStep
+}
+
+newlib_AUX_BUILD() {
+    local aux_name
+    local aux_cflags
+
+    aux_name="${CT_LIBC_NEWLIB_AUX_BUILD_NAME}"
+
+    CT_DoStep INFO "Installing auxiliary ${aux_name} C library"
+
+    mkdir -p "${CT_BUILD_DIR}/build-libc-${aux_name}"
+    cd "${CT_BUILD_DIR}/build-libc-${aux_name}"
+
+    CT_DoLog EXTRA "Configuring auxiliary ${aux_name} C library"
+
+    # Also the same for TARGET_CFLAGS
+    aux_cflags="${CT_TARGET_CFLAGS} ${CT_LIBC_NEWLIB_AUX_BUILD_TARGET_CFLAGS}"
+
+    CT_DoExecLog CFG                                               \
+    CC_FOR_BUILD="${CT_BUILD}-gcc"                                 \
+    CFLAGS_FOR_TARGET="${aux_cflags}"                              \
+    AR_FOR_TARGET="`which ${CT_TARGET}-gcc-ar`"                    \
+    RANLIB_FOR_TARGET="`which ${CT_TARGET}-gcc-ranlib`"            \
+    ${CONFIG_SHELL}                                                \
+    "${CT_SRC_DIR}/newlib/configure"                               \
+        --host=${CT_BUILD}                                         \
+        --target=${CT_TARGET}                                      \
+        --prefix=${CT_PREFIX_DIR}                                  \
+        "${CT_LIBC_NEWLIB_AUX_BUILD_EXTRA_CONFIG_ARRAY[@]}"
+
+    CT_DoLog EXTRA "Building auxiliary ${aux_name} C library"
+    CT_DoExecLog ALL make ${JOBSFLAGS}
+
+    CT_DoLog EXTRA "Installing auxiliary ${aux_name} C library"
+    CT_DoExecLog ALL make install
+
+    # Rename some files to *_aux_name.* pattern
+    find ${CT_PREFIX_DIR}/${CT_TARGET}/lib \( -name libc.a -o -name libm.a -o -name libg.a \) -print0 |
+        while IFS= read -r -d $'\0' name; do
+            new_name=$(echo -n "${name%.*}"; echo -n "_${aux_name}."; echo "${name##*.}")
+            mv -v ${name} ${new_name}
+        done
+
     CT_EndStep
 }
