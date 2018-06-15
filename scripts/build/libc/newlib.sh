@@ -26,6 +26,13 @@ do_libc_start_files() {
 }
 
 do_libc() {
+
+    # It is important to build a auxiliary library before a main one
+    # because the auxiliary library creates and replace the libc.a (which it is renamed to different name later)
+    if [ "${CT_LIBC_NEWLIB_AUX_BUILD}" = "y" ]; then
+        newlib_AUX_BUILD
+    fi
+
     local -a newlib_opts
     local cflags_for_target
 
@@ -38,7 +45,7 @@ do_libc() {
 
     # Multilib is the default, so if it is not enabled, disable it.
     if [ "${CT_MULTILIB}" != "y" ]; then
-        extra_config+=("--disable-multilib")
+        newlib_opts+=("--disable-multilib")
     fi
 
     if [ "${CT_LIBC_NEWLIB_IO_FLOAT}" = "y" ]; then
@@ -140,4 +147,52 @@ ENABLE_TARGET_OPTSPACE:target-optspace
 
 do_libc_post_cc() {
     :
+}
+
+newlib_AUX_BUILD() {
+    local aux_name
+    local -a aux_opts
+    local aux_cflags
+
+    aux_name="${CT_LIBC_NEWLIB_AUX_BUILD_NAME}"
+
+    CT_DoStep INFO "Installing auxiliary ${aux_name} C library"
+
+    mkdir -p "${CT_BUILD_DIR}/build-libc-${aux_name}"
+    cd "${CT_BUILD_DIR}/build-libc-${aux_name}"
+
+    CT_DoLog EXTRA "Configuring auxiliary ${aux_name} C library"
+
+    # All configure options is squashed to one variable
+    for x in ${CT_LIBC_NEWLIB_AUX_BUILD_OPTS}; do aux_opts+=( "${x}" ); done
+
+    # Also the same for TARGET_CFLAGS
+    aux_cflags="${CT_TARGET_CFLAGS} ${CT_LIBC_NEWLIB_AUX_BUILD_TARGET_CFLAGS}"
+
+    CT_DoExecLog CFG                                               \
+    CC_FOR_BUILD="${CT_BUILD}-gcc"                                 \
+    CFLAGS_FOR_TARGET="${aux_cflags}"                              \
+    AR_FOR_TARGET="`which ${CT_TARGET}-gcc-ar`"                    \
+    RANLIB_FOR_TARGET="`which ${CT_TARGET}-gcc-ranlib`"            \
+    ${CONFIG_SHELL}                                                \
+    "${CT_SRC_DIR}/newlib/configure"                               \
+        --host=${CT_BUILD}                                         \
+        --target=${CT_TARGET}                                      \
+        --prefix=${CT_PREFIX_DIR}                                  \
+        "${aux_opts[@]}"
+
+    CT_DoLog EXTRA "Building auxiliary ${aux_name} C library"
+    CT_DoExecLog ALL make ${JOBSFLAGS}
+
+    CT_DoLog EXTRA "Installing auxiliary ${aux_name} C library"
+    CT_DoExecLog ALL make install
+
+    # Rename some files to *_aux_name.* pattern
+    find ${CT_PREFIX_DIR}/${CT_TARGET}/lib -mindepth 1 -maxdepth 2 \( -name libc.a -o -name libg.a \) -print0 |
+        while IFS= read -r -d $'\0' name; do
+            new_name=$(echo -n "${name%.*}"; echo -n "_${aux_name}."; echo "${name##*.}")
+            mv -v ${name} ${new_name}
+        done
+
+    CT_EndStep
 }
