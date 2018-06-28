@@ -153,6 +153,7 @@ newlib_AUX_BUILD() {
     local aux_name
     local -a aux_opts
     local aux_cflags
+    local rename_prog
 
     aux_name="${CT_LIBC_NEWLIB_AUX_BUILD_NAME}"
 
@@ -187,9 +188,11 @@ newlib_AUX_BUILD() {
     CT_DoLog EXTRA "Installing auxiliary ${aux_name} C library"
     CT_DoExecLog ALL make install
 
+    # It is hack for debian
+    rename_prog=$(command -v rename.ul) || rename_prog=$(command -v rename)
     for name in libc.a libg.a; do
         find ${CT_PREFIX_DIR}/${CT_TARGET}/lib -mindepth 1 -maxdepth 2 -name ${name} -print0 \
-            | xargs -0 rename "." "_${aux_name}."
+            | xargs -0 ${rename_prog} -v "." "_${aux_name}."
     done
 
     CT_EndStep
