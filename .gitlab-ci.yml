@@ -1,6 +1,9 @@
 stages:
   - build
   - test
+  - manual_action
+
+image: ${CI_DOCKER_REGISTRY}/esp32-ci-env
 
 variables:
   MAKEFLAGS: "-j5 --no-keep-going"
@@ -13,15 +16,9 @@ variables:
   ARCHIVE_EXT: "tar.gz"
 
 before_script:
-  - set -o errexit; set -o pipefail; set -o nounset
-
-# Add a key to clone from GITLAB_SSH_SERVER
-.add_gitlab_key: &add_gitlab_key |
-  command -v ssh-agent >/dev/null
-  eval $(ssh-agent -s)
-  printf '%s\n' "${GITLAB_KEY}" | tr -d '\r' | ssh-add - > /dev/null
-  mkdir -p ~/.ssh && chmod 700 ~/.ssh
-  [[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config || true
+  # Use CI Tools
+  - curl -sSL ${CIT_LOADER_URL} | sh
+  - source citools/import_functions
 
 # Prepare release name/number
 .get_release_name: &get_release_name |
@@ -79,6 +76,8 @@ before_script:
 
 # Actual build
 .build_toolchain: &build_toolchain |
+  # Need to download our branches for GCC, newlib etc
+  cit_add_ssh_key "${GITLAB_KEY}" "$(cit_parse_url_host ${GITLAB_SSH_SERVER})" "$(cit_parse_url_port ${GITLAB_SSH_SERVER})"
   ./ct-ng oldconfig
   ./ct-ng build
 
@@ -86,7 +85,7 @@ before_script:
 .package_toolchain: &package_toolchain |
   mkdir -p dist
   pushd builds
-  rm ${CONF_TARGET}/build.log.bz2
+  rm -f ${CONF_TARGET}/build.log.bz2
   ${ARCHIVE_TOOL} ${ARCHIVE_NAME} ${CONF_TARGET}/
   mv ${ARCHIVE_NAME} ../dist/
   echo "${ARCHIVE_NAME}" > ../dist/archive_name_${PLATFORM_NAME}
@@ -113,9 +112,15 @@ before_script:
     - *configure_common
     - *configure_docker
     - *configure_linux_no_pie
-    - *add_gitlab_key
     - *build_toolchain
     - *package_toolchain
+
+.manual_action: &manual_action
+  stage: manual_action
+  tags:
+    - deploy
+  when: manual
+  allow_failure: true
 
 build_linux:
   <<: *build_template_linux
@@ -141,7 +146,6 @@ build_macos:
     - *configure_common
     - *configure_docker
     - *configure_crossbuild
-    - *add_gitlab_key
     - *build_toolchain
     - *package_toolchain
 
@@ -157,7 +161,6 @@ build_windows:
     - *configure_common
     - *configure_docker
     - *configure_crossbuild
-    - *add_gitlab_key
     - *build_toolchain
     - *package_toolchain
 
@@ -180,11 +183,10 @@ build_linux_armel:
     # This is a common case for dynamically linked binaries, not specfic liblto_plugin only
     - echo "CT_STATIC_TOOLCHAIN=y" >> .config
 
-    - *add_gitlab_key
     - *build_toolchain
     - *package_toolchain
 
-.test_arm_rpi:
+test_arm_rpi:
   stage: test
   tags:
     - rpi-shell
@@ -202,12 +204,24 @@ build_linux_armel:
     - ${UNARCHIVE_TOOL} dist/${ARCHIVE_NAME}
     - file xtensa-esp32-elf/bin/xtensa-esp32-elf-gcc
     - ./xtensa-esp32-elf/bin/xtensa-esp32-elf-gcc -v
-    - *add_gitlab_key
+    # Add key for our gitlab
+    - cit_add_ssh_key "${GITLAB_KEY}" "$(cit_parse_url_host ${GITLAB_SSH_SERVER})" "$(cit_parse_url_port ${GITLAB_SSH_SERVER})"
     - rm -rf ${IDF_PATH}
-    - git clone --depth 1 ${GITLAB_SSH_SERVER}/idf/esp-idf ${IDF_PATH}
+    - git clone --depth 1 --branch feature/ct-ng123-gcc8-newlib3 ${GITLAB_SSH_SERVER}/idf/esp-idf ${IDF_PATH}
     - cd ${IDF_PATH}
     - ./tools/ci/mirror-submodule-update.sh
     - export PATH="${CI_PROJECT_DIR}/xtensa-esp32-elf/bin:${PATH}"
     - cd ${IDF_PATH}/examples/get-started/hello_world
     - make defconfig
     - make
+
+upload_to_http:
+  <<: *manual_action
+  script:
+    - cit_add_ssh_key "${HTTP_UPLOAD_KEY}" "$(cit_parse_url_host ${HTTP_UPLOAD_DIR})"
+    # List of archives in dist/
+    - FILES=$(find dist -name archive_name_\* -exec cat {} \+)
+    - cd dist
+    - scp ${FILES} ${HTTP_UPLOAD_DIR}
+    # Show info
+    - echo -e "\nArchives were published there:\n\n$(for n in ${FILES}; do echo "${HTTP_PUBLIC_DIR}/${n}"; done)\n"
