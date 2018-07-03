@@ -43,7 +43,7 @@ before_script:
 # ct-ng options common for all platforms
 .configure_common: &configure_common |
   echo "# CT_LOG_PROGRESS_BAR is not set" >> .config
-  echo "# CT_INSTALL_DIR_RO is not set" >> .config
+  echo "# CT_PREFIX_DIR_RO is not set" >> .config
   echo "CT_LOG_EXTRA=y" >> .config
   echo "CT_LOG_LEVEL_MAX=\"EXTRA\"" >> .config
   echo "CT_USE_MIRROR=y" >> .config
@@ -175,11 +175,10 @@ build_linux_armel:
     - *configure_linux_no_pie
     - *configure_crossbuild
 
-    # TODO
     # To avoid the issue caused by running armel-binary on the armhf platform (RPi3):
     # "liblto_plugin.so: cannot open shared object file: No such file or directory"
     # This is a common case for dynamically linked binaries, not specfic liblto_plugin only
-    #- echo "CT_STATIC_TOOLCHAIN=y" >> .config
+    - echo "CT_STATIC_TOOLCHAIN=y" >> .config
 
     - *add_gitlab_key
     - *build_toolchain
