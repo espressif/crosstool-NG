@@ -159,7 +159,7 @@ build_windows:
 
 build_linux_armel:
   <<: *build_template
-  image: $CI_DOCKER_REGISTRY/esp32-toolchain-arm-cross:latest
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain-arm-cross:533f589f57f1
   variables:
     CONF_HOST: "arm-linux-gnueabi"
     PLATFORM_NAME: "linux-armel"
