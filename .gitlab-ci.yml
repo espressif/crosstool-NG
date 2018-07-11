@@ -6,7 +6,7 @@ variables:
   MAKEFLAGS: "-j5 --no-keep-going"
 
   CONF_BUILD: "x86_64-linux-gnu"
-  CONF_TARGET: "xtensa-esp32-elf"
+  CONF_TARGET: "xtensa-lx106-elf"
 
   ARCHIVE_TOOL: "tar czvf"
   UNARCHIVE_TOOL: "tar xvf"
@@ -29,7 +29,7 @@ before_script:
 # Prepare release name/number
 .get_release_name: &get_release_name |
   VER_DESC=$(git describe | sed -E -n 's|.*crosstool-ng-([0-9]+).([0-9]+).([0-9]+)-([0-9]+)-g([0-9a-f]{7}).*|\1.\2.\3-\4-g\5|gp')
-  REL_NAME=xtensa-esp32-elf-${PLATFORM_NAME}-${VER_DESC}-5.2.0
+  REL_NAME=xtensa-lx106-elf-${PLATFORM_NAME}-${VER_DESC}-4.8.5
   ARCHIVE_NAME=${REL_NAME}.${ARCHIVE_EXT}
   echo "PLATFORM_NAME: $PLATFORM_NAME"
   echo "VER_DESC: $VER_DESC"
@@ -207,7 +207,7 @@ test_arm_rpi:
   allow_failure: true
   variables:
     GIT_STRATEGY: none
-    IDF_PATH: "${CI_PROJECT_DIR}/esp-idf"
+    IDF_PATH: "${CI_PROJECT_DIR}/ESP8266_RTOS_SDK"
     PLATFORM_NAME: "linux-armel"
     GITLAB_SSH_BRANCH: "-b master"
     CONF_TARGET: "xtensa-esp32-elf"
