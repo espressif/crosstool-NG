@@ -33,6 +33,11 @@ choice
 # Don't remove next line
 # CT_INSERT_VERSION_BELOW
 
+config GDB_V_8_0_1
+    bool
+    prompt "8.0.1"
+    select GDB_7_2_or_later
+
 config GDB_V_7_10
     bool
     prompt "7.10"
@@ -174,6 +179,10 @@ config GDB_CUSTOM
     The choosen gdb version shall be not downloaded. Instead use
     a custom location to get the source.
 
+config GDB_8_0_1
+    bool
+    select GDB_7_0_or_later
+
 config GDB_7_2_or_later
     bool
     select GDB_7_0_or_later
@@ -197,6 +206,7 @@ config GDB_VERSION
     string
 # Don't remove next line
 # CT_INSERT_VERSION_STRING_BELOW
+    default "8.0.1" if GDB_V_8_0_1
     default "7.10" if GDB_V_7_10
     default "7.9.1" if GDB_V_7_9_1
     default "7.9" if GDB_V_7_9

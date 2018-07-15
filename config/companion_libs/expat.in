@@ -6,6 +6,10 @@ choice
 # Don't remove next line
 # CT_INSERT_VERSION_BELOW
 
+config EXPAT_V_2_2_4
+    bool
+    prompt "2.2.4"
+
 config EXPAT_V_2_1_0
     bool
     prompt "2.1.0"
@@ -16,4 +20,5 @@ config EXPAT_VERSION
     string
 # Don't remove next line
 # CT_INSERT_VERSION_STRING_BELOW
+    default "2.2.4" if EXPAT_V_2_2_4
     default "2.1.0" if EXPAT_V_2_1_0

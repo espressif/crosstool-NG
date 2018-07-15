@@ -24,3 +24,6 @@ build.log
 targets/
 # .. and log for 'build-all'
 .build-all
+
+# OSX junk
+.fseventsd
