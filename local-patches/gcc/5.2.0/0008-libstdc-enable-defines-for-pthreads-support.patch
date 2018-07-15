@@ -1,7 +1,7 @@
 From 5e44cc351d1935c65d48d37981a8e5094089dea5 Mon Sep 17 00:00:00 2001
 From: Ivan Grokhotkov <ivan@espressif.com>
 Date: Wed, 30 Aug 2017 12:09:32 +0800
-Subject: [PATCH 8/9] libstdc++: enable defines for pthreads support
+Subject: [PATCH 08/11] libstdc++: enable defines for pthreads support
 
 ---
  libstdc++-v3/config/os/newlib/os_defines.h | 3 +++
@@ -20,5 +20,5 @@ index 72ab3c969ec..6aef4a7a3cc 100644
 +
  #endif
 -- 
-2.11.0 (Apple Git-81)
+2.13.5 (Apple Git-94)
 

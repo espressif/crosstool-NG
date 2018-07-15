@@ -1,7 +1,7 @@
 From 0d4eff0aeb61d657bdcbb4c6717b79ad23799f77 Mon Sep 17 00:00:00 2001
 From: Alexey Gerenkov <alexey@espressif.com>
 Date: Mon, 18 Sep 2017 10:10:19 +0800
-Subject: [PATCH 9/9] xtensa: gcov custom runtime file I/O API support
+Subject: [PATCH 09/11] xtensa: gcov custom runtime file I/O API support
 
 ---
  gcc/gcov-io.c                  | 46 ++++++++++++++++++----
@@ -436,5 +436,5 @@ index 221ac0c00d0..6dfce51e276 100644
  
        info->next = __gcov_root.list;
 -- 
-2.11.0 (Apple Git-81)
+2.13.5 (Apple Git-94)
 

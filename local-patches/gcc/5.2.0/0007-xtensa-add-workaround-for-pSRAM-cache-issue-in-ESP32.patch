@@ -1,7 +1,7 @@
 From 2164b6d6d01b004f7ef14c650f454c94e939ee0f Mon Sep 17 00:00:00 2001
 From: Jeroen Domburg <jeroen@espressif.com>
 Date: Sat, 12 Aug 2017 23:10:12 +0800
-Subject: [PATCH 7/9] xtensa: add workaround for pSRAM cache issue in ESP32
+Subject: [PATCH 07/13] xtensa: add workaround for pSRAM cache issue in ESP32
 
 ---
  gcc/config/xtensa/xtensa.c   | 195 ++++++++++++++++++++++++++++++++++++++++++-
@@ -292,5 +292,5 @@ index 21c6e962abb..c31f8f9374b 100644
 +Target Report Mask(ESP32_ALWAYS_MEMMARRIER)
 +Always emit a MEMW before a load or store operation. Used to debug memory coherency issues.
 -- 
-2.11.0 (Apple Git-81)
+2.13.5 (Apple Git-94)
 

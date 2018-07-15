@@ -1,0 +1,36 @@
+From 7ddbb9093e4f334cddd2ea9c230012b242c06bef Mon Sep 17 00:00:00 2001
+From: Amey Inamdar <amey@espressif.com>
+Date: Tue, 7 Nov 2017 09:12:11 +0530
+Subject: [PATCH 11/13] libstdc++: No weak functions are required for gthread
+ now. Also enabling cond_var constructor invocation.
+
+Signed-off-by: Amey Inamdar <amey@espressif.com>
+---
+ libstdc++-v3/config/os/newlib/os_defines.h | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/libstdc++-v3/config/os/newlib/os_defines.h b/libstdc++-v3/config/os/newlib/os_defines.h
+index 6aef4a7a3cc..6b3db135271 100644
+--- a/libstdc++-v3/config/os/newlib/os_defines.h
++++ b/libstdc++-v3/config/os/newlib/os_defines.h
+@@ -34,7 +34,6 @@
+ // file will come before all others.
+ 
+ #ifdef __CYGWIN__
+-#define _GLIBCXX_GTHREAD_USE_WEAK 0
+ 
+ #if defined (_GLIBCXX_DLL)
+ #define _GLIBCXX_PSEUDO_VISIBILITY_default __attribute__ ((__dllimport__))
+@@ -55,7 +54,9 @@
+ 
+ #endif
+ 
++#define _GLIBCXX_GTHREAD_USE_WEAK 0
+ #define _GTHREAD_USE_MUTEX_INIT_FUNC  1
++#define _GTHREAD_USE_COND_INIT_FUNC  1
+ #define _GLIBCXX_USE_SCHED_YIELD      1
+ 
+ #endif
+-- 
+2.13.5 (Apple Git-94)
+

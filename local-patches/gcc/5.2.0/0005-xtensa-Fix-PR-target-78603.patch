@@ -1,7 +1,7 @@
 From e53e789c2b308c8b102b943d29704bc9022b4543 Mon Sep 17 00:00:00 2001
 From: jcmvbkbc <jcmvbkbc@138bc75d-0d04-0410-961f-82ee72b054a4>
 Date: Tue, 29 Nov 2016 22:22:13 +0000
-Subject: [PATCH 5/9] xtensa: Fix PR target/78603
+Subject: [PATCH 05/13] xtensa: Fix PR target/78603
 
 2016-11-29  Max Filippov  <jcmvbkbc@gmail.com>
 gcc/
@@ -32,5 +32,5 @@ index d80ffb431ef..aa5bbd4aaee 100644
  
        emit_insn_after (seq, entry_after);
 -- 
-2.11.0 (Apple Git-81)
+2.13.5 (Apple Git-94)
 

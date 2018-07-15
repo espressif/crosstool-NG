@@ -1,7 +1,7 @@
 From 96402427a760e2271bc8828e1891e219551f3655 Mon Sep 17 00:00:00 2001
 From: Max Filippov <jcmvbkbc@gmail.com>
 Date: Sun, 7 Jun 2015 00:35:00 +0300
-Subject: [PATCH 1/9] WIP: don't bring extra [u]int_least32_t into std::
+Subject: [PATCH 01/13] WIP: don't bring extra [u]int_least32_t into std::
 
 Signed-off-by: Max Filippov <jcmvbkbc@gmail.com>
 ---
@@ -22,5 +22,5 @@ index 03e198acd08..e0eb9d64fa9 100644
  {
    typedef __UINT_LEAST16_TYPE__ uint_least16_t;
 -- 
-2.11.0 (Apple Git-81)
+2.13.5 (Apple Git-94)
 

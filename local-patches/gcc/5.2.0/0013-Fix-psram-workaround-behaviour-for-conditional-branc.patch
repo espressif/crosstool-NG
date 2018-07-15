@@ -1,0 +1,188 @@
+From 938d1f248b2980fb746aa6527832960ab9e87dce Mon Sep 17 00:00:00 2001
+From: Jeroen Domburg <git@j0h.nl>
+Date: Mon, 11 Dec 2017 14:40:58 +0800
+Subject: [PATCH 13/13] Fix psram workaround behaviour for conditional branches
+
+---
+ gcc/config/xtensa/xtensa.c  |  5 ++++-
+ gcc/config/xtensa/xtensa.md | 22 ++++++++++++++++++++++
+ 2 files changed, 26 insertions(+), 1 deletion(-)
+
+diff --git a/gcc/config/xtensa/xtensa.c b/gcc/config/xtensa/xtensa.c
+index a4b0bb1efe4..ceadfa41d33 100644
+--- a/gcc/config/xtensa/xtensa.c
++++ b/gcc/config/xtensa/xtensa.c
+@@ -2292,7 +2292,10 @@ static void handle_fix_reorg_insn(rtx_insn *insn) {
+ 			}
+ 		}
+ 	} else if (attr_type == TYPE_JUMP || attr_type == TYPE_CALL) {
+-		store_insn = NULL; //Pipeline gets cleared; any load is inconsequential
++		enum attr_condjmp attr_condjmp = get_attr_condjmp(insn);
++		if (attr_condjmp == CONDJMP_UNCOND) {
++			store_insn = NULL; //Pipeline gets cleared; any load is inconsequential
++		}
+ 	} else {
+ 		insns_since_store++;
+ 	}
+diff --git a/gcc/config/xtensa/xtensa.md b/gcc/config/xtensa/xtensa.md
+index 399aa231ca8..550b13442fd 100644
+--- a/gcc/config/xtensa/xtensa.md
++++ b/gcc/config/xtensa/xtensa.md
+@@ -93,6 +93,10 @@
+   "unknown,none,QI,HI,SI,DI,SF,DF,BL"
+   (const_string "unknown"))
+ 
++(define_attr "condjmp"
++  "na,cond,uncond"
++  (const_string "na"))
++
+ (define_attr "length" "" (const_int 1))
+ 
+ ;; Describe a user's asm statement.
+@@ -1182,6 +1186,7 @@
+ }
+   [(set_attr "type"	"jump,jump")
+    (set_attr "mode"	"none")
++   (set_attr "condjmp" "cond")
+    (set_attr "length"	"3,3")])
+ 
+ (define_insn "*bfalse"
+@@ -1197,6 +1202,7 @@
+ }
+   [(set_attr "type"	"jump,jump")
+    (set_attr "mode"	"none")
++   (set_attr "condjmp" "cond")
+    (set_attr "length"	"3,3")])
+ 
+ (define_insn "*ubtrue"
+@@ -1212,6 +1218,7 @@
+ }
+   [(set_attr "type"	"jump,jump")
+    (set_attr "mode"	"none")
++   (set_attr "condjmp" "cond")
+    (set_attr "length"	"3,3")])
+ 
+ (define_insn "*ubfalse"
+@@ -1227,6 +1234,7 @@
+ }
+   [(set_attr "type"	"jump,jump")
+    (set_attr "mode"	"none")
++   (set_attr "condjmp" "cond")
+    (set_attr "length"	"3,3")])
+ 
+ ;; Branch patterns for bit testing
+@@ -1247,6 +1255,7 @@
+ }
+   [(set_attr "type"	"jump")
+    (set_attr "mode"	"none")
++   (set_attr "condjmp" "cond")
+    (set_attr "length"	"3")])
+ 
+ (define_insn "*bitfalse"
+@@ -1265,6 +1274,7 @@
+ }
+   [(set_attr "type"	"jump")
+    (set_attr "mode"	"none")
++   (set_attr "condjmp" "cond")
+    (set_attr "length"	"3")])
+ 
+ (define_insn "*masktrue"
+@@ -1286,6 +1296,7 @@
+ }
+   [(set_attr "type"	"jump")
+    (set_attr "mode"	"none")
++   (set_attr "condjmp" "cond")
+    (set_attr "length"	"3")])
+ 
+ (define_insn "*maskfalse"
+@@ -1307,6 +1318,7 @@
+ }
+   [(set_attr "type"	"jump")
+    (set_attr "mode"	"none")
++   (set_attr "condjmp" "cond")
+    (set_attr "length"	"3")])
+ 
+ 
+@@ -1331,6 +1343,7 @@
+   "loop\t%0, %l1_LEND"
+   [(set_attr "type"	"jump")
+    (set_attr "mode"	"none")
++   (set_attr "condjmp" "cond")
+    (set_attr "length"	"3")])
+ 
+ (define_insn "zero_cost_loop_end"
+@@ -1367,6 +1380,7 @@
+ }
+   [(set_attr "type"	"jump")
+    (set_attr "mode"	"none")
++   (set_attr "condjmp" "cond")
+    (set_attr "length"	"0")])
+ 
+ (define_split
+@@ -1564,6 +1578,7 @@
+   "j\t%l0"
+   [(set_attr "type"	"jump")
+    (set_attr "mode"	"none")
++   (set_attr "condjmp" "uncond")
+    (set_attr "length"	"3")])
+ 
+ (define_expand "indirect_jump"
+@@ -1585,6 +1600,7 @@
+   "jx\t%0"
+   [(set_attr "type"	"jump")
+    (set_attr "mode"	"none")
++   (set_attr "condjmp" "uncond")
+    (set_attr "length"	"3")])
+ 
+ 
+@@ -1614,6 +1630,7 @@
+   "jx\t%0"
+   [(set_attr "type"	"jump")
+    (set_attr "mode"	"none")
++   (set_attr "condjmp" "uncond")
+    (set_attr "length"	"3")])
+ 
+ 
+@@ -1646,6 +1663,7 @@
+ }
+   [(set_attr "type"	"call")
+    (set_attr "mode"	"none")
++   (set_attr "condjmp" "uncond")
+    (set_attr "length"	"3")])
+ 
+ (define_expand "call_value"
+@@ -1672,6 +1690,7 @@
+ }
+   [(set_attr "type"	"call")
+    (set_attr "mode"	"none")
++   (set_attr "condjmp" "uncond")
+    (set_attr "length"	"3")])
+ 
+ (define_insn "entry"
+@@ -1695,6 +1714,7 @@
+ }
+   [(set_attr "type"	"jump")
+    (set_attr "mode"	"none")
++   (set_attr "condjmp" "uncond")
+    (set_attr "length"	"2")])
+ 
+ 
+@@ -1931,6 +1951,7 @@
+ }
+   [(set_attr "type"	"jump")
+    (set_attr "mode"	"none")
++   (set_attr "condjmp" "cond")
+    (set_attr "length"	"3")])
+ 
+ (define_insn "*boolfalse"
+@@ -1949,6 +1970,7 @@
+ }
+   [(set_attr "type"	"jump")
+    (set_attr "mode"	"none")
++   (set_attr "condjmp" "cond")
+    (set_attr "length"	"3")])
+ 
+ 
+-- 
+2.13.5 (Apple Git-94)
+

@@ -1,7 +1,7 @@
 From c4a7c414b80767a8490e3cffffd97dfa77209285 Mon Sep 17 00:00:00 2001
 From: jcmvbkbc <jcmvbkbc@138bc75d-0d04-0410-961f-82ee72b054a4>
 Date: Tue, 1 Nov 2016 17:16:33 +0000
-Subject: [PATCH 4/9] xtensa: Fix PR target/78118
+Subject: [PATCH 04/13] xtensa: Fix PR target/78118
 
 It started failing after the following commit: 32e90dc6a0cda45 ("PR
 rtl-optimization/61047").
@@ -315,5 +315,5 @@ index 3a3a9029a31..9b2cde9d6a4 100644
    return TARGET_WINDOWED_ABI ?
        (TARGET_DENSITY ? "retw.n" : "retw") :
 -- 
-2.11.0 (Apple Git-81)
+2.13.5 (Apple Git-94)
 

@@ -1,7 +1,7 @@
 From 741c2dea9c8719b425d502315a9f417b716790a4 Mon Sep 17 00:00:00 2001
 From: Max Filippov <jcmvbkbc@gmail.com>
 Date: Thu, 13 Oct 2016 23:49:44 -0700
-Subject: [PATCH 3/9] xtensa: add HW FPU sequences for DIV/SQRT/RECIP/RSQRT
+Subject: [PATCH 03/13] xtensa: add HW FPU sequences for DIV/SQRT/RECIP/RSQRT
 
 Use new FPU instruction sequences documented in the ISA book to
 implement __divsf3, __divdf3, __recipsf2, __recipdf2, __rsqrtsf2,
@@ -422,5 +422,5 @@ index ed3eb84a71b..90df5f15daa 100644
  
  LIB2ADD = $(srcdir)/config/xtensa/lib2funcs.S
 -- 
-2.11.0 (Apple Git-81)
+2.13.5 (Apple Git-94)
 

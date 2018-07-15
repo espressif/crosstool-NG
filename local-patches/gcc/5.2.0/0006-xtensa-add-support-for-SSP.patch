@@ -1,7 +1,7 @@
 From 4a86aa4eb36ae95cf42f99251965f4a3a8f45f88 Mon Sep 17 00:00:00 2001
 From: jcmvbkbc <jcmvbkbc@138bc75d-0d04-0410-961f-82ee72b054a4>
 Date: Mon, 8 May 2017 23:53:14 +0000
-Subject: [PATCH 6/9] xtensa: add support for SSP
+Subject: [PATCH 06/13] xtensa: add support for SSP
 
 gcc/
 2017-05-08  Max Filippov  <jcmvbkbc@gmail.com>
@@ -111,5 +111,5 @@ index 683ce0101c8..8bc846fb37f 100644
  /* If defined, the maximum amount of space required for outgoing
     arguments will be computed and placed into the variable
 -- 
-2.11.0 (Apple Git-81)
+2.13.5 (Apple Git-94)
 
