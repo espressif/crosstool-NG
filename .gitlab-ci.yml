@@ -11,9 +11,9 @@ variables:
   CONF_BUILD: "x86_64-linux-gnu"
   CONF_TARGET: "xtensa-esp32-elf"
 
-  ARCHIVE_TOOL: "tar czvf"
+  ARCHIVE_TOOL: "tar cJvf"
   UNARCHIVE_TOOL: "tar xvf"
-  ARCHIVE_EXT: "tar.gz"
+  ARCHIVE_EXT: "tar.xz"
 
 before_script:
   # Use CI Tools
@@ -142,6 +142,8 @@ build_macos:
   variables:
     CONF_HOST: "x86_64-apple-darwin12"
     PLATFORM_NAME: "macos"
+    ARCHIVE_TOOL: "tar czvf"
+    ARCHIVE_EXT: "tar.gz"
   script:
     - *get_release_name
     - *build_ctng
@@ -157,6 +159,8 @@ build_windows:
   variables:
     CONF_HOST: "i686-w64-mingw32"
     PLATFORM_NAME: "win32"
+    ARCHIVE_TOOL: "tar czvf"
+    ARCHIVE_EXT: "tar.gz"
   script:
     - *get_release_name
     - *build_ctng
