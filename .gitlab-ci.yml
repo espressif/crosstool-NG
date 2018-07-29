@@ -22,11 +22,13 @@ before_script:
 
 # Prepare release name/number
 .get_release_name: &get_release_name |
-  VER_DESC=$(git describe | sed -E -n 's|.*crosstool-ng-([0-9]+).([0-9]+).([0-9]+)-([0-9]+)-g([0-9a-f]{7}).*|\1.\2.\3-\4-g\5|gp')
-  REL_NAME=xtensa-esp32-elf-${PLATFORM_NAME}-${VER_DESC}-8.1.0
+  # using annotated tags
+  REL_NUM=$(git describe --abbrev=6)
+  REL_SFX="gcc8_1_0"
+  REL_NAME=xtensa-esp32-elf-${REL_SFX}-${REL_NUM}-${PLATFORM_NAME}
   ARCHIVE_NAME=${REL_NAME}.${ARCHIVE_EXT}
   echo "PLATFORM_NAME: $PLATFORM_NAME"
-  echo "VER_DESC: $VER_DESC"
+  echo "REL_NUM: $REL_NUM"
   echo "REL_NAME: $REL_NAME"
   echo "ARCHIVE_NAME: $ARCHIVE_NAME"
 
