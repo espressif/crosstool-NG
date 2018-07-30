@@ -1,7 +1,7 @@
 stages:
-  - build
+#  - build
   - test
-  - manual_action
+#  - manual_action
 
 image: ${CI_DOCKER_REGISTRY}/esp32-ci-env
 
@@ -124,21 +124,21 @@ before_script:
   when: manual
   allow_failure: true
 
-build_amd64:
+.build_amd64:
   <<: *build_template_linux
 #TODO use latest
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-linux-amd64:6380ff35
   variables:
     PLATFORM_NAME: "linux-amd64"
 
-build_i686:
+.build_i686:
   <<: *build_template_linux
 #TODO use latest
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-linux-i686:6380ff35
   variables:
     PLATFORM_NAME: "linux-i686"
 
-build_macos:
+.build_macos:
   <<: *build_template
   image: ci.espressif.cn:42348/esp32-toolchain-macos-cross
   variables:
@@ -155,7 +155,7 @@ build_macos:
     - *build_toolchain
     - *package_toolchain
 
-build_windows:
+.build_windows:
   <<: *build_template
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-win-cross
   variables:
@@ -172,7 +172,7 @@ build_windows:
     - *build_toolchain
     - *package_toolchain
 
-build_linux_armel:
+.build_linux_armel:
   <<: *build_template
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-arm-cross
   variables:
@@ -194,7 +194,7 @@ build_linux_armel:
     - *build_toolchain
     - *package_toolchain
 
-test_arm_rpi:
+.test_arm_rpi:
   stage: test
   tags:
     - rpi-shell
@@ -223,7 +223,7 @@ test_arm_rpi:
     - make defconfig
     - make
 
-upload_to_http:
+.upload_to_http:
   <<: *manual_action
   script:
     - cit_add_ssh_key "${HTTP_UPLOAD_KEY}" "$(cit_parse_url_host ${HTTP_UPLOAD_DIR})"
@@ -233,3 +233,14 @@ upload_to_http:
     - scp ${FILES} ${HTTP_UPLOAD_DIR}
     # Show info
     - echo -e "\nArchives were published there:\n\n$(for n in ${FILES}; do echo "${HTTP_PUBLIC_DIR}/${n}"; done)\n"
+
+test_amd64:
+  stage: test
+  dependencies: []
+  # It allows failure because the RPi runner is not stable
+  allow_failure: true
+  image: ubuntu:14.04
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - pwd; id; uname -a
