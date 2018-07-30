@@ -124,17 +124,19 @@ before_script:
   when: manual
   allow_failure: true
 
-build_linux:
+build_amd64:
   <<: *build_template_linux
-  image: $CI_DOCKER_REGISTRY/esp32-toolchain
+#TODO use latest
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain-linux-amd64:6380ff35
   variables:
-    PLATFORM_NAME: "linux64"
+    PLATFORM_NAME: "linux-amd64"
 
-build_linux_x86:
+build_i686:
   <<: *build_template_linux
-  image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
+#TODO use latest
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain-linux-i686:6380ff35
   variables:
-    PLATFORM_NAME: "linux32"
+    PLATFORM_NAME: "linux-i686"
 
 build_macos:
   <<: *build_template
