@@ -236,11 +236,24 @@ before_script:
 
 test_amd64:
   stage: test
+  tags:
+    -  host_test
   dependencies: []
-  # It allows failure because the RPi runner is not stable
   allow_failure: true
-  image: ubuntu:14.04
+  image: ${CI_DOCKER_REGISTRY}/ubuntu:14.04
   variables:
     GIT_STRATEGY: none
+  before_script:
+    - pwd; id; uname -a; cat /etc/issue
   script:
-    - pwd; id; uname -a
+    - apt-get update && apt-get install -y -q wget xz-utils
+    - wget https://ci.espressif.cn:42348/cache/ct-ng/xtensa-esp32-elf-gcc8_1_0-2018test-4-gfe0e65-linux-amd64.tar.xz
+    - tar xf xtensa-esp32-elf-gcc8_1_0-2018test-4-gfe0e65-linux-amd64.tar.xz
+    # info
+    - GCC=./xtensa-esp32-elf/bin/xtensa-esp32-elf-gcc
+    - ldd ${GCC}
+    - ${GCC} --version
+    # try to compile
+    - echo -e "int main() { int dbg = 1; return dbg; }" > test.c
+    - ${GCC} -Og -ggdb -c ./test.c -o out.o
+    - file out.o
