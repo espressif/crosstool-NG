@@ -247,8 +247,8 @@ test_amd64:
     - pwd; id; uname -a; cat /etc/issue
   script:
     - apt-get update && apt-get install -y -q wget xz-utils
-    - wget https://ci.espressif.cn:42348/cache/ct-ng/xtensa-esp32-elf-gcc8_1_0-2018test-4-gfe0e65-linux-amd64.tar.xz
-    - tar xf xtensa-esp32-elf-gcc8_1_0-2018test-4-gfe0e65-linux-amd64.tar.xz
+    - wget https://ci.espressif.cn:42348/cache/ct-ng/xtensa-esp32-elf-gcc8_1_0-2018test-2-g9e72374-linux64.tar.xz
+    - tar xf xtensa-esp32-elf-gcc8_1_0-2018test-2-g9e72374-linux64.tar.xz
     # info
     - GCC=./xtensa-esp32-elf/bin/xtensa-esp32-elf-gcc
     - ldd ${GCC}
