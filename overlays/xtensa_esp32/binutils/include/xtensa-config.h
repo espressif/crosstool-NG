@@ -103,6 +103,9 @@
 #undef XCHAL_HAVE_FP_RSQRT
 #define XCHAL_HAVE_FP_RSQRT		1
 
+#undef XCHAL_HAVE_FP_POSTINC
+#define XCHAL_HAVE_FP_POSTINC           1
+
 #undef XCHAL_HAVE_DFP_ACCEL
 #define XCHAL_HAVE_DFP_ACCEL		1
 /* For backward compatibility */
