@@ -6,7 +6,7 @@ variables:
   MAKEFLAGS: "-j5 --no-keep-going"
 
   CONF_BUILD: "x86_64-linux-gnu"
-  CONF_TARGET: "xtensa-esp32-elf"
+  CONF_TARGET: "xtensa-lx7-elf"
 
   ARCHIVE_TOOL: "tar czvf"
   UNARCHIVE_TOOL: "tar xvf"
@@ -29,7 +29,7 @@ before_script:
 # Prepare release name/number
 .get_release_name: &get_release_name |
   VER_DESC=$(git describe | sed -E -n 's|.*crosstool-ng-([0-9]+).([0-9]+).([0-9]+)-([0-9]+)-g([0-9a-f]{7}).*|\1.\2.\3-\4-g\5|gp')
-  REL_NAME=xtensa-esp32-elf-${PLATFORM_NAME}-${VER_DESC}-5.2.0
+  REL_NAME=xtensa-lx7-elf-${PLATFORM_NAME}-${VER_DESC}-5.2.0
   ARCHIVE_NAME=${REL_NAME}.${ARCHIVE_EXT}
   echo "PLATFORM_NAME: $PLATFORM_NAME"
   echo "VER_DESC: $VER_DESC"
@@ -212,14 +212,14 @@ test_arm_rpi:
     - pwd; id; uname -a
     - ARCHIVE_NAME=$(cat dist/archive_name_${PLATFORM_NAME})
     - ${UNARCHIVE_TOOL} dist/${ARCHIVE_NAME}
-    - file xtensa-esp32-elf/bin/xtensa-esp32-elf-gcc
-    - ./xtensa-esp32-elf/bin/xtensa-esp32-elf-gcc -v
+    - file xtensa-lx7-elf/bin/xtensa-lx7-elf-gcc
+    - ./xtensa-lx7-elf/bin/xtensa-lx7-elf-gcc -v
     - *add_gitlab_key
     - rm -rf ${IDF_PATH}
     - git clone --depth 1 ${GITLAB_SSH_SERVER}/idf/esp-idf ${IDF_PATH}
     - cd ${IDF_PATH}
     - ./tools/ci/mirror-submodule-update.sh
-    - export PATH="${CI_PROJECT_DIR}/xtensa-esp32-elf/bin:${PATH}"
+    - export PATH="${CI_PROJECT_DIR}/xtensa-lx7-elf/bin:${PATH}"
     - cd ${IDF_PATH}/examples/get-started/hello_world
     - make defconfig
     - make
