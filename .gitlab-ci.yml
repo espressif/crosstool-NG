@@ -142,7 +142,6 @@ build_macos:
   variables:
     CONF_HOST: "x86_64-apple-darwin12"
     PLATFORM_NAME: "macos"
-    MACOSX_DEPLOYMENT_TARGET: "10.8"
   script:
     - *get_release_name
     - *build_ctng
