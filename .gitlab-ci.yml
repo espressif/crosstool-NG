@@ -17,6 +17,13 @@ variables:
 
 before_script:
   - set -o errexit; set -o pipefail; set -o nounset
+  # add gitlab ssh key
+  - mkdir -p ~/.ssh
+  - chmod 700 ~/.ssh
+  - echo -n $GITLAB_KEY > ~/.ssh/id_rsa_base64
+  - base64 --decode --ignore-garbage ~/.ssh/id_rsa_base64 > ~/.ssh/id_rsa
+  - chmod 600 ~/.ssh/id_rsa
+  - echo -e "Host gitlab.espressif.cn\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
 
 # Add a key to clone from GITLAB_SSH_SERVER
 .add_gitlab_key: &add_gitlab_key |
