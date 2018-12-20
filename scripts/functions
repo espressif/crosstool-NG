@@ -2046,6 +2046,16 @@ CT_Extract()
     esac
 }
 
+CT_DoRsyncGitDir()
+{
+    local src_gitdir="${1}"
+    local dst_dir="${2}"
+    CT_DoExecLog ALL rsync -au --stats --delete \
+        --cvs-exclude \
+        --exclude=$(git -C ${src_gitdir} ls-files --exclude-standard -oi --directory) \
+        "${src_gitdir}/" "${dst_dir}"
+}
+
 # Closure for unpacking/patching the sources. There are two source directories:
 # - CT_COMMON_SRC_DIR stores common sources, such as released tarballs (including
 #   bundled or local patches, if necessary) or checked out  working copies.
@@ -2189,7 +2199,7 @@ CT_DoExtractPatch()
         # Custom sources: unpack or copy into per-target directory. Note that
         # ${src_dir} is never ${CT_COMMON_SRC_DIR} in this case.
         if [ -d "${custom_location}" ]; then
-            CT_DoExecLog ALL cp -av "${custom_location}" "${src_dir}/${dir_name}"
+            CT_DoRsyncGitDir "${custom_location}" "${src_dir}/${dir_name}"
         elif [ -f "${custom_location}" ]; then
             # Assume "foo.tar.gz" (or likes) contain the "foo" directory
             local bn
