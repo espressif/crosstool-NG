@@ -1,0 +1,55 @@
+diff --git a/gcc/config/xtensa/xtensa.c b/gcc/config/xtensa/xtensa.c
+index eda29d4..4818f59 100644
+--- a/gcc/config/xtensa/xtensa.c
++++ b/gcc/config/xtensa/xtensa.c
+@@ -2286,8 +2286,12 @@ static void handle_fix_reorg_insn(rtx_insn *insn) {
+ 	} else if (attr_type == TYPE_LOAD || attr_type == TYPE_FLOAD) {
+ 		//Load
+ 		if (store_insn) {
+-			while (insns_since_store++ < LOAD_STORE_OFF) {
+-				emit_insn_before (gen_nop(), insn);
++			if (TARGET_ESP32_PSRAM_FIX_MEMW) {
++				emit_insn_before(gen_memory_barrier(), insn);
++			} else {
++				while (insns_since_store++ < LOAD_STORE_OFF) {
++					emit_insn_before (gen_nop(), insn);
++				}
+ 			}
+ 		}
+ 	} else if (attr_type == TYPE_JUMP || attr_type == TYPE_CALL) {
+@@ -2295,6 +2299,10 @@ static void handle_fix_reorg_insn(rtx_insn *insn) {
+ 		if (attr_condjmp == CONDJMP_UNCOND) {
+ 			store_insn = NULL; //Pipeline gets cleared; any load is inconsequential
+ 		}
++		if (TARGET_ESP32_PSRAM_FIX_MEMW && attr_type == TYPE_JUMP) {
++			//jump/ret
++			emit_insn_before(gen_memory_barrier(), insn);
++		}
+ 	} else {
+ 		insns_since_store++;
+ 	}
+@@ -2344,7 +2352,7 @@ static void xtensa_insert_memw_reorg()
+ }
+ 
+ static unsigned int xtensa_machine_reorg(void) {
+-	if (TARGET_ESP32_PSRAM_FIX) {
++	if (TARGET_ESP32_PSRAM_FIX || TARGET_ESP32_PSRAM_FIX_MEMW) {
+ 		xtensa_psram_cache_fix_reorg();
+ 	}
+ 	if (TARGET_ESP32_ALWAYS_MEMMARRIER) {
+diff --git a/gcc/config/xtensa/xtensa.opt b/gcc/config/xtensa/xtensa.opt
+index c31f8f9..1b277e7 100644
+--- a/gcc/config/xtensa/xtensa.opt
++++ b/gcc/config/xtensa/xtensa.opt
+@@ -50,6 +50,11 @@ mfix-esp32-psram-cache-issue
+ Target Report Mask(ESP32_PSRAM_FIX)
+ Fix esp32 psram cache issue
+ 
++mfix-esp32-psram-cache-issue-memw
++Target Report Mask(ESP32_PSRAM_FIX_MEMW)
++Fix esp32 psram cache issue using memw instead of nops
++
+ malways-memw
+ Target Report Mask(ESP32_ALWAYS_MEMMARRIER)
+ Always emit a MEMW before a load or store operation. Used to debug memory coherency issues.
++
