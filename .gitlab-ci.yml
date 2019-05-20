@@ -91,6 +91,9 @@ before_script:
   # see https://stackoverflow.com/questions/33512541/cross-compiling-gdb-for-arm-with-python-failed#34625177
   echo "# CT_GDB_CROSS_PYTHON is not set" >> .config
 
+  # temporary, to get non-stripped binaries
+  echo "# CT_STRIP_HOST_TOOLCHAIN_EXECUTABLES is not set" >> .config
+
 # Actual build
 .build_toolchain: &build_toolchain |
   ./ct-ng oldconfig
@@ -139,13 +142,13 @@ before_script:
   when: manual
   allow_failure: true
 
-build_linux_amd64:
+.build_linux_amd64:
   <<: *build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain
   variables:
     PLATFORM_NAME: "linux-amd64"
 
-build_linux_i686:
+.build_linux_i686:
   <<: *build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
   variables:
@@ -167,7 +170,7 @@ build_macos:
     - *build_toolchain
     - *package_toolchain
 
-build_windows:
+.build_windows:
   <<: *build_template
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-win-cross
   variables:
@@ -184,7 +187,7 @@ build_windows:
     - *build_toolchain
     - *package_toolchain
 
-build_linux_armel:
+.build_linux_armel:
   <<: *build_template
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-arm-cross
   variables:
@@ -206,7 +209,7 @@ build_linux_armel:
     - *build_toolchain
     - *package_toolchain
 
-test_arm_rpi:
+.test_arm_rpi:
   stage: test
   tags:
     - rpi-shell
@@ -241,7 +244,7 @@ test_arm_rpi:
     - make defconfig
     - make
 
-esp-tests:
+.esp-tests:
   stage: test
   image: $CI_DOCKER_REGISTRY/compiler-testsuite:1
   dependencies:
@@ -272,7 +275,7 @@ esp-tests:
     - source xtensa-esp32-profile
     - ./run-all.sh
 
-upload_to_http:
+.upload_to_http:
   <<: *manual_action
   variables:
     GIT_STRATEGY: none
