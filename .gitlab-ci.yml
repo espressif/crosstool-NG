@@ -156,7 +156,7 @@ before_script:
 
 build_macos:
   <<: *build_template
-  image: ci.espressif.cn:42348/esp32-toolchain-macos-cross
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain-macos-cross:gcc82test
   variables:
     CONF_HOST: "x86_64-apple-darwin12"
     PLATFORM_NAME: "macos"
