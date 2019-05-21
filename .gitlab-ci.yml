@@ -156,7 +156,7 @@ before_script:
 
 build_macos:
   <<: *build_template
-  image: $CI_DOCKER_REGISTRY/esp32-toolchain-macos-cross:gcc82test
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain-macos-cross:gcc83test
   variables:
     CONF_HOST: "x86_64-apple-darwin12"
     PLATFORM_NAME: "macos"
