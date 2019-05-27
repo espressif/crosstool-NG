@@ -12,9 +12,9 @@ variables:
   CONF_BUILD: "x86_64-linux-gnu"
   CONF_TARGET: "xtensa-esp32-elf"
 
-  ARCHIVE_TOOL: "tar czvf" # 'v' we need to check the contents of the archive by log
+  ARCHIVE_TOOL: "tar cJvf" # 'v' we need to check the contents of the archive by log
   UNARCHIVE_TOOL: "tar xvf"
-  ARCHIVE_EXT: "tar.gz"
+  ARCHIVE_EXT: "tar.xz"
 
 .use_ci_tools: &use_ci_tools |
   curl -sSL ${CIT_LOADER_URL} -o cit_loader.sh && sh cit_loader.sh
