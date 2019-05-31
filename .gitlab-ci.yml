@@ -281,10 +281,11 @@ esp-tests:
   stage: test
   image: $CI_DOCKER_REGISTRY/compiler-testsuite:1
   dependencies:
-    - build_linux_amd64
+    - lx7_linux_amd64
   variables:
     GIT_STRATEGY: none
     PLATFORM_NAME: "linux-amd64"
+    CONF_TARGET: "xtensa-lx7-elf"
   artifacts:
     when: always
     paths:
