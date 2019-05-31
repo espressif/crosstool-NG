@@ -202,6 +202,24 @@ lx7_macos:
     - *build_toolchain
     - *package_toolchain
 
+lx7_windows:
+  <<: *build_template
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain-win-cross
+  variables:
+    CONF_HOST: "i686-w64-mingw32"
+    CONF_TARGET: "xtensa-lx7-elf"
+    PLATFORM_NAME: "win32"
+    ARCHIVE_TOOL: "zip -r"
+    ARCHIVE_EXT: "zip"
+  script:
+    - *get_release_name
+    - *build_ctng
+    - *configure_common
+    - *configure_docker
+    - *configure_crossbuild
+    - *build_toolchain
+    - *package_toolchain
+
 .build_linux_armel:
   <<: *build_template
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-arm-cross
