@@ -32,7 +32,7 @@ before_script:
   # using annotated tags
   REL_NUM=$(git describe --abbrev=6)
   REL_SFX="gcc8_2_0"
-  REL_NAME=xtensa-esp32-elf-${REL_SFX}-${REL_NUM}-${PLATFORM_NAME}
+  REL_NAME=${CONF_TARGET}-${REL_SFX}-${REL_NUM}-${PLATFORM_NAME}
   ARCHIVE_NAME=${REL_NAME}.${ARCHIVE_EXT}
   echo "PLATFORM_NAME: $PLATFORM_NAME"
   echo "REL_NUM: $REL_NUM"
@@ -97,7 +97,7 @@ before_script:
   rm -f ${CONF_TARGET}/build.log.bz2
   ${ARCHIVE_TOOL} ${ARCHIVE_NAME} ${CONF_TARGET}/
   mv ${ARCHIVE_NAME} ../dist/
-  echo "${ARCHIVE_NAME}" > ../dist/archive_name_${PLATFORM_NAME}
+  echo "${ARCHIVE_NAME}" > ../dist/file_${PLATFORM_NAME}_${CONF_TARGET}
   popd
 
 # Common template for all builds
@@ -139,6 +139,13 @@ build_linux_amd64:
   variables:
     PLATFORM_NAME: "linux-amd64"
 
+lx7_linux_amd64:
+  <<: *build_template_linux
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain
+  variables:
+    PLATFORM_NAME: "linux-amd64"
+    CONF_TARGET: "xtensa-lx7-elf"
+
 build_linux_i686:
   <<: *build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
@@ -150,6 +157,23 @@ build_macos:
   image: ci.espressif.cn:42348/esp32-toolchain-macos-cross
   variables:
     CONF_HOST: "x86_64-apple-darwin12"
+    PLATFORM_NAME: "macos"
+    MACOSX_DEPLOYMENT_TARGET: "10.8"
+  script:
+    - *get_release_name
+    - *build_ctng
+    - *configure_common
+    - *configure_docker
+    - *configure_crossbuild
+    - *build_toolchain
+    - *package_toolchain
+
+lx7_macos:
+  <<: *build_template
+  image: ci.espressif.cn:42348/esp32-toolchain-macos-cross
+  variables:
+    CONF_HOST: "x86_64-apple-darwin12"
+    CONF_TARGET: "xtensa-lx7-elf"
     PLATFORM_NAME: "macos"
     MACOSX_DEPLOYMENT_TARGET: "10.8"
   script:
@@ -220,7 +244,7 @@ test_arm_rpi:
     - cit_rm xtensa-esp32-elf $IDF_PATH
   script:
     - pwd; id; uname -a
-    - ARCHIVE_NAME=$(cat dist/archive_name_${PLATFORM_NAME})
+    - ARCHIVE_NAME=$(cat dist/file_${PLATFORM_NAME}_${CONF_TARGET})
     - ${UNARCHIVE_TOOL} dist/${ARCHIVE_NAME}
     - file xtensa-esp32-elf/bin/xtensa-esp32-elf-gcc
     - ./xtensa-esp32-elf/bin/xtensa-esp32-elf-gcc -v
@@ -255,7 +279,7 @@ esp-tests:
     - source citools/import_functions
     - cit_rm xtensa-esp32-elf
   script:
-    - ARCHIVE_NAME=$(cat dist/archive_name_${PLATFORM_NAME})
+    - ARCHIVE_NAME=$(cat dist/file_${PLATFORM_NAME}_${CONF_TARGET})
     - ${UNARCHIVE_TOOL} dist/${ARCHIVE_NAME}
     - ./xtensa-esp32-elf/bin/xtensa-esp32-elf-gcc -v
     - export PATH="${CI_PROJECT_DIR}/xtensa-esp32-elf/bin:${PATH}"
@@ -275,7 +299,7 @@ upload_to_http:
   script:
     - cit_add_ssh_key "${HTTP_UPLOAD_KEY}" "$(cit_parse_url_host ${HTTP_UPLOAD_DIR})"
     # List of archives in dist/
-    - FILES=$(find dist -name archive_name_\* -exec cat {} \+)
+    - FILES=$(find dist -name file_\* -exec cat {} \+)
     - cd dist
     - scp ${FILES} ${HTTP_UPLOAD_DIR}
     # Show info
