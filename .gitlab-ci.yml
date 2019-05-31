@@ -133,7 +133,7 @@ before_script:
   when: manual
   allow_failure: true
 
-build_linux_amd64:
+.build_linux_amd64:
   <<: *build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain
   variables:
@@ -146,13 +146,13 @@ lx7_linux_amd64:
     PLATFORM_NAME: "linux-amd64"
     CONF_TARGET: "xtensa-lx7-elf"
 
-build_linux_i686:
+.build_linux_i686:
   <<: *build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
   variables:
     PLATFORM_NAME: "linux-i686"
 
-build_macos:
+.build_macos:
   <<: *build_template
   image: ci.espressif.cn:42348/esp32-toolchain-macos-cross
   variables:
@@ -185,7 +185,7 @@ lx7_macos:
     - *build_toolchain
     - *package_toolchain
 
-build_windows:
+.build_windows:
   <<: *build_template
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-win-cross
   variables:
@@ -202,7 +202,7 @@ build_windows:
     - *build_toolchain
     - *package_toolchain
 
-build_linux_armel:
+.build_linux_armel:
   <<: *build_template
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-arm-cross
   variables:
@@ -224,7 +224,7 @@ build_linux_armel:
     - *build_toolchain
     - *package_toolchain
 
-test_arm_rpi:
+.test_arm_rpi:
   stage: test
   tags:
     - rpi-shell
