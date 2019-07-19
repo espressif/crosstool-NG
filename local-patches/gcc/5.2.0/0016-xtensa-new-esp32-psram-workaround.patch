@@ -1,21 +1,85 @@
 diff --git a/gcc/config/xtensa/xtensa.c b/gcc/config/xtensa/xtensa.c
-index eda29d469..6277eb970 100644
+index eda29d469..069a7922f 100644
 --- a/gcc/config/xtensa/xtensa.c
 +++ b/gcc/config/xtensa/xtensa.c
-@@ -2308,7 +2308,8 @@ static void handle_fix_reorg_insn(rtx_insn *insn) {
+@@ -2307,8 +2307,7 @@ static void handle_fix_reorg_insn(rtx_insn *insn) {
+ 	}
  }
  
- 
+-
 -static void xtensa_psram_cache_fix_reorg()
-+
 +static void xtensa_psram_cache_fix_nop_reorg()
  {
  	rtx_insn *insn, *subinsn, *next_insn;
  	for (insn = get_insns(); insn != 0; insn = next_insn) {
-@@ -2323,6 +2324,67 @@ static void xtensa_psram_cache_fix_reorg()
+@@ -2323,9 +2322,53 @@ static void xtensa_psram_cache_fix_reorg()
  	}
  }
  
+-//Emits a memw before every load/store instruction. Hard-handed approach to get rid
+-//of any pipeline/memory issues...
+-static void xtensa_insert_memw_reorg()
++
++/*
++Alternative fix to xtensa_psram_cache_fix_reorg. Tries to solve the 32-bit load/store 
++inversion by explicitly inserting a memory barrier instead of nops. Slower than nops, but 
++faster than just adding memws everywhere.
++*/
++static void handle_fix_reorg_memw(rtx_insn *insn) {
++	enum attr_type attr_type = get_attr_type (insn);
++	rtx x=XEXP(PATTERN(insn), 0);
++	if (attr_type == TYPE_STORE || attr_type == TYPE_FSTORE) {
++		//Store
++		insns_since_store = 0;
++		store_insn = insn;
++		if (attr_type == TYPE_STORE && (GET_MODE(x)==HImode || GET_MODE(x)==QImode)) {
++			//This is an 16- or 8-bit store, record it if it's not volatile already.
++			if (!MEM_VOLATILE_P(x)) last_hiqi_store=insn;
++		} else {
++			//32-bit store. This store undoes the possibility of badness in earlier 8/16-bit stores
++			//because it forces those stores to finish.
++			last_hiqi_store=NULL;
++		}
++	} else if (attr_type == TYPE_LOAD || attr_type == TYPE_FLOAD) {
++		//Load
++		if (MEM_P(x) && (!MEM_VOLATILE_P(x))) {
++			if (store_insn) {
++				emit_insn_before(gen_memory_barrier(), insn);
++			}
++		}
++	} else if (attr_type == TYPE_JUMP || attr_type == TYPE_CALL) {
++		enum attr_condjmp attr_condjmp = get_attr_condjmp(insn);
++		if (attr_condjmp == CONDJMP_UNCOND) {
++			store_insn = NULL; //Pipeline gets cleared; any load is inconsequential
++		}
++	} else {
++		insns_since_store++;
++	}
++	if (attr_type == TYPE_LOAD || attr_type == TYPE_FLOAD || attr_type == TYPE_JUMP || attr_type == TYPE_CALL) {
++		if (last_hiqi_store) {
++			//Need to memory barrier the s8i/s16i instruction.
++			emit_insn_after(gen_memory_barrier(), last_hiqi_store);
++			last_hiqi_store=NULL;
++		}
++	}
++}
++
++
++static void xtensa_psram_cache_fix_memw_reorg()
+ {
+ 	rtx_insn *insn, *subinsn, *next_insn;
+ 	for (insn = get_insns(); insn != 0; insn = next_insn) {
+@@ -2334,21 +2377,120 @@ static void xtensa_insert_memw_reorg()
+ 		
+ 		if (USEFUL_INSN_P (insn) && length>0  ) {
+ 			FOR_EACH_SUBINSN (subinsn, insn) {
++				handle_fix_reorg_memw(subinsn);
++			}
++		}
++	}
++}
++
++
 +/*
 +Alternative fix to xtensa_psram_cache_fix_reorg. Tries to solve the 32-bit load/store 
 +inversion by explicitly inserting a load after every store.
@@ -42,7 +106,9 @@ index eda29d469..6277eb970 100644
 +		if (USEFUL_INSN_P (insn) && length>0  ) {
 +			FOR_EACH_SUBINSN (subinsn, insn) {
 +
-+				enum attr_type attr_type = get_attr_type (insn);
+ 				enum attr_type attr_type = get_attr_type (insn);
+-				if (attr_type == TYPE_STORE || attr_type == TYPE_LOAD) {
+-					emit_insn_before (gen_memory_barrier(), insn);
 +				if (attr_type == TYPE_STORE || attr_type == TYPE_FSTORE) {
 +					rtx x=XEXP(PATTERN(insn), 0);
 +					//Store
@@ -71,37 +137,66 @@ index eda29d469..6277eb970 100644
 +						emit_insn_after(gen_memory_barrier(), last_hiqi_store);
 +						last_hiqi_store=NULL;
 +					}
+ 				}
+ 			}
+ 		}
+ 	}
+ }
+ 
+-static unsigned int xtensa_machine_reorg(void) {
+-	if (TARGET_ESP32_PSRAM_FIX) {
+-		xtensa_psram_cache_fix_reorg();
++//Emits a memw before every load/store instruction. Hard-handed approach to get rid
++//of any pipeline/memory issues...
++static void xtensa_insert_memw_reorg()
++{
++	rtx_insn *insn, *subinsn, *next_insn;
++	int had_memw=0;
++	for (insn = get_insns(); insn != 0; insn = next_insn) {
++		next_insn = NEXT_INSN (insn);
++		int length = get_attr_length (insn);
++		
++		if (USEFUL_INSN_P (insn) && length>0) {
++			FOR_EACH_SUBINSN (subinsn, insn) {
++				rtx x=XEXP(PATTERN(subinsn), 0);
++				enum attr_type attr_type = get_attr_type (subinsn);
++				if (attr_type == TYPE_STORE) {
++					if (MEM_P(x) && (!MEM_VOLATILE_P(x))) {
++						emit_insn_after(gen_memory_barrier(), subinsn);
++					}
++					had_memw=1;
++				} else if (attr_type == TYPE_LOAD) {
++					if (MEM_P(x) && (!MEM_VOLATILE_P(x)) && !had_memw) {
++						emit_insn_before(gen_memory_barrier(), subinsn);
++					}
++					had_memw=0;
++				} else {
++					had_memw=0;
 +				}
 +			}
 +		}
-+	}
+ 	}
+-	if (TARGET_ESP32_ALWAYS_MEMMARRIER) {
 +}
 +
- //Emits a memw before every load/store instruction. Hard-handed approach to get rid
- //of any pipeline/memory issues...
- static void xtensa_insert_memw_reorg()
-@@ -2344,10 +2406,17 @@ static void xtensa_insert_memw_reorg()
- }
- 
- static unsigned int xtensa_machine_reorg(void) {
--	if (TARGET_ESP32_PSRAM_FIX) {
--		xtensa_psram_cache_fix_reorg();
++static unsigned int xtensa_machine_reorg(void) {
 +	//Logic here: default fix flag is ignored if an alternate fix flag is also given
 +	//Allows people not to change esp-idf, just add the flag to their project makefile
 +	//to see if it fixes their issue.
-+	if (TARGET_ESP32_PSRAM_FIX_NOPS) {
++	if (TARGET_ESP32_ALWAYS_MEMBARRIER) {
+ 		xtensa_insert_memw_reorg();
++	} else if (TARGET_ESP32_PSRAM_FIX_NOPS) {
 +		xtensa_psram_cache_fix_nop_reorg();
++	} else if (TARGET_ESP32_PSRAM_FIX_MEMW) {
++		xtensa_psram_cache_fix_memw_reorg();
 +	} else {
 +		if (TARGET_ESP32_PSRAM_FIX) {
 +			xtensa_psram_cache_fix_dupldst_reorg();
 +		}
  	}
--	if (TARGET_ESP32_ALWAYS_MEMMARRIER) {
-+	if (TARGET_ESP32_ALWAYS_MEMBARRIER) {
- 		xtensa_insert_memw_reorg();
- 	}
  	return 0;
-@@ -2359,7 +2428,7 @@ namespace {
+ }
+@@ -2359,7 +2501,7 @@ namespace {
  const pass_data pass_data_xtensa_psram_nops =
  {
    RTL_PASS, /* type */
@@ -111,10 +206,10 @@ index eda29d469..6277eb970 100644
    TV_MACH_DEP, /* tv_id */
    0, /* properties_required */
 diff --git a/gcc/config/xtensa/xtensa.opt b/gcc/config/xtensa/xtensa.opt
-index c31f8f937..0aed2d028 100644
+index c31f8f937..08b1003a5 100644
 --- a/gcc/config/xtensa/xtensa.opt
 +++ b/gcc/config/xtensa/xtensa.opt
-@@ -48,8 +48,12 @@ Target Report Mask(SERIALIZE_VOLATILE)
+@@ -48,8 +48,16 @@ Target Report Mask(SERIALIZE_VOLATILE)
  
  mfix-esp32-psram-cache-issue
  Target Report Mask(ESP32_PSRAM_FIX)
@@ -123,9 +218,14 @@ index c31f8f937..0aed2d028 100644
  
  malways-memw
 -Target Report Mask(ESP32_ALWAYS_MEMMARRIER)
+-Always emit a MEMW before a load or store operation. Used to debug memory coherency issues.
 +Target Report Mask(ESP32_ALWAYS_MEMBARRIER)
- Always emit a MEMW before a load or store operation. Used to debug memory coherency issues.
++Always emit a MEMW before a load and after a store operation. Used to debug memory coherency issues.
 +
 +mfix-esp32-psram-cache-nops
 +Target Report Mask(ESP32_PSRAM_FIX_NOPS)
 +Fix esp32 psram cache issue by inserting NOPs in critical places (old workaround)
++
++mfix-esp32-psram-cache-memw
++Target Report Mask(ESP32_PSRAM_FIX_MEMW)
++Fix esp32 psram cache issue by inserting memory barriers in critical places (variation on old workaround)
