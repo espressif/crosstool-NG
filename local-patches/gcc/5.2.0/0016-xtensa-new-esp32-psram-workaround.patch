@@ -1,5 +1,5 @@
 diff --git a/gcc/config/xtensa/xtensa.c b/gcc/config/xtensa/xtensa.c
-index eda29d469..069a7922f 100644
+index eda29d469..2a90f5c6d 100644
 --- a/gcc/config/xtensa/xtensa.c
 +++ b/gcc/config/xtensa/xtensa.c
 @@ -2307,8 +2307,7 @@ static void handle_fix_reorg_insn(rtx_insn *insn) {
@@ -12,7 +12,7 @@ index eda29d469..069a7922f 100644
  {
  	rtx_insn *insn, *subinsn, *next_insn;
  	for (insn = get_insns(); insn != 0; insn = next_insn) {
-@@ -2323,9 +2322,53 @@ static void xtensa_psram_cache_fix_reorg()
+@@ -2323,9 +2322,54 @@ static void xtensa_psram_cache_fix_reorg()
  	}
  }
  
@@ -35,10 +35,6 @@ index eda29d469..069a7922f 100644
 +		if (attr_type == TYPE_STORE && (GET_MODE(x)==HImode || GET_MODE(x)==QImode)) {
 +			//This is an 16- or 8-bit store, record it if it's not volatile already.
 +			if (!MEM_VOLATILE_P(x)) last_hiqi_store=insn;
-+		} else {
-+			//32-bit store. This store undoes the possibility of badness in earlier 8/16-bit stores
-+			//because it forces those stores to finish.
-+			last_hiqi_store=NULL;
 +		}
 +	} else if (attr_type == TYPE_LOAD || attr_type == TYPE_FLOAD) {
 +		//Load
@@ -50,7 +46,12 @@ index eda29d469..069a7922f 100644
 +	} else if (attr_type == TYPE_JUMP || attr_type == TYPE_CALL) {
 +		enum attr_condjmp attr_condjmp = get_attr_condjmp(insn);
 +		if (attr_condjmp == CONDJMP_UNCOND) {
-+			store_insn = NULL; //Pipeline gets cleared; any load is inconsequential
++			//Unconditional jumps seem to not clear the pipeline, and there may be
++			//a load after. Need to memw if earlier code had a store.
++			if (store_insn) {
++				emit_insn_before(gen_memory_barrier(), insn);
++				store_insn = NULL;
++			}
 +		}
 +	} else {
 +		insns_since_store++;
@@ -69,7 +70,7 @@ index eda29d469..069a7922f 100644
  {
  	rtx_insn *insn, *subinsn, *next_insn;
  	for (insn = get_insns(); insn != 0; insn = next_insn) {
-@@ -2334,21 +2377,120 @@ static void xtensa_insert_memw_reorg()
+@@ -2334,21 +2378,120 @@ static void xtensa_insert_memw_reorg()
  		
  		if (USEFUL_INSN_P (insn) && length>0  ) {
  			FOR_EACH_SUBINSN (subinsn, insn) {
@@ -196,7 +197,7 @@ index eda29d469..069a7922f 100644
  	}
  	return 0;
  }
-@@ -2359,7 +2501,7 @@ namespace {
+@@ -2359,7 +2502,7 @@ namespace {
  const pass_data pass_data_xtensa_psram_nops =
  {
    RTL_PASS, /* type */
