@@ -1,5 +1,5 @@
 diff --git a/gcc/config/xtensa/xtensa.c b/gcc/config/xtensa/xtensa.c
-index eda29d469..2a90f5c6d 100644
+index eda29d469..02b652cb7 100644
 --- a/gcc/config/xtensa/xtensa.c
 +++ b/gcc/config/xtensa/xtensa.c
 @@ -2307,8 +2307,7 @@ static void handle_fix_reorg_insn(rtx_insn *insn) {
@@ -12,7 +12,7 @@ index eda29d469..2a90f5c6d 100644
  {
  	rtx_insn *insn, *subinsn, *next_insn;
  	for (insn = get_insns(); insn != 0; insn = next_insn) {
-@@ -2323,9 +2322,54 @@ static void xtensa_psram_cache_fix_reorg()
+@@ -2323,9 +2322,55 @@ static void xtensa_psram_cache_fix_reorg()
  	}
  }
  
@@ -41,11 +41,12 @@ index eda29d469..2a90f5c6d 100644
 +		if (MEM_P(x) && (!MEM_VOLATILE_P(x))) {
 +			if (store_insn) {
 +				emit_insn_before(gen_memory_barrier(), insn);
++				store_insn=NULL;
 +			}
 +		}
 +	} else if (attr_type == TYPE_JUMP || attr_type == TYPE_CALL) {
 +		enum attr_condjmp attr_condjmp = get_attr_condjmp(insn);
-+		if (attr_condjmp == CONDJMP_UNCOND) {
++		if (attr_condjmp == CONDJMP_UNCOND) { //jump or return
 +			//Unconditional jumps seem to not clear the pipeline, and there may be
 +			//a load after. Need to memw if earlier code had a store.
 +			if (store_insn) {
@@ -70,7 +71,7 @@ index eda29d469..2a90f5c6d 100644
  {
  	rtx_insn *insn, *subinsn, *next_insn;
  	for (insn = get_insns(); insn != 0; insn = next_insn) {
-@@ -2334,21 +2378,120 @@ static void xtensa_insert_memw_reorg()
+@@ -2334,21 +2379,120 @@ static void xtensa_insert_memw_reorg()
  		
  		if (USEFUL_INSN_P (insn) && length>0  ) {
  			FOR_EACH_SUBINSN (subinsn, insn) {
@@ -94,8 +95,6 @@ index eda29d469..2a90f5c6d 100644
 +Note: debug_rtx(insn) can dump an insn in lisp-like format.
 +*/
 +
-+//Note: Also need a memw between a S16 and L8
-+
 +static void xtensa_psram_cache_fix_dupldst_reorg()
 +{
 +	rtx_insn *insn, *subinsn, *next_insn;
@@ -116,7 +115,7 @@ index eda29d469..2a90f5c6d 100644
 +					if (attr_type == TYPE_STORE && (GET_MODE(x)==HImode || GET_MODE(x)==QImode)) {
 +						//This is an 16- or 8-bit store, record it if it's not volatile already.
 +						if (!MEM_VOLATILE_P(x)) last_hiqi_store=insn;
-+					} else {
++					} else { //32-bit store
 +						//Add a load-after-store to fix psram issues *if* var is not volatile
 +						if (MEM_P(x) && (!MEM_VOLATILE_P(x))) {
 +							rtx y=XEXP(PATTERN(insn), 1);
@@ -125,8 +124,10 @@ index eda29d469..2a90f5c6d 100644
 +								emit_insn_after(gen_memory_barrier(), insn);
 +							} else {
 +								//add the load/store
-+								emit_insn_after(gen_movsi(XEXP(PATTERN(insn), 1), XEXP(PATTERN(insn), 0)), insn);
-+								emit_insn_after(gen_movsi(XEXP(PATTERN(insn), 0), XEXP(PATTERN(insn), 1)), insn);
++								//Note that the instructions will be added in the OPPOSITE order as the instructions are added between
++								//the s32i and the next instruction. So 1: s32i(insn), s32i; 2:s32i(insn), l32i, s32i.
++								emit_insn_after(gen_movsi(XEXP(PATTERN(insn), 0), XEXP(PATTERN(insn), 1)), insn); //store again
++								emit_insn_after(gen_movsi(XEXP(PATTERN(insn), 1), XEXP(PATTERN(insn), 0)), insn); //load
 +							}
 +						}
 +					}
@@ -197,7 +198,7 @@ index eda29d469..2a90f5c6d 100644
  	}
  	return 0;
  }
-@@ -2359,7 +2502,7 @@ namespace {
+@@ -2359,7 +2503,7 @@ namespace {
  const pass_data pass_data_xtensa_psram_nops =
  {
    RTL_PASS, /* type */
