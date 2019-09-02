@@ -18,10 +18,18 @@ variables:
 before_script:
   - set -o errexit; set -o pipefail; set -o nounset
 
+# Add a key to clone from GITLAB_SSH_SERVER
+.add_gitlab_key: &add_gitlab_key |
+  command -v ssh-agent >/dev/null
+  eval $(ssh-agent -s)
+  printf '%s\n' "${GITLAB_KEY}" | tr -d '\r' | ssh-add - > /dev/null
+  mkdir -p ~/.ssh && chmod 700 ~/.ssh
+  [[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config || true
+
 # Prepare release name/number
 .get_release_name: &get_release_name |
   VER_DESC=$(git describe | sed -E -n 's|.*crosstool-ng-([0-9]+).([0-9]+).([0-9]+)-([0-9]+)-g([0-9a-f]{7}).*|\1.\2.\3-\4-g\5|gp')
-  REL_NAME=xtensa-lx106-elf-${PLATFORM_NAME}-${VER_DESC}-4.8.5
+  REL_NAME=xtensa-lx106-elf-${PLATFORM_NAME}-${VER_DESC}-5.2.0
   ARCHIVE_NAME=${REL_NAME}.${ARCHIVE_EXT}
   echo "PLATFORM_NAME: $PLATFORM_NAME"
   echo "VER_DESC: $VER_DESC"
@@ -202,7 +210,7 @@ test_arm_rpi:
     IDF_PATH: "${CI_PROJECT_DIR}/ESP8266_RTOS_SDK"
     PLATFORM_NAME: "linux-armel"
     GITLAB_SSH_BRANCH: "-b master"
-    CONF_TARGET: "xtensa-esp32-elf"
+    CONF_TARGET: "xtensa-lx106-elf"
   after_script:
     - rm -rf ${CI_PROJECT_DIR}/*
   script:
@@ -216,10 +224,8 @@ test_arm_rpi:
 
     - *add_gitlab_key
     - rm -rf ${IDF_PATH}
-    - git clone -q --depth 1 ${GITLAB_SSH_BRANCH} ${GITLAB_SSH_SERVER}/idf/esp-idf ${IDF_PATH}
+    - git clone -q --depth 1 ${GITLAB_SSH_BRANCH} ${GITLAB_SSH_SERVER}/sdk/ESP8266_RTOS_SDK ${IDF_PATH}
     - cd ${IDF_PATH}
-    - ./tools/ci/mirror-submodule-update.sh
-    - source add_path.sh
     - cd ${IDF_PATH}/examples/get-started/hello_world
     - make defconfig
     - make
