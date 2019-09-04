@@ -10,7 +10,7 @@ variables:
   GIT_SUBMODULE_STRATEGY: normal
 
   CONF_BUILD: "x86_64-linux-gnu"
-  CONF_TARGET: "xtensa-esp32-elf"
+  CONF_TARGET: "xtensa-lx7_ai_0429-elf"
 
   ARCHIVE_TOOL: "tar czvf" # 'v' we need to check the contents of the archive by log
   UNARCHIVE_TOOL: "tar xvf"
@@ -31,8 +31,8 @@ before_script:
 .get_release_name: &get_release_name |
   # using annotated tags
   REL_NUM=$(git describe --abbrev=6)
-  REL_SFX="gcc8_2_0"
-  REL_NAME=xtensa-esp32-elf-${REL_SFX}-${REL_NUM}-${PLATFORM_NAME}
+  REL_SFX="gcc5_2"
+  REL_NAME=${CONF_TARGET}-${REL_SFX}-${REL_NUM}-${PLATFORM_NAME}
   ARCHIVE_NAME=${REL_NAME}.${ARCHIVE_EXT}
   echo "PLATFORM_NAME: $PLATFORM_NAME"
   echo "REL_NUM: $REL_NUM"
@@ -214,7 +214,7 @@ test_arm_rpi:
     IDF_PATH: "${CI_PROJECT_DIR}/esp-idf"
     PLATFORM_NAME: "linux-armel"
     GITLAB_SSH_BRANCH: "-b master"
-    CONF_TARGET: "xtensa-esp32-elf"
+    CONF_TARGET: "${CONF_TARGET}"
   before_script:
     - *use_ci_tools
   after_script:
@@ -255,12 +255,12 @@ esp-tests:
     - *add_gitlab_key
   after_script:
     - source citools/import_functions
-    - cit_rm xtensa-esp32-elf
+    - cit_rm ${CONF_TARGET}
   script:
     - ARCHIVE_NAME=$(cat dist/archive_name_${PLATFORM_NAME})
     - ${UNARCHIVE_TOOL} dist/${ARCHIVE_NAME}
-    - ./xtensa-esp32-elf/bin/xtensa-esp32-elf-gcc -v
-    - export PATH="${CI_PROJECT_DIR}/xtensa-esp32-elf/bin:${PATH}"
+    - ./${CONF_TARGET}/bin/${CONF_TARGET}-gcc -v
+    - export PATH="${CI_PROJECT_DIR}/${CONF_TARGET}/bin:${PATH}"
     # Get and run tests
     - ESP_COMPILER_TESTS_BRANCH="-b master"
     - git clone --depth 1 $ESP_COMPILER_TESTS_BRANCH ${GITLAB_SSH_SERVER}/idf/esp-compiler-tests.git
