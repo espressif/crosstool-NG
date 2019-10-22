@@ -1870,12 +1870,12 @@ CT_Download_git()
 {
     # Git does not allow making a shallow clone of a specific commit.
     if [ -z "${git_shallow_branch}" ]; then
-        CT_DoExecLog ALL git clone "${devel_url}" "${pkg_name}"
+        CT_DoExecLog ALL git clone -q --recurse-submodules "${devel_url}" "${pkg_name}"
         CT_Pushd "${pkg_name}"
         CT_DoExecLog ALL git checkout "${devel_revision}" --
     else
         CT_DoLog EXTRA "Using git_shallow_branch = ${git_shallow_branch}"
-        CT_DoExecLog ALL git clone --depth 1 --branch "${git_shallow_branch}" "${devel_url}" "${pkg_name}"
+        CT_DoExecLog ALL git clone -q --recurse-submodules --depth 1 --branch "${git_shallow_branch}" "${devel_url}" "${pkg_name}"
         CT_Pushd "${pkg_name}"
     fi
     CT_DoExecLog ALL rm -rf .git
