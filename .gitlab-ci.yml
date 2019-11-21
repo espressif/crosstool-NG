@@ -293,7 +293,7 @@ esp32-rpi-test:
     PLATFORM_NAME: "linux-armel"
     CONF_TARGET: "xtensa-esp32-elf"
     IDF_PATH: "${CI_PROJECT_DIR}/esp-idf"
-    GITLAB_SSH_BRANCH: "-b master"
+    GITLAB_SSH_BRANCH: "-b feature/support_time_t_64_bit"
 
 esp32s2-rpi-test:
   <<: *test_arm_rpi
@@ -304,7 +304,7 @@ esp32s2-rpi-test:
     PLATFORM_NAME: "linux-armel"
     CONF_TARGET: "xtensa-esp32s2-elf"
     IDF_PATH: "${CI_PROJECT_DIR}/esp-idf"
-    GITLAB_SSH_BRANCH: "-b master"
+    GITLAB_SSH_BRANCH: "-b feature/support_time_t_64_bit"
     IDF_TARGET: "esp32s2beta"
 
 .template_compiler_tests: &template_compiler_tests
@@ -329,7 +329,7 @@ esp32s2-rpi-test:
     - ./${CONF_TARGET}/bin/${CONF_TARGET}-gcc -v
     - export PATH="${CI_PROJECT_DIR}/${CONF_TARGET}/bin:${PATH}"
     # Get and run tests
-    - ESP_COMPILER_TESTS_BRANCH="-b master"
+    - ESP_COMPILER_TESTS_BRANCH="-b feature/support_time_t_64_bit"
     - git clone -q --depth 1 $ESP_COMPILER_TESTS_BRANCH ${GITLAB_SSH_SERVER}/idf/esp-compiler-tests.git
     - cd esp-compiler-tests
     - source ${CONF_TARGET}-profile
