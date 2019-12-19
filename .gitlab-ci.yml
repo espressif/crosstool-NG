@@ -56,6 +56,9 @@ before_script:
   echo "CT_GCC_DEVEL_URL=\"${GITLAB_SSH_SERVER}/idf/gcc.git\"" >> .config
   echo "CT_BINUTILS_DEVEL_URL=\"${GITLAB_SSH_SERVER}/idf/binutils-gdb.git\"" >> .config
   echo "CT_GDB_DEVEL_URL=\"${GITLAB_SSH_SERVER}/idf/binutils-gdb.git\"" >> .config
+  echo "CT_GCC_DEVEL_BRANCH=\"feature/psram_improvements\"" >> .config
+  echo "CT_NEWLIB_DEVEL_BRANCH=\"feature/psram_improvements\"" >> .config
+
 
 # Configuration specific to Docker
 .configure_docker: &configure_docker |
