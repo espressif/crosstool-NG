@@ -143,6 +143,13 @@ esp32s2_lin_amd64:
     PLATFORM_NAME: "linux-amd64"
     CONF_TARGET: "xtensa-esp32s2-elf"
 
+esp8266_lin_amd64:
+  <<: *build_template_linux
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain
+  variables:
+    PLATFORM_NAME: "linux-amd64"
+    CONF_TARGET: "xtensa-lx106-elf"
+
 esp32_lin_i686:
   <<: *build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
@@ -156,6 +163,13 @@ esp32s2_lin_i686:
   variables:
     PLATFORM_NAME: "linux-i686"
     CONF_TARGET: "xtensa-esp32s2-elf"
+
+esp8266_lin_i686:
+  <<: *build_template_linux
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
+  variables:
+    PLATFORM_NAME: "linux-i686"
+    CONF_TARGET: "xtensa-lx106-elf"
 
 .template_macos_cross: &template_macos_cross
   <<: *build_template
@@ -187,6 +201,15 @@ esp32s2_macos:
     CONF_TARGET: "xtensa-esp32s2-elf"
     MACOSX_DEPLOYMENT_TARGET: "10.8"
 
+esp8266_macos:
+  <<: *template_macos_cross
+  variables:
+    PLATFORM_NAME: "macos"
+    CONF_BUILD: "x86_64-linux-gnu"
+    CONF_HOST: "x86_64-apple-darwin12"
+    CONF_TARGET: "xtensa-lx106-elf"
+    MACOSX_DEPLOYMENT_TARGET: "10.8"
+
 .template_win_cross: &template_win_cross
   <<: *build_template
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-win-cross
@@ -216,6 +239,16 @@ esp32s2_win:
     CONF_BUILD: "x86_64-linux-gnu"
     CONF_HOST: "i686-w64-mingw32"
     CONF_TARGET: "xtensa-esp32s2-elf"
+    ARCHIVE_TOOL: "zip -r"
+    ARCHIVE_EXT: "zip"
+
+esp8266_win:
+  <<: *template_win_cross
+  variables:
+    PLATFORM_NAME: "win32"
+    CONF_BUILD: "x86_64-linux-gnu"
+    CONF_HOST: "i686-w64-mingw32"
+    CONF_TARGET: "xtensa-lx106-elf"
     ARCHIVE_TOOL: "zip -r"
     ARCHIVE_EXT: "zip"
 
@@ -254,6 +287,14 @@ esp32s2_lin_armel:
     CONF_HOST: "arm-linux-gnueabi"
     CONF_TARGET: "xtensa-esp32s2-elf"
 
+esp8266_lin_armel:
+  <<: *template_lin_armel_cross
+  variables:
+    PLATFORM_NAME: "linux-armel"
+    CONF_BUILD: "x86_64-linux-gnu"
+    CONF_HOST: "arm-linux-gnueabi"
+    CONF_TARGET: "xtensa-lx106-elf"
+
 .test_arm_rpi: &test_arm_rpi
   stage: test
   image: $CI_DOCKER_REGISTRY/rpi-esp-idf-env:1
@@ -277,7 +318,7 @@ esp32s2_lin_armel:
 
     - cit_add_ssh_key "${GITLAB_KEY}"
     - rm -rf ${IDF_PATH}
-    - git clone -q --depth 1 ${GITLAB_SSH_BRANCH} ${GITLAB_SSH_SERVER}/idf/esp-idf ${IDF_PATH}
+    - git clone -q --depth 1 ${GITLAB_SSH_BRANCH} ${GITLAB_IDF_URL} ${IDF_PATH}
     - cd ${IDF_PATH}
     - git submodule update --init
     - source add_path.sh
@@ -293,6 +334,7 @@ esp32-rpi-test:
     PLATFORM_NAME: "linux-armel"
     CONF_TARGET: "xtensa-esp32-elf"
     IDF_PATH: "${CI_PROJECT_DIR}/esp-idf"
+    GITLAB_IDF_URL: "${GITLAB_SSH_SERVER}/idf/esp-idf"
     GITLAB_SSH_BRANCH: "-b master"
 
 esp32s2-rpi-test:
@@ -304,8 +346,21 @@ esp32s2-rpi-test:
     PLATFORM_NAME: "linux-armel"
     CONF_TARGET: "xtensa-esp32s2-elf"
     IDF_PATH: "${CI_PROJECT_DIR}/esp-idf"
+    GITLAB_IDF_URL: "${GITLAB_SSH_SERVER}/idf/esp-idf"
     GITLAB_SSH_BRANCH: "-b master"
     IDF_TARGET: "esp32s2beta"
+
+esp8266-rpi-test:
+  <<: *test_arm_rpi
+  dependencies:
+    - esp8266_lin_armel
+  variables:
+    GIT_STRATEGY: none
+    PLATFORM_NAME: "linux-armel"
+    CONF_TARGET: "xtensa-lx106-elf"
+    GITLAB_IDF_URL: "${GITLAB_SSH_SERVER}/sdk/ESP8266_RTOS_SDK"
+    IDF_PATH: "${CI_PROJECT_DIR}/esp-idf"
+    GITLAB_SSH_BRANCH: "-b master"
 
 .template_compiler_tests: &template_compiler_tests
   stage: test
@@ -352,6 +407,15 @@ esp32s2-compiler-tests:
     GIT_STRATEGY: none
     PLATFORM_NAME: "linux-amd64"
     CONF_TARGET: "xtensa-esp32s2-elf"
+
+esp8266-compiler-tests:
+  <<: *template_compiler_tests
+  dependencies:
+    - esp8266_lin_amd64
+  variables:
+    GIT_STRATEGY: none
+    PLATFORM_NAME: "linux-amd64"
+    CONF_TARGET: "xtensa-lx106-elf"
 
 upload_to_http:
   <<: *manual_action
