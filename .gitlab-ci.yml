@@ -20,6 +20,7 @@ variables:
 .add_gitlab_key: &add_gitlab_key |
   eval $(ssh-agent -s)
   printf '%s\n' "${GITLAB_KEY}" | tr -d '\r' > tmpkey
+  chmod 600 tmpkey
   ssh-add tmpkey > /dev/null
   mkdir -p ~/.ssh && chmod 700 ~/.ssh
   touch ~/.ssh/known_hosts && chmod 644 ~/.ssh/known_hosts
