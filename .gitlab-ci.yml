@@ -18,7 +18,13 @@ variables:
   source citools/import_functions
 
 .add_gitlab_key: &add_gitlab_key |
-  cit_add_ssh_key "${GITLAB_KEY}"
+  eval $(ssh-agent -s)
+  printf '%s\n' "${GITLAB_KEY}" | tr -d '\r' > tmpkey
+  ssh-add tmpkey > /dev/null
+  mkdir -p ~/.ssh && chmod 700 ~/.ssh
+  touch ~/.ssh/known_hosts && chmod 644 ~/.ssh/known_hosts
+  echo -e "Host *\n\tStrictHostKeyChecking no\n\n" >> ~/.ssh/config
+  chmod 600 ~/.ssh/config
 
 before_script:
   - *use_ci_tools
