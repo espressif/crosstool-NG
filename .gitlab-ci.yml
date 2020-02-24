@@ -129,28 +129,35 @@ before_script:
   when: manual
   allow_failure: true
 
-esp32_lin_amd64:
+.esp32_lin_amd64:
   <<: *build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain
   variables:
     PLATFORM_NAME: "linux-amd64"
     CONF_TARGET: "xtensa-esp32-elf"
 
-esp32s2_lin_amd64:
+.esp32s2_lin_amd64:
   <<: *build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain
   variables:
     PLATFORM_NAME: "linux-amd64"
     CONF_TARGET: "xtensa-esp32s2-elf"
 
-esp32_lin_i686:
+esp32s3_lin_amd64:
+  <<: *build_template_linux
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain
+  variables:
+    PLATFORM_NAME: "linux-amd64"
+    CONF_TARGET: "xtensa-esp32s3-elf"
+
+.esp32_lin_i686:
   <<: *build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
   variables:
     PLATFORM_NAME: "linux-i686"
     CONF_TARGET: "xtensa-esp32-elf"
 
-esp32s2_lin_i686:
+.esp32s2_lin_i686:
   <<: *build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
   variables:
@@ -169,7 +176,7 @@ esp32s2_lin_i686:
     - *build_toolchain
     - *package_toolchain
 
-esp32_macos:
+.esp32_macos:
   <<: *template_macos_cross
   variables:
     PLATFORM_NAME: "macos"
@@ -178,7 +185,7 @@ esp32_macos:
     CONF_TARGET: "xtensa-esp32-elf"
     MACOSX_DEPLOYMENT_TARGET: "10.8"
 
-esp32s2_macos:
+.esp32s2_macos:
   <<: *template_macos_cross
   variables:
     PLATFORM_NAME: "macos"
@@ -199,7 +206,7 @@ esp32s2_macos:
     - *build_toolchain
     - *package_toolchain
 
-esp32_win:
+.esp32_win:
   <<: *template_win_cross
   variables:
     PLATFORM_NAME: "win32"
@@ -209,7 +216,7 @@ esp32_win:
     ARCHIVE_TOOL: "zip -r"
     ARCHIVE_EXT: "zip"
 
-esp32s2_win:
+.esp32s2_win:
   <<: *template_win_cross
   variables:
     PLATFORM_NAME: "win32"
@@ -238,7 +245,7 @@ esp32s2_win:
     - *build_toolchain
     - *package_toolchain
 
-esp32_lin_armel:
+.esp32_lin_armel:
   <<: *template_lin_armel_cross
   variables:
     PLATFORM_NAME: "linux-armel"
@@ -246,13 +253,21 @@ esp32_lin_armel:
     CONF_HOST: "arm-linux-gnueabi"
     CONF_TARGET: "xtensa-esp32-elf"
 
-esp32s2_lin_armel:
+.esp32s2_lin_armel:
   <<: *template_lin_armel_cross
   variables:
     PLATFORM_NAME: "linux-armel"
     CONF_BUILD: "x86_64-linux-gnu"
     CONF_HOST: "arm-linux-gnueabi"
     CONF_TARGET: "xtensa-esp32s2-elf"
+
+esp32s3_lin_armel:
+  <<: *template_lin_armel_cross
+  variables:
+    PLATFORM_NAME: "linux-armel"
+    CONF_BUILD: "x86_64-linux-gnu"
+    CONF_HOST: "arm-linux-gnueabi"
+    CONF_TARGET: "xtensa-esp32s3-elf"
 
 .test_arm_rpi: &test_arm_rpi
   stage: test
@@ -284,7 +299,7 @@ esp32s2_lin_armel:
     - cd ${IDF_PATH}/examples/get-started/hello_world
     - idf.py build
 
-esp32-rpi-test:
+.esp32-rpi-test:
   <<: *test_arm_rpi
   dependencies:
     - esp32_lin_armel
@@ -295,7 +310,7 @@ esp32-rpi-test:
     IDF_PATH: "${CI_PROJECT_DIR}/esp-idf"
     GITLAB_SSH_BRANCH: "-b master"
 
-esp32s2-rpi-test:
+.esp32s2-rpi-test:
   <<: *test_arm_rpi
   dependencies:
     - esp32s2_lin_armel
@@ -306,6 +321,18 @@ esp32s2-rpi-test:
     IDF_PATH: "${CI_PROJECT_DIR}/esp-idf"
     GITLAB_SSH_BRANCH: "-b master"
     IDF_TARGET: "esp32s2beta"
+
+.esp32s3-rpi-test:
+  <<: *test_arm_rpi
+  dependencies:
+    - esp32s3_lin_armel
+  variables:
+    GIT_STRATEGY: none
+    PLATFORM_NAME: "linux-armel"
+    CONF_TARGET: "xtensa-esp32s3-elf"
+    IDF_PATH: "${CI_PROJECT_DIR}/esp-idf"
+    GITLAB_SSH_BRANCH: "-b feature/bringup_esp32s3beta_cmake"
+    IDF_TARGET: "esp32s3beta"
 
 .template_compiler_tests: &template_compiler_tests
   stage: test
@@ -335,7 +362,7 @@ esp32s2-rpi-test:
     - source ${CONF_TARGET}-profile
     - ./run-all.sh
 
-esp32-compiler-tests:
+.esp32-compiler-tests:
   <<: *template_compiler_tests
   dependencies:
     - esp32_lin_amd64
@@ -344,7 +371,7 @@ esp32-compiler-tests:
     PLATFORM_NAME: "linux-amd64"
     CONF_TARGET: "xtensa-esp32-elf"
 
-esp32s2-compiler-tests:
+.esp32s2-compiler-tests:
   <<: *template_compiler_tests
   dependencies:
     - esp32s2_lin_amd64
@@ -352,6 +379,15 @@ esp32s2-compiler-tests:
     GIT_STRATEGY: none
     PLATFORM_NAME: "linux-amd64"
     CONF_TARGET: "xtensa-esp32s2-elf"
+
+.esp32s3-compiler-tests:
+  <<: *template_compiler_tests
+  dependencies:
+    - esp32s3_lin_amd64
+  variables:
+    GIT_STRATEGY: none
+    PLATFORM_NAME: "linux-amd64"
+    CONF_TARGET: "xtensa-esp32s3-elf"
 
 upload_to_http:
   <<: *manual_action
