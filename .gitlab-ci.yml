@@ -87,6 +87,9 @@ before_script:
   ./ct-ng oldconfig
   ./ct-ng build
 
+.patch_toolchain: &patch_toolchain |
+  ./patch/${CONF_TARGET}/patch.sh
+
 # Package the toolchain
 .package_toolchain: &package_toolchain |
   mkdir -p dist
@@ -123,6 +126,7 @@ before_script:
     - *configure_docker
     - *configure_linux_no_pie
     - *build_toolchain
+    - *patch_toolchain
     - *package_toolchain
 
 .manual_action: &manual_action
@@ -181,6 +185,7 @@ esp8266_lin_i686:
     - *configure_docker
     - *configure_crossbuild
     - *build_toolchain
+    - *patch_toolchain
     - *package_toolchain
 
 # esp32_macos:
@@ -220,6 +225,7 @@ esp8266_macos:
     - *configure_docker
     - *configure_crossbuild
     - *build_toolchain
+    - *patch_toolchain
     - *package_toolchain
 
 # esp32_win:
@@ -269,6 +275,7 @@ esp8266_win:
     - echo "CT_STATIC_TOOLCHAIN=y" >> .config
 
     - *build_toolchain
+    - *patch_toolchain
     - *package_toolchain
 
 # esp32_lin_armel:
