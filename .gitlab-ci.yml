@@ -143,12 +143,12 @@ before_script:
     PLATFORM_NAME: "linux-amd64"
     CONF_TARGET: "xtensa-esp32s2-elf"
 
-esp32s3_lin_amd64:
+esp32s3beta_lin_amd64:
   <<: *build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain
   variables:
     PLATFORM_NAME: "linux-amd64"
-    CONF_TARGET: "xtensa-esp32s3-elf"
+    CONF_TARGET: "xtensa-esp32s3beta-elf"
 
 .esp32_lin_i686:
   <<: *build_template_linux
@@ -192,6 +192,15 @@ esp32s3_lin_amd64:
     CONF_BUILD: "x86_64-linux-gnu"
     CONF_HOST: "x86_64-apple-darwin12"
     CONF_TARGET: "xtensa-esp32s2-elf"
+    MACOSX_DEPLOYMENT_TARGET: "10.8"
+
+esp32s3beta_macos:
+  <<: *template_macos_cross
+  variables:
+    PLATFORM_NAME: "macos"
+    CONF_BUILD: "x86_64-linux-gnu"
+    CONF_HOST: "x86_64-apple-darwin12"
+    CONF_TARGET: "xtensa-esp32s3beta-elf"
     MACOSX_DEPLOYMENT_TARGET: "10.8"
 
 .template_win_cross: &template_win_cross
@@ -261,7 +270,7 @@ esp32s3_lin_amd64:
     CONF_HOST: "arm-linux-gnueabi"
     CONF_TARGET: "xtensa-esp32s2-elf"
 
-esp32s3_lin_armel:
+.esp32s3_lin_armel:
   <<: *template_lin_armel_cross
   variables:
     PLATFORM_NAME: "linux-armel"
