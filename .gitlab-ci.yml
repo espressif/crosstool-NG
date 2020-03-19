@@ -124,28 +124,49 @@ before_script:
     - *build_toolchain
     - *package_toolchain
 
-esp32_lin_amd64:
+.esp32_lin_amd64:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain
   variables:
     PLATFORM_NAME: "linux-amd64"
     CONF_TARGET: "xtensa-esp32-elf"
 
-esp32s2_lin_amd64:
+.esp32s2_lin_amd64:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain
   variables:
     PLATFORM_NAME: "linux-amd64"
     CONF_TARGET: "xtensa-esp32s2-elf"
 
-esp32_lin_i686:
+esp32s3betafpga_lin_amd64:
+  extends: .build_template_linux
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain
+  variables:
+    PLATFORM_NAME: "linux-amd64"
+    CONF_TARGET: "xtensa-esp32s3betafpga-elf"
+
+esp32s3beta_lin_amd64:
+  extends: .build_template_linux
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain
+  variables:
+    PLATFORM_NAME: "linux-amd64"
+    CONF_TARGET: "xtensa-esp32s3beta-elf"
+
+esp32s3_lin_amd64:
+  extends: .build_template_linux
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain
+  variables:
+    PLATFORM_NAME: "linux-amd64"
+    CONF_TARGET: "xtensa-esp32s3-elf"
+
+.esp32_lin_i686:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
   variables:
     PLATFORM_NAME: "linux-i686"
     CONF_TARGET: "xtensa-esp32-elf"
 
-esp32s2_lin_i686:
+.esp32s2_lin_i686:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
   variables:
@@ -169,15 +190,30 @@ esp32s2_lin_i686:
     - *build_toolchain
     - *package_toolchain
 
-esp32_macos:
+.esp32_macos:
   extends: .template_macos_cross
   variables:
     CONF_TARGET: "xtensa-esp32-elf"
 
-esp32s2_macos:
+.esp32s2_macos:
   extends: .template_macos_cross
   variables:
     CONF_TARGET: "xtensa-esp32s2-elf"
+
+esp32s3betafpga_macos:
+  extends: .template_macos_cross
+  variables:
+    CONF_TARGET: "xtensa-esp32s3betafpga-elf"
+
+esp32s3beta_macos:
+  extends: .template_macos_cross
+  variables:
+    CONF_TARGET: "xtensa-esp32s3beta-elf"
+
+esp32s3_macos:
+  extends: .template_macos_cross
+  variables:
+    CONF_TARGET: "xtensa-esp32s3-elf"
 
 .template_win_cross:
   extends: .build_template
@@ -197,15 +233,30 @@ esp32s2_macos:
     - *build_toolchain
     - *package_toolchain
 
-esp32_win:
+.esp32_win:
   extends: .template_win_cross
   variables:
     CONF_TARGET: "xtensa-esp32-elf"
 
-esp32s2_win:
+.esp32s2_win:
   extends: .template_win_cross
   variables:
     CONF_TARGET: "xtensa-esp32s2-elf"
+
+esp32s3betafpga_win:
+  extends: .template_win_cross
+  variables:
+    CONF_TARGET: "xtensa-esp32s3betafpga-elf"
+
+esp32s3beta_win:
+  extends: .template_win_cross
+  variables:
+    CONF_TARGET: "xtensa-esp32s3beta-elf"
+
+esp32s3_win:
+  extends: .template_win_cross
+  variables:
+    CONF_TARGET: "xtensa-esp32s3-elf"
 
 .template_lin_armel_cross:
   extends: .build_template
@@ -230,15 +281,30 @@ esp32s2_win:
     - *build_toolchain
     - *package_toolchain
 
-esp32_lin_armel:
+.esp32_lin_armel:
   extends: .template_lin_armel_cross
   variables:
     CONF_TARGET: "xtensa-esp32-elf"
 
-esp32s2_lin_armel:
+.esp32s2_lin_armel:
   extends: .template_lin_armel_cross
   variables:
     CONF_TARGET: "xtensa-esp32s2-elf"
+
+esp32s3betafpga_lin_armel:
+  extends: .template_lin_armel_cross
+  variables:
+    CONF_TARGET: "xtensa-esp32s3betafpga-elf"
+
+esp32s3beta_lin_armel:
+  extends: .template_lin_armel_cross
+  variables:
+    CONF_TARGET: "xtensa-esp32s3beta-elf"
+
+esp32s3_lin_armel:
+  extends: .template_lin_armel_cross
+  variables:
+    CONF_TARGET: "xtensa-esp32s3-elf"
 
 .test_arm_rpi:
   stage: test
@@ -268,7 +334,7 @@ esp32s2_lin_armel:
     - cd ${IDF_PATH}/examples/get-started/hello_world
     - idf.py build
 
-esp32-rpi-test:
+.esp32-rpi-test:
   extends: .test_arm_rpi
   dependencies:
     - esp32_lin_armel
@@ -276,7 +342,7 @@ esp32-rpi-test:
     CONF_TARGET: "xtensa-esp32-elf"
     IDF_TARGET: "esp32"
 
-esp32s2-rpi-test:
+.esp32s2-rpi-test:
   extends: .test_arm_rpi
   dependencies:
     - esp32s2_lin_armel
@@ -311,14 +377,14 @@ esp32s2-rpi-test:
     - source ${CONF_TARGET}-profile
     - ./run-all.sh
 
-esp32-compiler-tests:
+.esp32-compiler-tests:
   extends: .template_compiler_tests
   dependencies:
     - esp32_lin_amd64
   variables:
     CONF_TARGET: "xtensa-esp32-elf"
 
-esp32s2-compiler-tests:
+.esp32s2-compiler-tests:
   extends: .template_compiler_tests
   dependencies:
     - esp32s2_lin_amd64
