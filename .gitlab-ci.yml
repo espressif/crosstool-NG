@@ -282,7 +282,7 @@ esp32s2-rpi-test:
     - esp32s2_lin_armel
   variables:
     CONF_TARGET: "xtensa-esp32s2-elf"
-    IDF_TARGET: "esp32s2beta"
+    IDF_TARGET: "esp32s2"
 
 .template_compiler_tests:
   stage: test
