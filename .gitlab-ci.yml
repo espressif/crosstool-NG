@@ -5,11 +5,8 @@ stages:
 variables:
   MAKEFLAGS: "-j5 --no-keep-going"
 
-  CONF_BUILD: "x86_64-linux-gnu"
-  CONF_TARGET: "xtensa-esp32s3-elf"
-
   ARCHIVE_TOOL: "tar czvf"
-  UNARCHIVE_TOOL: "tar xvf"
+  UNARCHIVE_TOOL: "tar xf"
   ARCHIVE_EXT: "tar.gz"
 
   TARBALLS_NAME: ct-ng-v1.22.0-tarballs-1.tar
@@ -29,7 +26,7 @@ before_script:
 # Prepare release name/number
 .get_release_name: &get_release_name |
   VER_DESC=$(git describe | sed -E -n 's|.*crosstool-ng-([0-9]+).([0-9]+).([0-9]+)-([0-9]+)-g([0-9a-f]{7}).*|\1.\2.\3-\4-g\5|gp')
-  REL_NAME=xtensa-esp32s3-elf-${PLATFORM_NAME}-${VER_DESC}-5.2.0
+  REL_NAME=${CONF_TARGET}-${PLATFORM_NAME}-${VER_DESC}-5.2.0
   ARCHIVE_NAME=${REL_NAME}.${ARCHIVE_EXT}
   echo "PLATFORM_NAME: $PLATFORM_NAME"
   echo "VER_DESC: $VER_DESC"
@@ -94,17 +91,16 @@ before_script:
 .package_toolchain: &package_toolchain |
   mkdir -p dist
   pushd builds
-  rm ${CONF_TARGET}/build.log.bz2
+  rm -f ${CONF_TARGET}/build.log.bz2
   ${ARCHIVE_TOOL} ${ARCHIVE_NAME} ${CONF_TARGET}/
   mv ${ARCHIVE_NAME} ../dist/
-  echo "${ARCHIVE_NAME}" > ../dist/archive_name_${PLATFORM_NAME}
+  echo "${ARCHIVE_NAME}" > ../dist/file_${PLATFORM_NAME}_${CONF_TARGET}
   popd
 
 # Common template for all builds
-.build_template: &build_template
+.build_template:
   stage: build
-  tags:
-    - build
+  tags: [ "build", "amd64" ]
   artifacts:
     paths:
       - .config
@@ -113,8 +109,8 @@ before_script:
     when: always
     expire_in: 6 weeks
 
-.build_template_linux: &build_template_linux
-  <<: *build_template
+.build_template_linux:
+  extends: .build_template
   script:
     - *get_release_name
     - *build_ctng
@@ -125,24 +121,42 @@ before_script:
     - *build_toolchain
     - *package_toolchain
 
-build_linux:
-  <<: *build_template_linux
+esp32_lin_amd64:
+  extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain
   variables:
-    PLATFORM_NAME: "linux64"
+    PLATFORM_NAME: "linux-amd64"
+    CONF_TARGET: "xtensa-esp32-elf"
 
-build_linux_x86:
-  <<: *build_template_linux
+esp32s3_lin_amd64:
+  extends: .build_template_linux
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain
+  variables:
+    PLATFORM_NAME: "linux-amd64"
+    CONF_TARGET: "xtensa-esp32s3-elf"
+
+esp32_lin_i686:
+  extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
   variables:
-    PLATFORM_NAME: "linux32"
+    PLATFORM_NAME: "linux-i686"
+    CONF_TARGET: "xtensa-esp32-elf"
 
-build_macos:
-  <<: *build_template
-  image: ci.espressif.cn:42348/esp32-toolchain-macos-cross
+esp32s3_lin_i686:
+  extends: .build_template_linux
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
   variables:
-    CONF_HOST: "x86_64-apple-darwin12"
+    PLATFORM_NAME: "linux-i686"
+    CONF_TARGET: "xtensa-esp32s3-elf"
+
+.template_macos_cross:
+  extends: .build_template
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain-macos-cross
+  variables:
     PLATFORM_NAME: "macos"
+    CONF_BUILD: "x86_64-linux-gnu"
+    CONF_HOST: "x86_64-apple-darwin12"
+    MACOSX_DEPLOYMENT_TARGET: "10.8"
   script:
     - *get_release_name
     - *build_ctng
@@ -157,12 +171,23 @@ build_macos:
     - *build_toolchain
     - *package_toolchain
 
-build_windows:
-  <<: *build_template
+esp32_macos:
+  extends: .template_macos_cross
+  variables:
+    CONF_TARGET: "xtensa-esp32-elf"
+
+esp32s3_macos:
+  extends: .template_macos_cross
+  variables:
+    CONF_TARGET: "xtensa-esp32s3-elf"
+
+.template_win_cross:
+  extends: .build_template
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-win-cross
   variables:
-    CONF_HOST: "i686-w64-mingw32"
     PLATFORM_NAME: "win32"
+    CONF_BUILD: "x86_64-linux-gnu"
+    CONF_HOST: "i686-w64-mingw32"
     ARCHIVE_TOOL: "zip -r"
     ARCHIVE_EXT: "zip"
   script:
@@ -175,12 +200,23 @@ build_windows:
     - *build_toolchain
     - *package_toolchain
 
-build_linux_armel:
-  <<: *build_template
+esp32_win:
+  extends: .template_win_cross
+  variables:
+    CONF_TARGET: "xtensa-esp32-elf"
+
+esp32s3_win:
+  extends: .template_win_cross
+  variables:
+    CONF_TARGET: "xtensa-esp32s3-elf"
+
+.template_lin_armel_cross:
+  extends: .build_template
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-arm-cross
   variables:
-    CONF_HOST: "arm-linux-gnueabi"
     PLATFORM_NAME: "linux-armel"
+    CONF_BUILD: "x86_64-linux-gnu"
+    CONF_HOST: "arm-linux-gnueabi"
   script:
     - *get_release_name
     - *build_ctng
@@ -198,26 +234,30 @@ build_linux_armel:
     - *build_toolchain
     - *package_toolchain
 
-test_arm_rpi:
+esp32_lin_armel:
+  extends: .template_lin_armel_cross
+  variables:
+    CONF_TARGET: "xtensa-esp32-elf"
+
+esp32s3_lin_armel:
+  extends: .template_lin_armel_cross
+  variables:
+    CONF_TARGET: "xtensa-esp32s3-elf"
+
+.test_arm_rpi:
   stage: test
   image: $CI_DOCKER_REGISTRY/rpi-esp-idf-env:1
-  tags:
-    - linux_arm
-  dependencies:
-    - build_linux_armel
-  # It allows failure because the RPi runner is not stable
-  allow_failure: true
+  tags: [ "arm" ]
   variables:
     GIT_STRATEGY: none
-    IDF_PATH: "${CI_PROJECT_DIR}/esp-idf"
     PLATFORM_NAME: "linux-armel"
-    GITLAB_SSH_BRANCH: "-b master"
-    CONF_TARGET: "xtensa-esp32s3-elf"
+    IDF_PATH: "${CI_PROJECT_DIR}/esp-idf"
+    ESP_IDF_BRANCH: "-b release/v3.3"
   after_script:
     - rm -rf ${CI_PROJECT_DIR}/*
   script:
     - pwd; id; uname -a
-    - ARCHIVE_NAME=$(cat dist/archive_name_${PLATFORM_NAME})
+    - ARCHIVE_NAME=$(cat dist/file_${PLATFORM_NAME}_${CONF_TARGET})
     - ${UNARCHIVE_TOOL} dist/${ARCHIVE_NAME}
     - export PATH="${CI_PROJECT_DIR}/${CONF_TARGET}/bin:${PATH}"
 
@@ -226,10 +266,26 @@ test_arm_rpi:
 
     - *add_gitlab_key
     - rm -rf ${IDF_PATH}
-    - git clone -q --depth 1 ${GITLAB_SSH_BRANCH} ${GITLAB_SSH_SERVER}/idf/esp-idf ${IDF_PATH}
+    - git clone -q --depth 1 ${ESP_IDF_BRANCH} ${GITLAB_SSH_SERVER}/idf/esp-idf ${IDF_PATH}
     - cd ${IDF_PATH}
     - ./tools/ci/mirror-submodule-update.sh
     - source add_path.sh
     - cd ${IDF_PATH}/examples/get-started/hello_world
     - make defconfig
     - make
+
+esp32-rpi-test:
+  extends: .test_arm_rpi
+  dependencies:
+    - esp32_lin_armel
+  variables:
+    CONF_TARGET: "xtensa-esp32-elf"
+    IDF_TARGET: "esp32"
+
+esp32s3-rpi-test:
+  extends: .test_arm_rpi
+  dependencies:
+    - esp32s3_lin_armel
+  variables:
+    CONF_TARGET: "xtensa-esp32s3-elf"
+    IDF_TARGET: "esp32s3beta"
