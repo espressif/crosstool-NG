@@ -124,14 +124,14 @@ before_script:
     - *build_toolchain
     - *package_toolchain
 
-.esp32_lin_amd64:
+esp32_lin_amd64:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain
   variables:
     PLATFORM_NAME: "linux-amd64"
     CONF_TARGET: "xtensa-esp32-elf"
 
-.esp32s2_lin_amd64:
+esp32s2_lin_amd64:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain
   variables:
@@ -190,12 +190,12 @@ esp32s3_lin_amd64:
     - *build_toolchain
     - *package_toolchain
 
-.esp32_macos:
+esp32_macos:
   extends: .template_macos_cross
   variables:
     CONF_TARGET: "xtensa-esp32-elf"
 
-.esp32s2_macos:
+esp32s2_macos:
   extends: .template_macos_cross
   variables:
     CONF_TARGET: "xtensa-esp32s2-elf"
