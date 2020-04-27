@@ -97,6 +97,12 @@ before_script:
   echo "${ARCHIVE_NAME}" > ../dist/file_${PLATFORM_NAME}_${CONF_TARGET}
   popd
 
+.setup_tools_unless_target_test: &setup_tools_unless_target_test |
+  if [[ -n "${IDF_DONT_USE_MIRRORS:-}" ]]; then
+  export IDF_MIRROR_PREFIX_MAP=
+  fi
+  tools/idf_tools.py --non-interactive install && eval "$(tools/idf_tools.py --non-interactive export)" || exit 1
+
 # Common template for all builds
 .build_template:
   stage: build
@@ -263,8 +269,8 @@ esp32s2_lin_armel:
     - rm -rf ${IDF_PATH}
     - git clone -q --depth 1 ${ESP_IDF_BRANCH} ${GITLAB_SSH_SERVER}/idf/esp-idf ${IDF_PATH}
     - cd ${IDF_PATH}
+    - *setup_tools_unless_target_test
     - git submodule update --init
-    - source add_path.sh
     - cd ${IDF_PATH}/examples/get-started/hello_world
     - idf.py build
 
