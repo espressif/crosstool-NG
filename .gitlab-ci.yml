@@ -138,6 +138,13 @@ esp32s2_lin_amd64:
     PLATFORM_NAME: "linux-amd64"
     CONF_TARGET: "xtensa-esp32s2-elf"
 
+riscv32_esp_lin_amd64:
+  extends: .build_template_linux
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain
+  variables:
+    PLATFORM_NAME: "linux-amd64"
+    CONF_TARGET: "riscv32-esp-elf"
+
 esp32_lin_i686:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
@@ -179,6 +186,11 @@ esp32s2_macos:
   variables:
     CONF_TARGET: "xtensa-esp32s2-elf"
 
+riscv32_esp_macos:
+  extends: .template_macos_cross
+  variables:
+    CONF_TARGET: "riscv32-esp-elf"
+
 .template_win_cross:
   extends: .build_template
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-win-cross
@@ -206,6 +218,11 @@ esp32s2_win:
   extends: .template_win_cross
   variables:
     CONF_TARGET: "xtensa-esp32s2-elf"
+
+riscv32_esp_win:
+  extends: .template_win_cross
+  variables:
+    CONF_TARGET: "riscv32-esp-elf"
 
 .template_win64_cross:
   extends: .build_template
