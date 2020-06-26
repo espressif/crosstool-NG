@@ -219,10 +219,12 @@ esp32s2_win:
   variables:
     CONF_TARGET: "xtensa-esp32s2-elf"
 
-riscv32_esp_win:
-  extends: .template_win_cross
-  variables:
-    CONF_TARGET: "riscv32-esp-elf"
+# Temporarily disabled, artifact archive is too large
+#
+# riscv32_esp_win:
+#   extends: .template_win_cross
+#   variables:
+#     CONF_TARGET: "riscv32-esp-elf"
 
 .template_win64_cross:
   extends: .build_template
