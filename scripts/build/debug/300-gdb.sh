@@ -6,10 +6,6 @@ do_debug_gdb_get() {
 
 do_debug_gdb_extract() {
     CT_ExtractPatch GDB
-
-    if [ -n "${CT_ARCH_XTENSA_CUSTOM_NAME}" ]; then
-        CT_ConfigureXtensa "gdb" "${CT_GDB_VERSION}"
-    fi
 }
 
 do_debug_gdb_build() {

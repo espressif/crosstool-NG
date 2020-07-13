@@ -31,10 +31,6 @@ do_cc_extract() {
     if [ "${CT_CC_LANG_JAVA_USE_ECJ}" = "y" -a ! -f "${CT_SRC_DIR}/gcc/ecj.jar" ]; then
         CT_DoExecLog ALL cp -v "${CT_TARBALLS_DIR}/ecj-latest.jar" "${CT_SRC_DIR}/gcc/ecj.jar"
     fi
-
-    if [ -n "${CT_ARCH_XTENSA_CUSTOM_NAME}" ]; then
-        CT_ConfigureXtensa "gcc" "${CT_CC_VERSION}"
-    fi
 }
 
 #------------------------------------------------------------------------------

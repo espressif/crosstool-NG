@@ -16,10 +16,6 @@ do_binutils_extract() {
     if [ -n "${CT_ARCH_BINFMT_FLAT}" ]; then
         CT_ExtractPatch ELF2FLT
     fi
-
-    if [ -n "${CT_ARCH_XTENSA_CUSTOM_NAME}" ]; then
-        CT_ConfigureXtensa "binutils" "${CT_BINUTILS_VERSION}"
-    fi
 }
 
 # Build binutils for build -> target
