@@ -680,6 +680,10 @@ do_gcc_core_backend() {
             ;;
     esac
 
+    CT_DoLog EXTRA "Copying xtensaconfig libs"
+    CT_DoExecLog EXTRA mkdir -p $PWD/lib
+    CT_DoExecLog EXTRA cp -av ${CT_PREFIX_DIR}/lib/*-{esp32s2,esp32,esp8266}.so $PWD/lib
+
     CT_DoLog EXTRA "Building ${log_txt}"
     CT_DoExecLog ALL make ${CT_JOBSFLAGS} ${core_targets_all}
 
