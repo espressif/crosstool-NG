@@ -117,6 +117,11 @@ do_mpc_backend() {
     CT_DoExecLog EXTRA cp -av \
         /home/mak/e/p/dyn/multilib1/gcc-xtensa-dynconfig-plugin/*-{esp32s2,esp32,esp8266}.so \
         "${CT_PREFIX_DIR}/lib"
+
+    CT_DoExecLog EXTRA mkdir -p "${CT_PREFIX_DIR}/${CT_TARGET}/lib"
+    CT_DoExecLog EXTRA cp -av \
+        /home/mak/e/p/dyn/multilib1/gcc-xtensa-dynconfig-plugin/*-{esp32s2,esp32,esp8266}.so \
+        "${CT_PREFIX_DIR}/${CT_TARGET}/lib"
 }
 
 fi # CT_MPC
