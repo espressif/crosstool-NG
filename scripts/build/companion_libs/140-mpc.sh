@@ -110,9 +110,21 @@ do_mpc_backend() {
     CT_DoExecLog ALL make install
 
     #FIXME
+
     CT_DoExecLog EXTRA cp -av \
         /home/mak/e/p/dyn/multilib1/gcc-xtensa-dynconfig-plugin/*-{esp32s2,esp32,esp8266}.so \
         "${prefix}/lib"
+
+#TODO it doesn't work well, $gcc_version is not defined.
+    CT_DoExecLog EXTRA mkdir -p "${prefix}/libexec/gcc/${CT_TARGET}/8.2.0/lib"
+    CT_DoExecLog EXTRA cp -av \
+        /home/mak/e/p/dyn/multilib1/gcc-xtensa-dynconfig-plugin/*-{esp32s2,esp32,esp8266}.so \
+        "${prefix}/libexec/gcc/${CT_TARGET}/8.2.0/lib"
+
+    CT_DoExecLog EXTRA mkdir -p "${prefix}/libexec/gcc/${CT_TARGET}/lib"
+    CT_DoExecLog EXTRA cp -av \
+        /home/mak/e/p/dyn/multilib1/gcc-xtensa-dynconfig-plugin/*-{esp32s2,esp32,esp8266}.so \
+        "${prefix}/libexec/gcc/${CT_TARGET}/lib"
 
     CT_DoExecLog EXTRA cp -av \
         /home/mak/e/p/dyn/multilib1/gcc-xtensa-dynconfig-plugin/*-{esp32s2,esp32,esp8266}.so \
