@@ -1,0 +1,677 @@
+stages:
+  - build
+  - private_deploy
+  - pre_test
+  - test
+
+image: ${CI_DOCKER_REGISTRY}/esp32-ci-env
+
+variables:
+  # GIT_STRATEGY - use option from "CI / CD Settings" - "General pipelines"
+  GIT_SUBMODULE_STRATEGY: normal
+
+  ESP_COMPILER_TESTS_BRANCH: "esp-2022r1-branch"
+
+  ARCHIVE_TOOL: "tar -cJvf" # 'v' we need to check the contents of the archive by log
+  UNARCHIVE_TOOL: "tar -xf"
+  ARCHIVE_EXT: "tar.xz"
+
+.use_ci_tools: &use_ci_tools |
+  curl -sSL ${CIT_LOADER_URL} -o cit_loader.sh && sh cit_loader.sh
+  source citools/import_functions
+
+.add_gitlab_key: &add_gitlab_key |
+  cit_add_ssh_key "${GITLAB_KEY}"
+
+before_script:
+  - *use_ci_tools
+  - *add_gitlab_key
+
+# Prepare release name/number
+.get_release_name: &get_release_name |
+  # using annotated tags
+  REL_NUM=$(git describe --abbrev=7)
+  REL_SFX="gcc11_2_0"
+  REL_NAME=${CONF_TARGET}-${REL_SFX}-${REL_NUM}-${PLATFORM_NAME}
+  ARCHIVE_NAME=${REL_NAME}.${ARCHIVE_EXT}
+  echo "PLATFORM_NAME: $PLATFORM_NAME"
+  echo "REL_NUM: $REL_NUM"
+  echo "REL_NAME: $REL_NAME"
+  echo "ARCHIVE_NAME: $ARCHIVE_NAME"
+
+# Configure crosstool-NG
+.build_ctng: &build_ctng |
+  ./bootstrap
+  ./configure --enable-local
+  make
+  ./ct-ng ${CONF_TARGET}
+
+# ct-ng options common for all platforms
+.configure_common: &configure_common |
+  echo "# CT_LOG_PROGRESS_BAR is not set" >> .config
+  echo "# CT_PREFIX_DIR_RO is not set" >> .config
+  echo "CT_LOG_EXTRA=y" >> .config
+  echo "CT_LOG_LEVEL_MAX=\"EXTRA\"" >> .config
+  echo "CT_USE_MIRROR=y" >> .config
+  echo "CT_FORCE_MIRROR=y" >> .config
+  echo "CT_MIRROR_BASE_URL=\"${MIRROR_BASE}\"" >> .config
+  echo "CT_NEWLIB_DEVEL_URL=\"${GITLAB_SSH_SERVER}/idf/newlib-cygwin.git\"" >> .config
+  echo "CT_GCC_DEVEL_URL=\"${GITLAB_SSH_SERVER}/idf/gcc.git\"" >> .config
+  echo "CT_BINUTILS_DEVEL_URL=\"${GITLAB_SSH_SERVER}/idf/binutils-gdb.git\"" >> .config
+  echo "CT_GDB_DEVEL_URL=\"${GITLAB_SSH_SERVER}/idf/binutils-gdb.git\"" >> .config
+
+# Configuration specific to Docker
+.configure_docker: &configure_docker |
+  echo "CT_ALLOW_BUILD_AS_ROOT=y" >> .config
+  echo "CT_ALLOW_BUILD_AS_ROOT_SURE=y" >> .config
+  echo "CT_CONNECT_TIMEOUT=30" >> .config
+
+# If PIE is enabled by default in build GCC, add a flag to disable it
+# For example, it appears on Ubuntu 17.04 or Debian 9
+.configure_linux_no_pie: &configure_linux_no_pie |
+  gcc -v |& grep -- --enable-default-pie > /dev/null && echo "CT_EXTRA_LDFLAGS_FOR_HOST=\"-no-pie\"" >> .config
+
+# Configuration specific to crossbuilds
+.configure_crossbuild: &configure_crossbuild |
+  echo "CT_CANADIAN=y" >> .config
+  echo "CT_BUILD=\"${CONF_BUILD}\"" >> .config
+  echo "CT_BUILD_PREFIX=\"${CONF_BUILD}-\"" >> .config
+  echo "CT_BUILD_SUFFIX=\"\"" >> .config
+  echo "CT_HOST=\"${CONF_HOST}\"" >> .config
+  echo "CT_HOST_PREFIX=\"${CONF_HOST}-\"" >> .config
+  echo "CT_HOST_SUFFIX=\"\"" >> .config
+
+  # No support Python in GDB in cross-compilation now,
+  # see https://stackoverflow.com/questions/33512541/cross-compiling-gdb-for-arm-with-python-failed#34625177
+  echo "# CT_GDB_CROSS_PYTHON is not set" >> .config
+
+.configure_win_crossbuild: &configure_win_crossbuild |
+  # Append option
+  ( \
+    KV=$(grep "CT_CC_GCC_EXTRA_CONFIG_ARRAY" .config) \
+    && echo "${KV%\"} --with-gnu-ld\"" >> .config; \
+  )
+
+# Actual build
+.build_toolchain: &build_toolchain |
+  ./ct-ng oldconfig
+  ./ct-ng build
+
+.add_extra_files: &add_extra_files |
+  if [ "${EXTRA_BINS:-}" ]; then
+    cp -v ${EXTRA_BINS} builds/${CONF_TARGET}/bin/
+  fi
+
+# Package the toolchain
+.package_toolchain: &package_toolchain |
+  mkdir -p dist
+  pushd builds
+  rm -f ../build.log
+  mv ${CONF_TARGET}/build.log.bz2 ..
+  ${ARCHIVE_TOOL} ${ARCHIVE_NAME} ${CONF_TARGET}/ > tar-list.txt
+  mv tar-list.txt ..
+  mv ${ARCHIVE_NAME} ../dist/
+  echo "${ARCHIVE_NAME}" > ../dist/file_${PLATFORM_NAME}_${CONF_TARGET}
+  ls -l ../dist/
+  popd
+
+# Common template for all builds
+.build_template:
+  stage: build
+  tags: [ "build", "amd64" ]
+  artifacts:
+    paths:
+      - .config
+      # suggest you use `bzless` tool to easily read this log
+      - build.log.bz2
+      - tar-list.txt
+      - dist
+    when: always
+    expire_in: 6 weeks
+  after_script:
+    # save artifacts in any case (both failure or success)
+    - git add -f dist tar-list.txt build.log.bz2 .config
+    - git clean -d -x -f -f
+
+.build_template_linux:
+  extends: .build_template
+  script:
+    - *get_release_name
+    - *build_ctng
+    - *configure_common
+    - *configure_docker
+    - *configure_linux_no_pie
+    - *build_toolchain
+    - *package_toolchain
+
+esp32_lin_amd64:
+  extends: .build_template_linux
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain
+  variables:
+    PLATFORM_NAME: "linux-amd64"
+    CONF_TARGET: "xtensa-esp32-elf"
+
+esp32s2_lin_amd64:
+  extends: .build_template_linux
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain
+  variables:
+    PLATFORM_NAME: "linux-amd64"
+    CONF_TARGET: "xtensa-esp32s2-elf"
+
+esp32s3_lin_amd64:
+  extends: .build_template_linux
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain
+  variables:
+    PLATFORM_NAME: "linux-amd64"
+    CONF_TARGET: "xtensa-esp32s3-elf"
+
+riscv32_esp_lin_amd64:
+  extends: .build_template_linux
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain
+  variables:
+    PLATFORM_NAME: "linux-amd64"
+    CONF_TARGET: "riscv32-esp-elf"
+
+esp32_lin_i686:
+  extends: .build_template_linux
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
+  variables:
+    PLATFORM_NAME: "linux-i686"
+    CONF_TARGET: "xtensa-esp32-elf"
+
+esp32s2_lin_i686:
+  extends: .build_template_linux
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
+  variables:
+    PLATFORM_NAME: "linux-i686"
+    CONF_TARGET: "xtensa-esp32s2-elf"
+
+esp32s3_lin_i686:
+  extends: .build_template_linux
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
+  variables:
+    PLATFORM_NAME: "linux-i686"
+    CONF_TARGET: "xtensa-esp32s3-elf"
+
+riscv32_esp_lin_i686:
+  extends: .build_template_linux
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
+  variables:
+    PLATFORM_NAME: "linux-i686"
+    CONF_TARGET: "riscv32-esp-elf"
+
+.template_macos_cross:
+  extends: .build_template
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain-macos-cross
+  variables:
+    PLATFORM_NAME: "macos"
+    CONF_BUILD: "x86_64-linux-gnu"
+    CONF_HOST: "x86_64-apple-darwin12"
+    MACOSX_DEPLOYMENT_TARGET: "10.8"
+  script:
+    - *get_release_name
+    - *build_ctng
+    - *configure_common
+    - *configure_docker
+    - *configure_crossbuild
+    - *build_toolchain
+    - *package_toolchain
+
+esp32_macos:
+  extends: .template_macos_cross
+  variables:
+    CONF_TARGET: "xtensa-esp32-elf"
+
+esp32s2_macos:
+  extends: .template_macos_cross
+  variables:
+    CONF_TARGET: "xtensa-esp32s2-elf"
+
+esp32s3_macos:
+  extends: .template_macos_cross
+  variables:
+    CONF_TARGET: "xtensa-esp32s3-elf"
+
+riscv32_esp_macos:
+  extends: .template_macos_cross
+  variables:
+    CONF_TARGET: "riscv32-esp-elf"
+
+.template_win_cross:
+  extends: .build_template
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain-win-cross
+  variables:
+    PLATFORM_NAME: "win32"
+    CONF_BUILD: "x86_64-linux-gnu"
+    CONF_HOST: "i686-w64-mingw32"
+    ARCHIVE_TOOL: "zip -9 -r"
+    ARCHIVE_EXT: "zip"
+    EXTRA_BINS: "/usr/lib/gcc/i686-w64-mingw32/6.3-win32/libgcc_s_sjlj-1.dll /usr/lib/gcc/i686-w64-mingw32/6.3-win32/libstdc++-6.dll"
+  script:
+    - *get_release_name
+    - *build_ctng
+    - *configure_common
+    - *configure_docker
+    - *configure_crossbuild
+    - *configure_win_crossbuild
+    - *build_toolchain
+    - *add_extra_files
+    - *package_toolchain
+
+esp32_win:
+  extends: .template_win_cross
+  variables:
+    CONF_TARGET: "xtensa-esp32-elf"
+
+esp32s2_win:
+  extends: .template_win_cross
+  variables:
+    CONF_TARGET: "xtensa-esp32s2-elf"
+
+esp32s3_win:
+  extends: .template_win_cross
+  variables:
+    CONF_TARGET: "xtensa-esp32s3-elf"
+
+riscv32_esp_win:
+  extends: .template_win_cross
+  variables:
+    CONF_TARGET: "riscv32-esp-elf"
+
+.template_win64_cross:
+  extends: .build_template
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain-win64-cross
+  variables:
+    PLATFORM_NAME: "win64"
+    CONF_BUILD: "x86_64-linux-gnu"
+    CONF_HOST: "x86_64-w64-mingw32"
+    ARCHIVE_TOOL: "zip -9 -r"
+    ARCHIVE_EXT: "zip"
+    EXTRA_BINS: "/usr/lib/gcc/x86_64-w64-mingw32/6.3-win32/libgcc_s_seh-1.dll /usr/lib/gcc/x86_64-w64-mingw32/6.3-win32/libstdc++-6.dll"
+  script:
+    - *get_release_name
+    - *build_ctng
+    - *configure_common
+    - *configure_docker
+    - *configure_crossbuild
+    - *configure_win_crossbuild
+    - *build_toolchain
+    - *add_extra_files
+    - *package_toolchain
+
+esp32_win64:
+  extends: .template_win64_cross
+  variables:
+    CONF_TARGET: "xtensa-esp32-elf"
+
+esp32s2_win64:
+  extends: .template_win64_cross
+  variables:
+    CONF_TARGET: "xtensa-esp32s2-elf"
+
+esp32s3_win64:
+  extends: .template_win64_cross
+  variables:
+    CONF_TARGET: "xtensa-esp32s3-elf"
+
+riscv32_esp_win64:
+  extends: .template_win64_cross
+  variables:
+    CONF_TARGET: "riscv32-esp-elf"
+
+.template_lin_arm_cross:
+  extends: .build_template
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain-arm-cross
+  variables:
+    CONF_BUILD: "x86_64-linux-gnu"
+  script:
+    - *get_release_name
+    - *build_ctng
+    - *configure_common
+    - *configure_docker
+    - *configure_linux_no_pie
+    - *configure_crossbuild
+    - *build_toolchain
+    - *package_toolchain
+
+esp32_lin_armel:
+  extends: .template_lin_arm_cross
+  variables:
+    PLATFORM_NAME: "linux-armel"
+    CONF_TARGET: "xtensa-esp32-elf"
+    CONF_HOST: "arm-linux-gnueabi"
+
+esp32s2_lin_armel:
+  extends: .template_lin_arm_cross
+  variables:
+    PLATFORM_NAME: "linux-armel"
+    CONF_TARGET: "xtensa-esp32s2-elf"
+    CONF_HOST: "arm-linux-gnueabi"
+
+esp32s3_lin_armel:
+  extends: .template_lin_arm_cross
+  variables:
+    PLATFORM_NAME: "linux-armel"
+    CONF_TARGET: "xtensa-esp32s3-elf"
+    CONF_HOST: "arm-linux-gnueabi"
+
+riscv32_esp_lin_armel:
+  extends: .template_lin_arm_cross
+  variables:
+    PLATFORM_NAME: "linux-armel"
+    CONF_TARGET: "riscv32-esp-elf"
+    CONF_HOST: "arm-linux-gnueabi"
+
+# ARMHF
+
+esp32_lin_armhf:
+  extends: .template_lin_arm_cross
+  variables:
+    PLATFORM_NAME: "linux-armhf"
+    CONF_TARGET: "xtensa-esp32-elf"
+    CONF_HOST: "arm-linux-gnueabihf"
+
+esp32s2_lin_armhf:
+  extends: .template_lin_arm_cross
+  variables:
+    PLATFORM_NAME: "linux-armhf"
+    CONF_TARGET: "xtensa-esp32s2-elf"
+    CONF_HOST: "arm-linux-gnueabihf"
+
+esp32s3_lin_armhf:
+  extends: .template_lin_arm_cross
+  variables:
+    PLATFORM_NAME: "linux-armhf"
+    CONF_TARGET: "xtensa-esp32s3-elf"
+    CONF_HOST: "arm-linux-gnueabihf"
+
+riscv32_esp_lin_armhf:
+  extends: .template_lin_arm_cross
+  variables:
+    PLATFORM_NAME: "linux-armhf"
+    CONF_TARGET: "riscv32-esp-elf"
+    CONF_HOST: "arm-linux-gnueabihf"
+
+# ARM64
+
+esp32_lin_arm64:
+  extends: .template_lin_arm_cross
+  variables:
+    PLATFORM_NAME: "linux-arm64"
+    CONF_TARGET: "xtensa-esp32-elf"
+    CONF_HOST: "aarch64-linux-gnu"
+
+esp32s2_lin_arm64:
+  extends: .template_lin_arm_cross
+  variables:
+    PLATFORM_NAME: "linux-arm64"
+    CONF_TARGET: "xtensa-esp32s2-elf"
+    CONF_HOST: "aarch64-linux-gnu"
+
+esp32s3_lin_arm64:
+  extends: .template_lin_arm_cross
+  variables:
+    PLATFORM_NAME: "linux-arm64"
+    CONF_TARGET: "xtensa-esp32s3-elf"
+    CONF_HOST: "aarch64-linux-gnu"
+
+riscv32_esp_lin_arm64:
+  extends: .template_lin_arm_cross
+  variables:
+    PLATFORM_NAME: "linux-arm64"
+    CONF_TARGET: "riscv32-esp-elf"
+    CONF_HOST: "aarch64-linux-gnu"
+
+# We use prep_tests job to collect all test data and scripts in artifacts,
+# to avoid dependencies for git, because we run some tests on original images.
+prep_tests:
+  stage: pre_test
+  tags: [ "build", "amd64" ]
+  image: $CI_DOCKER_REGISTRY/compiler-testsuite:1
+  needs: []
+  variables:
+    GIT_STRATEGY: none
+    GIT_SERVER: "https://gitlab-ci-token:${ESPCI_TOKEN}@${CI_SERVER_HOST}:${CI_SERVER_PORT}"
+  before_script: []
+  artifacts:
+    paths:
+      - esp-compiler-tests
+    expire_in: 6 weeks
+  script:
+    - test -n "${ESP_COMPILER_TESTS_BRANCH:-}" || exit 1
+    - git clone -q -b ${ESP_COMPILER_TESTS_BRANCH} "${GIT_SERVER}/idf/esp-compiler-tests.git"
+    - cd esp-compiler-tests
+    - git log -n10 --oneline
+
+.test_arm_rpi:
+  stage: test
+  image: $CI_DOCKER_REGISTRY/rpi-esp-idf-env:1
+  tags: [ "arm" ]
+  variables:
+    GIT_STRATEGY: none
+    PLATFORM_NAME: "linux-armel"
+    IDF_PATH: "${CI_PROJECT_DIR}/esp-idf"
+    ESP_IDF_BRANCH: "-b master"
+  after_script:
+    - rm -rf ${CI_PROJECT_DIR}/*
+  script:
+    - pwd; id; uname -a
+    - ARCHIVE_NAME=$(cat dist/file_${PLATFORM_NAME}_${CONF_TARGET})
+    - ${UNARCHIVE_TOOL} dist/${ARCHIVE_NAME}
+    - export PATH="${CI_PROJECT_DIR}/${CONF_TARGET}/bin:${PATH}"
+
+    - file ./${CONF_TARGET}/bin/${CONF_TARGET}-gcc
+    - ./${CONF_TARGET}/bin/${CONF_TARGET}-gcc -v
+
+    - rm -rf ${IDF_PATH}
+    - git clone -q --depth 1 ${ESP_IDF_BRANCH} ${GITLAB_SSH_SERVER}/idf/esp-idf ${IDF_PATH}
+    - cd ${IDF_PATH}
+    - git submodule update --init
+    - source add_path.sh
+    - cd ${IDF_PATH}/examples/get-started/hello_world
+    - idf.py build
+
+.esp32-rpi-test:
+  extends: .test_arm_rpi
+  dependencies:
+    - esp32_lin_armel
+  variables:
+    CONF_TARGET: "xtensa-esp32-elf"
+    IDF_TARGET: "esp32"
+
+.esp32s2-rpi-test:
+  extends: .test_arm_rpi
+  dependencies:
+    - esp32s2_lin_armel
+  variables:
+    CONF_TARGET: "xtensa-esp32s2-elf"
+    IDF_TARGET: "esp32s2beta"
+
+.template_compiler_tests:
+  stage: test
+  tags: [ "build", "amd64" ]
+  image: $CI_DOCKER_REGISTRY/compiler-testsuite:1
+  artifacts:
+    when: always
+    paths:
+      - esp-compiler-tests/*/*.log
+      - esp-compiler-tests/*/*.elf
+  variables:
+    GIT_STRATEGY: none
+    PLATFORM_NAME: "linux-amd64"
+  after_script:
+    - source citools/import_functions
+    - cit_rm ${CONF_TARGET}
+  script:
+    - ARCHIVE_NAME=$(cat dist/file_${PLATFORM_NAME}_${CONF_TARGET})
+    - ${UNARCHIVE_TOOL} dist/${ARCHIVE_NAME}
+    - ./${CONF_TARGET}/bin/${CONF_TARGET}-gcc -v
+    - export PATH="${CI_PROJECT_DIR}/${CONF_TARGET}/bin:${PATH}"
+
+    - test -n "${ESP_COMPILER_TESTS_BRANCH:-}" || exit 1
+    - git clone -q --depth 1 -b ${ESP_COMPILER_TESTS_BRANCH} ${GITLAB_SSH_SERVER}/idf/esp-compiler-tests.git
+    - cd esp-compiler-tests
+    - source ${CONF_TARGET}-profile
+    - ./run-all.sh
+
+esp32-compiler-tests:
+  extends: .template_compiler_tests
+  dependencies:
+    - esp32_lin_amd64
+  variables:
+    CONF_TARGET: "xtensa-esp32-elf"
+
+esp32s2-compiler-tests:
+  extends: .template_compiler_tests
+  dependencies:
+    - esp32s2_lin_amd64
+  variables:
+    CONF_TARGET: "xtensa-esp32s2-elf"
+
+esp32s3-compiler-tests:
+  extends: .template_compiler_tests
+  dependencies:
+    - esp32s3_lin_amd64
+  variables:
+    CONF_TARGET: "xtensa-esp32s3-elf"
+
+riscv32-compiler-tests:
+  extends: .template_compiler_tests
+  dependencies:
+    - riscv32_esp_lin_amd64
+  variables:
+    CONF_TARGET: "riscv32-esp-elf"
+
+.native_win64_tools_test_template:
+  stage: test
+  tags: [ "windows", "powershell" ]
+  variables:
+    GIT_STRATEGY: none
+    PLATFORM_NAME: "win64"
+  before_script: []
+  after_script:
+    - Remove-Item -Recurse -Force ${CI_PROJECT_DIR}\*
+  script:
+    - $ARCHIVE_NAME=$(cat "dist\file_${PLATFORM_NAME}_${CONF_TARGET}")
+    - Expand-Archive -DestinationPATH . "dist\$ARCHIVE_NAME"
+    - $env:PATH = "${CI_PROJECT_DIR}\${CONF_TARGET}\bin;" + $env:PATH
+    - Push-Location esp-compiler-tests\tools
+    - .\run.ps1
+    - Pop-Location
+
+# tools test win64
+
+native_win64_tools_test_esp32:
+  extends: .native_win64_tools_test_template
+  needs:
+    - job: prep_tests
+      artifacts: true
+    - job: esp32_win64
+      artifacts: true
+  variables:
+    CONF_TARGET: "xtensa-esp32-elf"
+
+native_win64_tools_test_esp32s2:
+  extends: .native_win64_tools_test_template
+  needs:
+    - job: prep_tests
+      artifacts: true
+    - job: esp32s2_win64
+      artifacts: true
+  variables:
+    CONF_TARGET: "xtensa-esp32s2-elf"
+
+native_win64_tools_test_esp32s3:
+  extends: .native_win64_tools_test_template
+  needs:
+    - job: prep_tests
+      artifacts: true
+    - job: esp32s3_win64
+      artifacts: true
+  variables:
+    CONF_TARGET: "xtensa-esp32s3-elf"
+
+native_win64_tools_test_riscv32:
+  extends: .native_win64_tools_test_template
+  needs:
+    - job: prep_tests
+      artifacts: true
+    - job: riscv32_esp_win64
+      artifacts: true
+  variables:
+    CONF_TARGET: "riscv32-esp-elf"
+
+# tools test win32
+
+native_win32_tools_test_esp32:
+  extends: .native_win64_tools_test_template
+  needs:
+    - job: prep_tests
+      artifacts: true
+    - job: esp32_win
+      artifacts: true
+  variables:
+    CONF_TARGET: "xtensa-esp32-elf"
+    PLATFORM_NAME: "win32"
+
+native_win32_tools_test_esp32s2:
+  extends: .native_win64_tools_test_template
+  needs:
+    - job: prep_tests
+      artifacts: true
+    - job: esp32s2_win
+      artifacts: true
+  variables:
+    CONF_TARGET: "xtensa-esp32s2-elf"
+    PLATFORM_NAME: "win32"
+
+native_win32_tools_test_esp32s3:
+  extends: .native_win64_tools_test_template
+  needs:
+    - job: prep_tests
+      artifacts: true
+    - job: esp32s3_win
+      artifacts: true
+  variables:
+    CONF_TARGET: "xtensa-esp32s3-elf"
+    PLATFORM_NAME: "win32"
+
+native_win32_tools_test_riscv32:
+  extends: .native_win64_tools_test_template
+  needs:
+    - job: prep_tests
+      artifacts: true
+    - job: riscv32_esp_win
+      artifacts: true
+  variables:
+    CONF_TARGET: "riscv32-esp-elf"
+    PLATFORM_NAME: "win32"
+
+upload_to_http:
+  stage: private_deploy
+  when: manual
+  allow_failure: true
+  tags: [ "deploy", "shiny" ]
+  variables:
+    # force the fetch strategy to clean a working dir
+    GIT_STRATEGY: fetch
+    CTNG_ESP_HELPERS_BRANCH: "-b master"
+  before_script:
+    - *use_ci_tools
+  script:
+    - cit_add_ssh_key "${HTTP_UPLOAD_KEY}"
+    # List of archives in dist/
+    - FILES=$(find dist -name file_\* -exec cat {} \+)
+    - pushd dist
+    - scp ${FILES} ${HTTP_UPLOAD_DIR}
+    # Show download links
+    - echo -e "\nArchives were published there:\n\n$(for n in ${FILES}; do echo "${HTTP_PUBLIC_DIR}/${n}"; done)\n"
+    - popd
+    # Show checksums
+    - cit_add_ssh_key "${GITLAB_KEY}"
+    - git clone -q --depth 1 ${CTNG_ESP_HELPERS_BRANCH} ${GITLAB_SSH_SERVER}/idf/ctng-esp-helpers.git
+    - pushd dist
+    - ../ctng-esp-helpers/print_all_checksum_json.sh "${HTTP_PUBLIC_DIR}" "xtensa-esp32-elf xtensa-esp32s2-elf xtensa-esp32s3-elf riscv32-esp-elf" "linux-amd64 linux-arm64 linux-armel linux-armhf linux-i686 macos win32 win64" 2>err.log
+    - echo ""
+    - cat err.log
+    - popd
