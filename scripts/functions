@@ -2002,8 +2002,8 @@ CT_DoFetch()
         pkg_dir="${pkg_name}/${devel_vcs}-${unique_id}"
 
         CT_DoExecLog ALL mv "${pkg_name}${devel_subdir:+/${devel_subdir}}" "${basename}"
-        CT_DoExecLog ALL tar cjf "${CT_TARBALLS_DIR}/${basename}.tar.bz2" "${basename}"
-        CT_SaveLocal "${CT_TARBALLS_DIR}/${basename}.tar.bz2"
+        CT_DoExecLog ALL tar czf "${CT_TARBALLS_DIR}/${basename}.tar.gz" "${basename}"
+        CT_SaveLocal "${CT_TARBALLS_DIR}/${basename}.tar.gz"
         CT_Popd
         CT_DoExecLog ALL rm -rf "${tmp_dir}"
 
