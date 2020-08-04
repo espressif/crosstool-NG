@@ -2173,7 +2173,7 @@ CT_DoFetch()
         pkg_dir="${pkg_name}/${devel_vcs}-${unique_id}"
 
         CT_DoExecLog ALL mv "${pkg_name}${devel_subdir:+/${devel_subdir}}" "${basename}"
-        CT_DoExecLog ALL tar cjf "${CT_TARBALLS_DIR}/${basename}.tar.bz2" "${basename}"
+        CT_DoExecLog ALL tar czf "${CT_TARBALLS_DIR}/${basename}.tar.gz" "${basename}"
         if ! CT_SaveLocal "${CT_TARBALLS_DIR}/${basename}.tar.bz2" "${dir_name}"; then
             CT_Abort "${pkg_name}: failed to save to local storage"
         fi
