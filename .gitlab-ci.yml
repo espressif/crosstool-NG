@@ -142,23 +142,23 @@ ctng_lin_amd64:
   extends: .ctng_build
   image: $CI_DOCKER_REGISTRY/esp32-toolchain:2-05fa87be
 
-ctng_lin_i686:
+.ctng_lin_i686:
   extends: .ctng_build
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86:2-05fa87be
 
-ctng_lin_armel:
+.ctng_lin_armel:
   extends: .ctng_build
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-arm-cross
 
-ctng_macos:
+.ctng_macos:
   extends: .ctng_build
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-macos-cross
 
-ctng_win32:
+.ctng_win32:
   extends: .ctng_build
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-win-cross
 
-ctng_win64:
+.ctng_win64:
   extends: .ctng_build
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-win64-cross
 
@@ -195,7 +195,7 @@ esp32_lin_i686:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86:2-05fa87be
   dependencies:
-   - ctng_lin_i686
+   - ctng_lin_amd64
   variables:
     PLATFORM_NAME: "linux-i686"
     CONF_TARGET: "xtensa-esp32-elf"
@@ -204,7 +204,7 @@ esp32s2_lin_i686:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86:2-05fa87be
   dependencies:
-   - ctng_lin_i686
+   - ctng_lin_amd64
   variables:
     PLATFORM_NAME: "linux-i686"
     CONF_TARGET: "xtensa-esp32s2-elf"
@@ -213,7 +213,7 @@ esp32s2_lin_i686:
   extends: .build_template
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-macos-cross
   dependencies:
-   - ctng_macos  
+   - ctng_lin_amd64
   variables:
     PLATFORM_NAME: "macos"
     CONF_BUILD: "x86_64-linux-gnu"
@@ -242,7 +242,7 @@ esp32s2_macos:
   extends: .build_template
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-win-cross
   dependencies:
-   - ctng_win32
+   - ctng_lin_amd64
   variables:
     PLATFORM_NAME: "win32"
     CONF_BUILD: "x86_64-linux-gnu"
@@ -272,7 +272,7 @@ esp32s2_win:
   extends: .build_template
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-win64-cross
   dependencies:
-   - ctng_win64
+   - ctng_lin_amd64
   variables:
     PLATFORM_NAME: "win64"
     CONF_BUILD: "x86_64-linux-gnu"
@@ -302,7 +302,7 @@ esp32s2_win64:
   extends: .build_template
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-arm-cross
   dependencies:
-   - ctng_lin_armel
+   - ctng_lin_amd64
   variables:
     PLATFORM_NAME: "linux-armel"
     CONF_BUILD: "x86_64-linux-gnu"
