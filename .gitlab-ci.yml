@@ -1,4 +1,5 @@
 stages:
+  - ctng_build
   - build
   - private_deploy
   - test
@@ -12,6 +13,8 @@ variables:
   ARCHIVE_TOOL: "tar czvf" # 'v' we need to check the contents of the archive by log
   UNARCHIVE_TOOL: "tar xf"
   ARCHIVE_EXT: "tar.gz"
+
+  CTNG_DIST: "ctng-dist"
 
 .use_ci_tools: &use_ci_tools |
   curl -sSL ${CIT_LOADER_URL} -o cit_loader.sh && sh cit_loader.sh
@@ -39,9 +42,16 @@ before_script:
 # Configure crosstool-NG
 .build_ctng: &build_ctng |
   ./bootstrap
-  ./configure --enable-local
+  rm -rf "${CTNG_DIST}"
+  mkdir "${CTNG_DIST}"
+  ./configure --prefix="$(readlink -f ${CTNG_DIST})"
   make
-  ./ct-ng ${CONF_TARGET}
+  make install
+
+# run ct-ng
+.run_ctng: &run_ctng |
+  export PATH="$(readlink -f ${CTNG_DIST}):$PATH"
+  ct-ng ${CONF_TARGET}
 
 # ct-ng options common for all platforms
 .configure_common: &configure_common |
@@ -113,11 +123,50 @@ before_script:
     - git add -f dist build.log .config
     - git clean -d -x -f -f
 
+# TODO cache-key: ${CI_COMMIT_REF_SLUG}-macos
+.ctng_build:
+  extends: .build_template
+  stage: ctng_build
+  artifacts:
+    paths:
+      - ${CTNG_DIST}
+      - config.log
+    when: always
+    expire_in: 6 weeks
+  before_script: []
+  after_script: []
+  script:
+    - *build_ctng
+
+ctng_lin_amd64:
+  extends: .ctng_build
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain:2-05fa87be
+
+ctng_lin_i686:
+  extends: .ctng_build
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86:2-05fa87be
+
+ctng_lin_armel:
+  extends: .ctng_build
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain-arm-cross
+
+ctng_macos:
+  extends: .ctng_build
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain-macos-cross
+
+ctng_win32:
+  extends: .ctng_build
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain-win-cross
+
+ctng_win64:
+  extends: .ctng_build
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain-win64-cross
+
 .build_template_linux:
   extends: .build_template
   script:
     - *get_release_name
-    - *build_ctng
+    - *run_ctng
     - *configure_common
     - *configure_docker
     - *configure_linux_no_pie
@@ -127,6 +176,8 @@ before_script:
 esp32_lin_amd64:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain:2-05fa87be
+  dependencies:
+   - ctng_lin_amd64
   variables:
     PLATFORM_NAME: "linux-amd64"
     CONF_TARGET: "xtensa-esp32-elf"
@@ -134,6 +185,8 @@ esp32_lin_amd64:
 esp32s2_lin_amd64:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain:2-05fa87be
+  dependencies:
+   - ctng_lin_amd64
   variables:
     PLATFORM_NAME: "linux-amd64"
     CONF_TARGET: "xtensa-esp32s2-elf"
@@ -141,6 +194,8 @@ esp32s2_lin_amd64:
 esp32_lin_i686:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86:2-05fa87be
+  dependencies:
+   - ctng_lin_i686
   variables:
     PLATFORM_NAME: "linux-i686"
     CONF_TARGET: "xtensa-esp32-elf"
@@ -148,6 +203,8 @@ esp32_lin_i686:
 esp32s2_lin_i686:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86:2-05fa87be
+  dependencies:
+   - ctng_lin_i686
   variables:
     PLATFORM_NAME: "linux-i686"
     CONF_TARGET: "xtensa-esp32s2-elf"
@@ -155,6 +212,8 @@ esp32s2_lin_i686:
 .template_macos_cross:
   extends: .build_template
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-macos-cross
+  dependencies:
+   - ctng_macos  
   variables:
     PLATFORM_NAME: "macos"
     CONF_BUILD: "x86_64-linux-gnu"
@@ -162,7 +221,7 @@ esp32s2_lin_i686:
     MACOSX_DEPLOYMENT_TARGET: "10.8"
   script:
     - *get_release_name
-    - *build_ctng
+    - *run_ctng
     - *configure_common
     - *configure_docker
     - *configure_crossbuild
@@ -182,6 +241,8 @@ esp32s2_macos:
 .template_win_cross:
   extends: .build_template
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-win-cross
+  dependencies:
+   - ctng_win32
   variables:
     PLATFORM_NAME: "win32"
     CONF_BUILD: "x86_64-linux-gnu"
@@ -190,7 +251,7 @@ esp32s2_macos:
     ARCHIVE_EXT: "zip"
   script:
     - *get_release_name
-    - *build_ctng
+    - *run_ctng
     - *configure_common
     - *configure_docker
     - *configure_crossbuild
@@ -210,6 +271,8 @@ esp32s2_win:
 .template_win64_cross:
   extends: .build_template
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-win64-cross
+  dependencies:
+   - ctng_win64
   variables:
     PLATFORM_NAME: "win64"
     CONF_BUILD: "x86_64-linux-gnu"
@@ -218,7 +281,7 @@ esp32s2_win:
     ARCHIVE_EXT: "zip"
   script:
     - *get_release_name
-    - *build_ctng
+    - *run_ctng
     - *configure_common
     - *configure_docker
     - *configure_crossbuild
@@ -238,13 +301,15 @@ esp32s2_win64:
 .template_lin_armel_cross:
   extends: .build_template
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-arm-cross
+  dependencies:
+   - ctng_lin_armel
   variables:
     PLATFORM_NAME: "linux-armel"
     CONF_BUILD: "x86_64-linux-gnu"
     CONF_HOST: "arm-linux-gnueabi"
   script:
     - *get_release_name
-    - *build_ctng
+    - *run_ctng
     - *configure_common
     - *configure_docker
     - *configure_linux_no_pie
