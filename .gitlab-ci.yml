@@ -31,7 +31,7 @@ before_script:
 .get_release_name: &get_release_name |
   # using annotated tags
   REL_NUM=$(git describe --abbrev=6)
-  REL_SFX="gcc8_2_0"
+  REL_SFX="XC"
   REL_NAME=xtensa-esp32-elf-${REL_SFX}-${REL_NUM}-${PLATFORM_NAME}
   ARCHIVE_NAME=${REL_NAME}.${ARCHIVE_EXT}
   echo "PLATFORM_NAME: $PLATFORM_NAME"
@@ -103,6 +103,7 @@ before_script:
 # Common template for all builds
 .build_template: &build_template
   stage: build
+  tags: [ "build", "amd64" ]
   artifacts:
     paths:
       - .config
@@ -119,17 +120,20 @@ before_script:
   <<: *build_template
   script:
     - *get_release_name
-    - *build_ctng
-    - *configure_common
-    - *configure_docker
-    - *configure_linux_no_pie
-    - *build_toolchain
+
+    - git clone -q --depth 1 -b feature/xtensaconfig-dev --recurse-submodules -- ${GITLAB_SSH_SERVER}/idf/esp-xtensaconfig-lib.git esp-xtensaconfig-lib
+    - pushd esp-xtensaconfig-lib; make lib; ls -l; popd
+
+    - git clone -q --depth 1 -b feature/xtensaconfig-dev -- ${GITLAB_SSH_SERVER}/idf/ctng-esp-helpers.git helpers
+    - export XTENSACONFIG_LIB_BIN="${CI_PROJECT_DIR}/esp-xtensaconfig-lib"
+    - export CONF_TARGET=xtensa-esp32-elf
+    - ./helpers/build_ct_ci.sh
+
     - *package_toolchain
 
 .manual_action: &manual_action
   stage: manual_action
-  tags:
-    - deploy
+  tags: [ "deploy", "shiny" ]
   when: manual
   allow_failure: true
 
@@ -139,7 +143,7 @@ build_linux_amd64:
   variables:
     PLATFORM_NAME: "linux-amd64"
 
-build_linux_i686:
+.build_linux_i686:
   <<: *build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
   variables:
@@ -154,14 +158,18 @@ build_macos:
     MACOSX_DEPLOYMENT_TARGET: "10.8"
   script:
     - *get_release_name
-    - *build_ctng
-    - *configure_common
-    - *configure_docker
-    - *configure_crossbuild
-    - *build_toolchain
+
+    - git clone -q --depth 1 -b feature/xtensaconfig-dev --recurse-submodules -- ${GITLAB_SSH_SERVER}/idf/esp-xtensaconfig-lib.git esp-xtensaconfig-lib
+    - pushd esp-xtensaconfig-lib; make lib; ls -l; popd
+
+    - git clone -q --depth 1 -b feature/xtensaconfig-dev -- ${GITLAB_SSH_SERVER}/idf/ctng-esp-helpers.git helpers
+    - export XTENSACONFIG_LIB_BIN="${CI_PROJECT_DIR}/esp-xtensaconfig-lib"
+    - export CONF_TARGET=xtensa-esp32-elf
+    - ./helpers/build_ct_ci.sh
+
     - *package_toolchain
 
-build_windows:
+.build_windows:
   <<: *build_template
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-win-cross
   variables:
@@ -178,7 +186,7 @@ build_windows:
     - *build_toolchain
     - *package_toolchain
 
-build_linux_armel:
+.build_linux_armel:
   <<: *build_template
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-arm-cross
   variables:
@@ -200,7 +208,7 @@ build_linux_armel:
     - *build_toolchain
     - *package_toolchain
 
-test_arm_rpi:
+.test_arm_rpi:
   stage: test
   image: $CI_DOCKER_REGISTRY/rpi-esp-idf-env:1
   tags:
@@ -237,7 +245,7 @@ test_arm_rpi:
     - cd ${IDF_PATH}/examples/get-started/hello_world
     - idf.py build
 
-esp-tests:
+.esp-tests:
   stage: test
   image: $CI_DOCKER_REGISTRY/compiler-testsuite:1
   dependencies:
