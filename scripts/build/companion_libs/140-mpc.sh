@@ -111,29 +111,19 @@ do_mpc_backend() {
 
     #FIXME
 
-    CT_DoExecLog EXTRA cp -av \
-        /home/mak/e/p/dyn/multilib1/gcc-xtensa-dynconfig-plugin/*-{esp32s2,esp32,esp8266}.so \
-        "${prefix}/lib"
+    CT_DoExecLog EXTRA cp -av ${XTENSACONFIG_LIB_BIN}/*.so "${prefix}/lib"
 
 #TODO it doesn't work well, $gcc_version is not defined.
     CT_DoExecLog EXTRA mkdir -p "${prefix}/libexec/gcc/${CT_TARGET}/8.2.0/lib"
-    CT_DoExecLog EXTRA cp -av \
-        /home/mak/e/p/dyn/multilib1/gcc-xtensa-dynconfig-plugin/*-{esp32s2,esp32,esp8266}.so \
-        "${prefix}/libexec/gcc/${CT_TARGET}/8.2.0/lib"
+    CT_DoExecLog EXTRA cp -av ${XTENSACONFIG_LIB_BIN}/*.so "${prefix}/libexec/gcc/${CT_TARGET}/8.2.0/lib"
 
     CT_DoExecLog EXTRA mkdir -p "${prefix}/libexec/gcc/${CT_TARGET}/lib"
-    CT_DoExecLog EXTRA cp -av \
-        /home/mak/e/p/dyn/multilib1/gcc-xtensa-dynconfig-plugin/*-{esp32s2,esp32,esp8266}.so \
-        "${prefix}/libexec/gcc/${CT_TARGET}/lib"
+    CT_DoExecLog EXTRA cp -av ${XTENSACONFIG_LIB_BIN}/*.so "${prefix}/libexec/gcc/${CT_TARGET}/lib"
 
-    CT_DoExecLog EXTRA cp -av \
-        /home/mak/e/p/dyn/multilib1/gcc-xtensa-dynconfig-plugin/*-{esp32s2,esp32,esp8266}.so \
-        "${CT_PREFIX_DIR}/lib"
+    CT_DoExecLog EXTRA cp -av ${XTENSACONFIG_LIB_BIN}/*.so "${CT_PREFIX_DIR}/lib"
 
     CT_DoExecLog EXTRA mkdir -p "${CT_PREFIX_DIR}/${CT_TARGET}/lib"
-    CT_DoExecLog EXTRA cp -av \
-        /home/mak/e/p/dyn/multilib1/gcc-xtensa-dynconfig-plugin/*-{esp32s2,esp32,esp8266}.so \
-        "${CT_PREFIX_DIR}/${CT_TARGET}/lib"
+    CT_DoExecLog EXTRA cp -av ${XTENSACONFIG_LIB_BIN}/*.so "${CT_PREFIX_DIR}/${CT_TARGET}/lib"
 }
 
 fi # CT_MPC
