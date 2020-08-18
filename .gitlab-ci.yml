@@ -124,33 +124,33 @@ before_script:
     - *build_toolchain
     - *package_toolchain
 
-esp32_lin_amd64:
-  extends: .build_template_linux
-  image: $CI_DOCKER_REGISTRY/esp32-toolchain
-  variables:
-    PLATFORM_NAME: "linux-amd64"
-    CONF_TARGET: "xtensa-esp32-elf"
+# esp32_lin_amd64:
+#   extends: .build_template_linux
+#   image: $CI_DOCKER_REGISTRY/esp32-toolchain
+#   variables:
+#     PLATFORM_NAME: "linux-amd64"
+#     CONF_TARGET: "xtensa-esp32-elf"
 
-esp32s2_lin_amd64:
-  extends: .build_template_linux
-  image: $CI_DOCKER_REGISTRY/esp32-toolchain
-  variables:
-    PLATFORM_NAME: "linux-amd64"
-    CONF_TARGET: "xtensa-esp32s2-elf"
+# esp32s2_lin_amd64:
+#   extends: .build_template_linux
+#   image: $CI_DOCKER_REGISTRY/esp32-toolchain
+#   variables:
+#     PLATFORM_NAME: "linux-amd64"
+#     CONF_TARGET: "xtensa-esp32s2-elf"
 
-esp32s3betafpga_lin_amd64:
-  extends: .build_template_linux
-  image: $CI_DOCKER_REGISTRY/esp32-toolchain
-  variables:
-    PLATFORM_NAME: "linux-amd64"
-    CONF_TARGET: "xtensa-esp32s3betafpga-elf"
+# esp32s3betafpga_lin_amd64:
+#   extends: .build_template_linux
+#   image: $CI_DOCKER_REGISTRY/esp32-toolchain
+#   variables:
+#     PLATFORM_NAME: "linux-amd64"
+#     CONF_TARGET: "xtensa-esp32s3betafpga-elf"
 
-esp32s3beta_lin_amd64:
-  extends: .build_template_linux
-  image: $CI_DOCKER_REGISTRY/esp32-toolchain
-  variables:
-    PLATFORM_NAME: "linux-amd64"
-    CONF_TARGET: "xtensa-esp32s3beta-elf"
+# esp32s3beta_lin_amd64:
+#   extends: .build_template_linux
+#   image: $CI_DOCKER_REGISTRY/esp32-toolchain
+#   variables:
+#     PLATFORM_NAME: "linux-amd64"
+#     CONF_TARGET: "xtensa-esp32s3beta-elf"
 
 esp32s3_lin_amd64:
   extends: .build_template_linux
@@ -190,25 +190,25 @@ esp32s3_lin_amd64:
     - *build_toolchain
     - *package_toolchain
 
-esp32_macos:
-  extends: .template_macos_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32-elf"
+# esp32_macos:
+#   extends: .template_macos_cross
+#   variables:
+#     CONF_TARGET: "xtensa-esp32-elf"
 
-esp32s2_macos:
-  extends: .template_macos_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32s2-elf"
+# esp32s2_macos:
+#   extends: .template_macos_cross
+#   variables:
+#     CONF_TARGET: "xtensa-esp32s2-elf"
 
-esp32s3betafpga_macos:
-  extends: .template_macos_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32s3betafpga-elf"
+# esp32s3betafpga_macos:
+#   extends: .template_macos_cross
+#   variables:
+#     CONF_TARGET: "xtensa-esp32s3betafpga-elf"
 
-esp32s3beta_macos:
-  extends: .template_macos_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32s3beta-elf"
+# esp32s3beta_macos:
+#   extends: .template_macos_cross
+#   variables:
+#     CONF_TARGET: "xtensa-esp32s3beta-elf"
 
 esp32s3_macos:
   extends: .template_macos_cross
@@ -233,25 +233,25 @@ esp32s3_macos:
     - *build_toolchain
     - *package_toolchain
 
-.esp32_win:
-  extends: .template_win_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32-elf"
+# .esp32_win:
+#   extends: .template_win_cross
+#   variables:
+#     CONF_TARGET: "xtensa-esp32-elf"
 
-.esp32s2_win:
-  extends: .template_win_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32s2-elf"
+# .esp32s2_win:
+#   extends: .template_win_cross
+#   variables:
+#     CONF_TARGET: "xtensa-esp32s2-elf"
 
-esp32s3betafpga_win:
-  extends: .template_win_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32s3betafpga-elf"
+# esp32s3betafpga_win:
+#   extends: .template_win_cross
+#   variables:
+#     CONF_TARGET: "xtensa-esp32s3betafpga-elf"
 
-esp32s3beta_win:
-  extends: .template_win_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32s3beta-elf"
+# esp32s3beta_win:
+#   extends: .template_win_cross
+#   variables:
+#     CONF_TARGET: "xtensa-esp32s3beta-elf"
 
 esp32s3_win:
   extends: .template_win_cross
@@ -281,25 +281,25 @@ esp32s3_win:
     - *build_toolchain
     - *package_toolchain
 
-.esp32_lin_armel:
-  extends: .template_lin_armel_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32-elf"
+# .esp32_lin_armel:
+#   extends: .template_lin_armel_cross
+#   variables:
+#     CONF_TARGET: "xtensa-esp32-elf"
 
-.esp32s2_lin_armel:
-  extends: .template_lin_armel_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32s2-elf"
+# .esp32s2_lin_armel:
+#   extends: .template_lin_armel_cross
+#   variables:
+#     CONF_TARGET: "xtensa-esp32s2-elf"
 
-esp32s3betafpga_lin_armel:
-  extends: .template_lin_armel_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32s3betafpga-elf"
+# esp32s3betafpga_lin_armel:
+#   extends: .template_lin_armel_cross
+#   variables:
+#     CONF_TARGET: "xtensa-esp32s3betafpga-elf"
 
-esp32s3beta_lin_armel:
-  extends: .template_lin_armel_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32s3beta-elf"
+# esp32s3beta_lin_armel:
+#   extends: .template_lin_armel_cross
+#   variables:
+#     CONF_TARGET: "xtensa-esp32s3beta-elf"
 
 esp32s3_lin_armel:
   extends: .template_lin_armel_cross
@@ -415,5 +415,5 @@ upload_to_http:
     - cit_add_ssh_key "${GITLAB_KEY}"
     - git clone -q --depth 1 ${CTNG_ESP_HELPERS_BRANCH} ${GITLAB_SSH_SERVER}/idf/ctng-esp-helpers.git
     - pushd dist
-    - ../ctng-esp-helpers/print_all_checksum_json.sh "${HTTP_PUBLIC_DIR}" "xtensa-esp32-elf xtensa-esp32s2-elf" "linux-amd64 linux-armel linux-i686 macos win32"
+    - ../ctng-esp-helpers/print_all_checksum_json.sh "${HTTP_PUBLIC_DIR}" "xtensa-esp32s3-elf" "linux-amd64 linux-armel linux-i686 macos win32"
     - popd
