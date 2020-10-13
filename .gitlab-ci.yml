@@ -212,7 +212,7 @@ riscv32_esp_macos:
   variables:
     CONF_TARGET: "riscv32-esp-elf"
 
-    esp32s3betafpga_macos:
+esp32s3betafpga_macos:
   extends: .template_macos_cross
   variables:
     CONF_TARGET: "xtensa-esp32s3betafpga-elf"
