@@ -111,6 +111,7 @@ do_mpc_backend() {
 
     #FIXME
 
+    CT_DoLog EXTRA "Copying xtensaconfig libs"
     CT_DoExecLog EXTRA cp -av ${XTENSACONFIG_LIB_BIN}/*.so "${prefix}/lib"
 
 #TODO it doesn't work well, $gcc_version is not defined.
@@ -124,6 +125,9 @@ do_mpc_backend() {
 
     CT_DoExecLog EXTRA mkdir -p "${CT_PREFIX_DIR}/${CT_TARGET}/lib"
     CT_DoExecLog EXTRA cp -av ${XTENSACONFIG_LIB_BIN}/*.so "${CT_PREFIX_DIR}/${CT_TARGET}/lib"
+
+    CT_DoExecLog EXTRA mkdir -p "${CT_PREFIX_DIR}/libexec/gcc/${CT_TARGET}/lib"
+    CT_DoExecLog EXTRA cp -av ${XTENSACONFIG_LIB_BIN}/*.so "${CT_PREFIX_DIR}/libexec/gcc/${CT_TARGET}/lib"
 }
 
 fi # CT_MPC
