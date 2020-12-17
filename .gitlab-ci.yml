@@ -121,8 +121,8 @@ before_script:
   script:
     - *get_release_name
 
-    - git clone -q --depth 1 -b feature/xtensaconfig-dev --recurse-submodules -- ${GITLAB_SSH_SERVER}/idf/esp-xtensaconfig-lib.git esp-xtensaconfig-lib
-    - pushd esp-xtensaconfig-lib; make lib; ls -l; popd
+    - git clone -q --depth 1 -b feature/xtensaconfig-cmake --recurse-submodules -- ${GITLAB_SSH_SERVER}/idf/esp-xtensaconfig-lib.git esp-xtensaconfig-lib
+    - pushd esp-xtensaconfig-lib; cmake .; make; ls -l; popd
 
     - git clone -q --depth 1 -b feature/xtensaconfig-dev -- ${GITLAB_SSH_SERVER}/idf/ctng-esp-helpers.git helpers
     - export XTENSACONFIG_LIB_BIN="${CI_PROJECT_DIR}/esp-xtensaconfig-lib"
