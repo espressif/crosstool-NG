@@ -9,7 +9,7 @@ variables:
   # GIT_STRATEGY - use option from "CI / CD Settings" - "General pipelines"
   GIT_SUBMODULE_STRATEGY: normal
 
-  ARCHIVE_TOOL: "tar czvf" # 'v' we need to check the contents of the archive by log
+  ARCHIVE_TOOL: "tar czf"
   UNARCHIVE_TOOL: "tar xf"
   ARCHIVE_EXT: "tar.gz"
 
@@ -28,7 +28,7 @@ before_script:
 .get_release_name: &get_release_name |
   # using annotated tags
   REL_NUM=$(git describe --abbrev=7)
-  REL_SFX="gcc8_4_0"
+  REL_SFX="XC-gcc8_4_0"
   REL_NAME=${CONF_TARGET}-${REL_SFX}-${REL_NUM}-${PLATFORM_NAME}
   ARCHIVE_NAME=${REL_NAME}.${ARCHIVE_EXT}
   echo "PLATFORM_NAME: $PLATFORM_NAME"
@@ -87,6 +87,14 @@ before_script:
   ./ct-ng oldconfig
   ./ct-ng build
 
+.build_with_helpers: &build_with_helpers |
+  git clone -q --depth 1 -b feature/xtensaconfig-cmake --recurse-submodules -- ${GITLAB_SSH_SERVER}/idf/esp-xtensaconfig-lib.git esp-xtensaconfig-lib
+  pushd esp-xtensaconfig-lib; cmake .; make; ls -l; popd
+  git clone -q --depth 1 -b feature/xtensaconfig-dev -- ${GITLAB_SSH_SERVER}/idf/ctng-esp-helpers.git helpers
+  export XTENSACONFIG_LIB_BIN="${CI_PROJECT_DIR}/esp-xtensaconfig-lib"
+  export CONF_TARGET=xtensa-esp32-elf
+  ./helpers/build_ct_ci.sh
+
 # Package the toolchain
 .package_toolchain: &package_toolchain |
   mkdir -p dist
@@ -120,11 +128,7 @@ before_script:
   extends: .build_template
   script:
     - *get_release_name
-    - *build_ctng
-    - *configure_common
-    - *configure_docker
-    - *configure_linux_no_pie
-    - *build_toolchain
+    - *build_with_helpers
     - *package_toolchain
 
 esp32_lin_amd64:
@@ -134,54 +138,12 @@ esp32_lin_amd64:
     PLATFORM_NAME: "linux-amd64"
     CONF_TARGET: "xtensa-esp32-elf"
 
-esp32s2_lin_amd64:
-  extends: .build_template_linux
-  image: $CI_DOCKER_REGISTRY/esp32-toolchain
-  variables:
-    PLATFORM_NAME: "linux-amd64"
-    CONF_TARGET: "xtensa-esp32s2-elf"
-
-esp32s3_lin_amd64:
-  extends: .build_template_linux
-  image: $CI_DOCKER_REGISTRY/esp32-toolchain
-  variables:
-    PLATFORM_NAME: "linux-amd64"
-    CONF_TARGET: "xtensa-esp32s3-elf"
-
-riscv32_esp_lin_amd64:
-  extends: .build_template_linux
-  image: $CI_DOCKER_REGISTRY/esp32-toolchain
-  variables:
-    PLATFORM_NAME: "linux-amd64"
-    CONF_TARGET: "riscv32-esp-elf"
-
 esp32_lin_i686:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
   variables:
     PLATFORM_NAME: "linux-i686"
     CONF_TARGET: "xtensa-esp32-elf"
-
-esp32s2_lin_i686:
-  extends: .build_template_linux
-  image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
-  variables:
-    PLATFORM_NAME: "linux-i686"
-    CONF_TARGET: "xtensa-esp32s2-elf"
-
-esp32s3_lin_i686:
-  extends: .build_template_linux
-  image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
-  variables:
-    PLATFORM_NAME: "linux-i686"
-    CONF_TARGET: "xtensa-esp32s3-elf"
-
-riscv32_esp_lin_i686:
-  extends: .build_template_linux
-  image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
-  variables:
-    PLATFORM_NAME: "linux-i686"
-    CONF_TARGET: "riscv32-esp-elf"
 
 .template_macos_cross:
   extends: .build_template
@@ -193,32 +155,13 @@ riscv32_esp_lin_i686:
     MACOSX_DEPLOYMENT_TARGET: "10.8"
   script:
     - *get_release_name
-    - *build_ctng
-    - *configure_common
-    - *configure_docker
-    - *configure_crossbuild
-    - *build_toolchain
+    - *build_with_helpers
     - *package_toolchain
 
 esp32_macos:
   extends: .template_macos_cross
   variables:
     CONF_TARGET: "xtensa-esp32-elf"
-
-esp32s2_macos:
-  extends: .template_macos_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32s2-elf"
-
-esp32s3_macos:
-  extends: .template_macos_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32s3-elf"
-
-riscv32_esp_macos:
-  extends: .template_macos_cross
-  variables:
-    CONF_TARGET: "riscv32-esp-elf"
 
 .template_win_cross:
   extends: .build_template
@@ -231,32 +174,13 @@ riscv32_esp_macos:
     ARCHIVE_EXT: "zip"
   script:
     - *get_release_name
-    - *build_ctng
-    - *configure_common
-    - *configure_docker
-    - *configure_crossbuild
-    - *build_toolchain
+    - *build_with_helpers
     - *package_toolchain
 
 esp32_win:
   extends: .template_win_cross
   variables:
     CONF_TARGET: "xtensa-esp32-elf"
-
-esp32s2_win:
-  extends: .template_win_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32s2-elf"
-
-esp32s3_win:
-  extends: .template_win_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32s3-elf"
-
-riscv32_esp_win:
-  extends: .template_win_cross
-  variables:
-    CONF_TARGET: "riscv32-esp-elf"
 
 .template_win64_cross:
   extends: .build_template
@@ -269,32 +193,13 @@ riscv32_esp_win:
     ARCHIVE_EXT: "zip"
   script:
     - *get_release_name
-    - *build_ctng
-    - *configure_common
-    - *configure_docker
-    - *configure_crossbuild
-    - *build_toolchain
+    - *build_with_helpers
     - *package_toolchain
 
 esp32_win64:
   extends: .template_win64_cross
   variables:
     CONF_TARGET: "xtensa-esp32-elf"
-
-esp32s2_win64:
-  extends: .template_win64_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32s2-elf"
-
-esp32s3_win64:
-  extends: .template_win64_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32s3-elf"
-
-riscv32_esp_win64:
-  extends: .template_win64_cross
-  variables:
-    CONF_TARGET: "riscv32-esp-elf"
 
 .template_lin_arm_cross:
   extends: .build_template
@@ -303,12 +208,7 @@ riscv32_esp_win64:
     CONF_BUILD: "x86_64-linux-gnu"
   script:
     - *get_release_name
-    - *build_ctng
-    - *configure_common
-    - *configure_docker
-    - *configure_linux_no_pie
-    - *configure_crossbuild
-    - *build_toolchain
+    - *build_with_helpers
     - *package_toolchain
 
 esp32_lin_armel:
@@ -318,24 +218,10 @@ esp32_lin_armel:
     CONF_TARGET: "xtensa-esp32-elf"
     CONF_HOST: "arm-linux-gnueabi"
 
-esp32s2_lin_armel:
-  extends: .template_lin_arm_cross
-  variables:
     PLATFORM_NAME: "linux-armel"
-    CONF_TARGET: "xtensa-esp32s2-elf"
     CONF_HOST: "arm-linux-gnueabi"
-
-esp32s3_lin_armel:
-  extends: .template_lin_arm_cross
-  variables:
     PLATFORM_NAME: "linux-armel"
-    CONF_TARGET: "xtensa-esp32s3-elf"
     CONF_HOST: "arm-linux-gnueabi"
-
-riscv32_esp_lin_armel:
-  extends: .template_lin_arm_cross
-  variables:
-    PLATFORM_NAME: "linux-armel"
     CONF_TARGET: "riscv32-esp-elf"
     CONF_HOST: "arm-linux-gnueabi"
 
@@ -398,7 +284,6 @@ riscv32_esp_lin_arm64:
     PLATFORM_NAME: "linux-arm64"
     CONF_TARGET: "riscv32-esp-elf"
     CONF_HOST: "aarch64-linux-gnu"
-
 .test_arm_rpi:
   stage: test
   image: $CI_DOCKER_REGISTRY/rpi-esp-idf-env:1
@@ -443,6 +328,7 @@ riscv32_esp_lin_arm64:
     CONF_TARGET: "xtensa-esp32s2-elf"
     IDF_TARGET: "esp32s2beta"
 
+.esp8266-rpi-test:
 .template_compiler_tests:
   stage: test
   tags: [ "build", "amd64" ]
@@ -455,7 +341,7 @@ riscv32_esp_lin_arm64:
   variables:
     GIT_STRATEGY: none
     PLATFORM_NAME: "linux-amd64"
-    ESP_COMPILER_TESTS_BRANCH: "-b master"
+    ESP_COMPILER_TESTS_BRANCH: "-b feature/xtensaconfig-rebase"
   after_script:
     - source citools/import_functions
     - cit_rm ${CONF_TARGET}
@@ -467,7 +353,7 @@ riscv32_esp_lin_arm64:
 
     - git clone -q --depth 1 $ESP_COMPILER_TESTS_BRANCH ${GITLAB_SSH_SERVER}/idf/esp-compiler-tests.git
     - cd esp-compiler-tests
-    - source ${CONF_TARGET}-profile
+    - source ${TARGET_PROFILE}
     - ./run-all.sh
 
 esp32-compiler-tests:
@@ -476,27 +362,31 @@ esp32-compiler-tests:
     - esp32_lin_amd64
   variables:
     CONF_TARGET: "xtensa-esp32-elf"
+    TARGET_PROFILE: "xc-esp32-profile"
 
 esp32s2-compiler-tests:
   extends: .template_compiler_tests
   dependencies:
-    - esp32s2_lin_amd64
+    - esp32_lin_amd64
   variables:
-    CONF_TARGET: "xtensa-esp32s2-elf"
+    CONF_TARGET: "xtensa-esp32-elf"
+    TARGET_PROFILE: "xc-esp32s2-profile"
 
-esp32s3-compiler-tests:
+.esp32s3-compiler-tests:
   extends: .template_compiler_tests
   dependencies:
-    - esp32s3_lin_amd64
+    - esp32_lin_amd64
   variables:
-    CONF_TARGET: "xtensa-esp32s3-elf"
+    CONF_TARGET: "xtensa-esp32-elf"
+    TARGET_PROFILE: "xc-esp32s3-profile"
 
 riscv32-compiler-tests:
   extends: .template_compiler_tests
   dependencies:
-    - riscv32_esp_lin_amd64
+    - esp32_lin_amd64
   variables:
-    CONF_TARGET: "riscv32-esp-elf"
+    CONF_TARGET: "xtensa-esp32-elf"
+    TARGET_PROFILE: "xc-esp8266-profile"
 
 upload_to_http:
   stage: private_deploy
@@ -522,7 +412,7 @@ upload_to_http:
     - cit_add_ssh_key "${GITLAB_KEY}"
     - git clone -q --depth 1 ${CTNG_ESP_HELPERS_BRANCH} ${GITLAB_SSH_SERVER}/idf/ctng-esp-helpers.git
     - pushd dist
-    - ../ctng-esp-helpers/print_all_checksum_json.sh "${HTTP_PUBLIC_DIR}" "xtensa-esp32-elf xtensa-esp32s2-elf xtensa-esp32s3-elf riscv32-esp-elf" "linux-amd64 linux-arm64 linux-armel linux-armhf linux-i686 macos win32 win64" 2>err.log
+    - ../ctng-esp-helpers/print_all_checksum_json.sh "${HTTP_PUBLIC_DIR}" "xtensa-esp32-elf" "linux-amd64 linux-armel linux-i686 macos win32 win64"
     - echo ""
     - cat err.log
     - popd
