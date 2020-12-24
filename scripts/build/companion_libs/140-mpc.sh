@@ -115,8 +115,8 @@ do_mpc_backend() {
     CT_DoExecLog EXTRA cp -av ${XTENSACONFIG_LIB_BIN}/*.so "${prefix}/lib"
 
 #TODO it doesn't work well, $gcc_version is not defined.
-    CT_DoExecLog EXTRA mkdir -p "${prefix}/libexec/gcc/${CT_TARGET}/8.2.0/lib"
-    CT_DoExecLog EXTRA cp -av ${XTENSACONFIG_LIB_BIN}/*.so "${prefix}/libexec/gcc/${CT_TARGET}/8.2.0/lib"
+    CT_DoExecLog EXTRA mkdir -p "${prefix}/libexec/gcc/${CT_TARGET}/8.4.0/lib"
+    CT_DoExecLog EXTRA cp -av ${XTENSACONFIG_LIB_BIN}/*.so "${prefix}/libexec/gcc/${CT_TARGET}/8.4.0/lib"
 
     CT_DoExecLog EXTRA mkdir -p "${prefix}/libexec/gcc/${CT_TARGET}/lib"
     CT_DoExecLog EXTRA cp -av ${XTENSACONFIG_LIB_BIN}/*.so "${prefix}/libexec/gcc/${CT_TARGET}/lib"
