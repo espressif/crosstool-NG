@@ -89,7 +89,9 @@ before_script:
 
 .build_with_helpers: &build_with_helpers |
   git clone -q --depth 1 -b feature/xtensaconfig-cmake --recurse-submodules -- ${GITLAB_SSH_SERVER}/idf/esp-xtensaconfig-lib.git esp-xtensaconfig-lib
+  export CC=${EXTRA_CC:-"gcc"}
   pushd esp-xtensaconfig-lib; cmake .; make; ls -l; popd
+  unset CC
   git clone -q --depth 1 -b feature/xtensaconfig-dev -- ${GITLAB_SSH_SERVER}/idf/ctng-esp-helpers.git helpers
   export XTENSACONFIG_LIB_BIN="${CI_PROJECT_DIR}/esp-xtensaconfig-lib"
   export CONF_TARGET=xtensa-esp32-elf
@@ -152,6 +154,7 @@ esp32_lin_i686:
     PLATFORM_NAME: "macos"
     CONF_BUILD: "x86_64-linux-gnu"
     CONF_HOST: "x86_64-apple-darwin12"
+    EXTRA_CC: "x86_64-apple-darwin12-gcc"
     MACOSX_DEPLOYMENT_TARGET: "10.8"
   script:
     - *get_release_name
@@ -170,6 +173,7 @@ esp32_macos:
     PLATFORM_NAME: "win32"
     CONF_BUILD: "x86_64-linux-gnu"
     CONF_HOST: "i686-w64-mingw32"
+    EXTRA_CC: "i686-w64-mingw32-gcc"
     ARCHIVE_TOOL: "zip -r"
     ARCHIVE_EXT: "zip"
   script:
@@ -189,6 +193,7 @@ esp32_win:
     PLATFORM_NAME: "win64"
     CONF_BUILD: "x86_64-linux-gnu"
     CONF_HOST: "x86_64-w64-mingw32"
+    EXTRA_CC: "x86_64-w64-mingw32-gcc"
     ARCHIVE_TOOL: "zip -r"
     ARCHIVE_EXT: "zip"
   script:
@@ -211,7 +216,7 @@ esp32_win64:
     - *build_with_helpers
     - *package_toolchain
 
-esp32_lin_armel:
+.esp32_lin_armel:
   extends: .template_lin_arm_cross
   variables:
     PLATFORM_NAME: "linux-armel"
@@ -284,13 +289,25 @@ riscv32_esp_lin_arm64:
     PLATFORM_NAME: "linux-arm64"
     CONF_TARGET: "riscv32-esp-elf"
     CONF_HOST: "aarch64-linux-gnu"
+    CONF_HOST: "arm-linux-gnueabihf"
+    EXTRA_CC: "arm-linux-gnueabihf-gcc"
+  script:
+    - *get_release_name
+    - *build_with_helpers
+    - *package_toolchain
+
+esp32_lin_armhf:
+  extends: .template_lin_armhf_cross
+  variables:
+    CONF_TARGET: "xtensa-esp32-elf"
+
 .test_arm_rpi:
   stage: test
   image: $CI_DOCKER_REGISTRY/rpi-esp-idf-env:1
   tags: [ "arm" ]
   variables:
     GIT_STRATEGY: none
-    PLATFORM_NAME: "linux-armel"
+    PLATFORM_NAME: "linux-armhf"
     IDF_PATH: "${CI_PROJECT_DIR}/esp-idf"
     ESP_IDF_BRANCH: "-b master"
   after_script:
@@ -315,7 +332,7 @@ riscv32_esp_lin_arm64:
 .esp32-rpi-test:
   extends: .test_arm_rpi
   dependencies:
-    - esp32_lin_armel
+    - esp32_lin_armhf
   variables:
     CONF_TARGET: "xtensa-esp32-elf"
     IDF_TARGET: "esp32"
@@ -323,7 +340,7 @@ riscv32_esp_lin_arm64:
 .esp32s2-rpi-test:
   extends: .test_arm_rpi
   dependencies:
-    - esp32s2_lin_armel
+    - esp32s2_lin_armhf
   variables:
     CONF_TARGET: "xtensa-esp32s2-elf"
     IDF_TARGET: "esp32s2beta"
@@ -412,7 +429,7 @@ upload_to_http:
     - cit_add_ssh_key "${GITLAB_KEY}"
     - git clone -q --depth 1 ${CTNG_ESP_HELPERS_BRANCH} ${GITLAB_SSH_SERVER}/idf/ctng-esp-helpers.git
     - pushd dist
-    - ../ctng-esp-helpers/print_all_checksum_json.sh "${HTTP_PUBLIC_DIR}" "xtensa-esp32-elf" "linux-amd64 linux-armel linux-i686 macos win32 win64"
+    - ../ctng-esp-helpers/print_all_checksum_json.sh "${HTTP_PUBLIC_DIR}" "xtensa-esp32-elf" "linux-amd64 linux-armhf linux-i686 macos win32 win64"
     - echo ""
     - cat err.log
     - popd
