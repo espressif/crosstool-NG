@@ -112,26 +112,31 @@ do_mpc_backend() {
     #FIXME
 
     CT_DoLog EXTRA "Copying xtensaconfig libs 2"
-    CT_DoExecLog EXTRA cp -av ${XTENSACONFIG_LIB_BIN}/*.so "${prefix}/lib"
+    CT_DoExecLog EXTRA cp -av ${XTENSACONFIG_LIB_BIN_HOST}/*.so "${prefix}/lib"
 
 #TODO it doesn't work well, $gcc_version is not defined.
+    CT_DoLog EXTRA "copy 2"
     CT_DoExecLog EXTRA mkdir -p "${prefix}/libexec/gcc/${CT_TARGET}/8.4.0/lib"
-    CT_DoExecLog EXTRA cp -av ${XTENSACONFIG_LIB_BIN}/*.so "${prefix}/libexec/gcc/${CT_TARGET}/8.4.0/lib"
+    CT_DoExecLog EXTRA cp -av ${XTENSACONFIG_LIB_BIN_HOST}/*.so "${prefix}/libexec/gcc/${CT_TARGET}/8.4.0/lib"
 
+    CT_DoLog EXTRA "copy 3"
     CT_DoExecLog EXTRA mkdir -p "${prefix}/libexec/gcc/${CT_TARGET}/lib"
-    CT_DoExecLog EXTRA cp -av ${XTENSACONFIG_LIB_BIN}/*.so "${prefix}/libexec/gcc/${CT_TARGET}/lib"
+    CT_DoExecLog EXTRA cp -av ${XTENSACONFIG_LIB_BIN_BUILD}/*.so "${prefix}/libexec/gcc/${CT_TARGET}/lib"
 
-    CT_DoExecLog EXTRA cp -av ${XTENSACONFIG_LIB_BIN}/*.so "${CT_PREFIX_DIR}/lib"
+    CT_DoLog EXTRA "copy 4"
+    CT_DoExecLog EXTRA cp -av ${XTENSACONFIG_LIB_BIN_HOST}/*.so "${CT_PREFIX_DIR}/lib"
 
+    CT_DoLog EXTRA "copy 5"
     CT_DoExecLog EXTRA mkdir -p "${CT_PREFIX_DIR}/${CT_TARGET}/lib"
-    CT_DoExecLog EXTRA cp -av ${XTENSACONFIG_LIB_BIN}/*.so "${CT_PREFIX_DIR}/${CT_TARGET}/lib"
+    CT_DoExecLog EXTRA cp -av ${XTENSACONFIG_LIB_BIN_HOST}/*.so "${CT_PREFIX_DIR}/${CT_TARGET}/lib"
 
+    CT_DoLog EXTRA "copy 6"
     CT_DoExecLog EXTRA mkdir -p "${CT_PREFIX_DIR}/libexec/gcc/${CT_TARGET}/lib"
-    CT_DoExecLog EXTRA cp -av ${XTENSACONFIG_LIB_BIN}/*.so "${CT_PREFIX_DIR}/libexec/gcc/${CT_TARGET}/lib"
+    CT_DoExecLog EXTRA cp -av ${XTENSACONFIG_LIB_BIN_HOST}/*.so "${CT_PREFIX_DIR}/libexec/gcc/${CT_TARGET}/lib"
 
     CT_DoLog EXTRA "copy 7"
     CT_DoExecLog EXTRA mkdir -p "${CT_BUILDTOOLS_PREFIX_DIR}/${CT_TARGET}/lib"
-    CT_DoExecLog EXTRA cp -av ${XTENSACONFIG_LIB_BIN}/*.so "${CT_BUILDTOOLS_PREFIX_DIR}/${CT_TARGET}/lib"
+    CT_DoExecLog EXTRA cp -av ${XTENSACONFIG_LIB_BIN_BUILD}/*.so "${CT_BUILDTOOLS_PREFIX_DIR}/${CT_TARGET}/lib"
 }
 
 fi # CT_MPC
