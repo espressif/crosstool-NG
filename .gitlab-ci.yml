@@ -89,11 +89,21 @@ before_script:
 
 .build_with_helpers: &build_with_helpers |
   git clone -q --depth 1 -b feature/xtensaconfig-cmake --recurse-submodules -- ${GITLAB_SSH_SERVER}/idf/esp-xtensaconfig-lib.git esp-xtensaconfig-lib
-  export CC=${EXTRA_CC:-"gcc"}
-  pushd esp-xtensaconfig-lib; cmake .; make; ls -l; popd
+  pushd esp-xtensaconfig-lib
+  mkdir build_; cd build_
+  cmake ..; make; cd ..
+  export XTENSACONFIG_LIB_BIN_BUILD="${CI_PROJECT_DIR}/esp-xtensaconfig-lib/build_"
+  if [ "${HOST1_CC:-}" ]; then
+  export CC=${HOST1_CC}
+  mkdir host_; cd host_
+  cmake ..; make; cd ..
+  export XTENSACONFIG_LIB_BIN_HOST="${CI_PROJECT_DIR}/esp-xtensaconfig-lib/host_"
   unset CC
+  else
+  export XTENSACONFIG_LIB_BIN_HOST="${CI_PROJECT_DIR}/esp-xtensaconfig-lib/build_"
+  fi
+  popd
   git clone -q --depth 1 -b feature/xtensaconfig-dev -- ${GITLAB_SSH_SERVER}/idf/ctng-esp-helpers.git helpers
-  export XTENSACONFIG_LIB_BIN="${CI_PROJECT_DIR}/esp-xtensaconfig-lib"
   export CONF_TARGET=xtensa-esp32-elf
   ./helpers/build_ct_ci.sh
 
@@ -151,7 +161,7 @@ esp32_lin_i686:
     PLATFORM_NAME: "macos"
     CONF_BUILD: "x86_64-linux-gnu"
     CONF_HOST: "x86_64-apple-darwin12"
-    EXTRA_CC: "x86_64-apple-darwin12-gcc"
+    HOST1_CC: "x86_64-apple-darwin12-gcc"
     MACOSX_DEPLOYMENT_TARGET: "10.8"
   script:
     - *get_release_name
@@ -170,7 +180,7 @@ esp32_macos:
     PLATFORM_NAME: "win32"
     CONF_BUILD: "x86_64-linux-gnu"
     CONF_HOST: "i686-w64-mingw32"
-    EXTRA_CC: "i686-w64-mingw32-gcc"
+    HOST1_CC: "i686-w64-mingw32-gcc"
     ARCHIVE_TOOL: "zip -r"
     ARCHIVE_EXT: "zip"
   script:
@@ -190,7 +200,7 @@ esp32_win:
     PLATFORM_NAME: "win64"
     CONF_BUILD: "x86_64-linux-gnu"
     CONF_HOST: "x86_64-w64-mingw32"
-    EXTRA_CC: "x86_64-w64-mingw32-gcc"
+    HOST1_CC: "x86_64-w64-mingw32-gcc"
     ARCHIVE_TOOL: "zip -r"
     ARCHIVE_EXT: "zip"
   script:
@@ -227,7 +237,7 @@ esp32_win64:
     PLATFORM_NAME: "linux-armhf"
     CONF_BUILD: "x86_64-linux-gnu"
     CONF_HOST: "arm-linux-gnueabihf"
-    EXTRA_CC: "arm-linux-gnueabihf-gcc"
+    HOST1_CC: "arm-linux-gnueabihf-gcc"
   script:
     - *get_release_name
     - *build_with_helpers
@@ -312,7 +322,7 @@ esp32_lin_armhf:
     - source add_path.sh
     - cd ${IDF_PATH}/examples/get-started/hello_world
     - idf.py build
-    
+
 
 .template_compiler_tests:
   stage: test
