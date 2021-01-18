@@ -126,7 +126,7 @@ before_script:
     - *build_toolchain
     - *package_toolchain
 
-.esp32_lin_amd64:
+esp32_lin_amd64:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain
   variables:
