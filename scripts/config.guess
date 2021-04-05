@@ -1320,6 +1320,9 @@ EOF
 	    # processor. This is not true of the ARM version of Darwin
 	    # that Apple uses in portable devices.
 	    UNAME_PROCESSOR=x86_64
+	elif test "$UNAME_PROCESSOR" = arm ; then
+	    # Same thing for apple/arm
+	    UNAME_PROCESSOR=aarch64
 	fi
 	echo ${UNAME_PROCESSOR}-apple-darwin${UNAME_RELEASE}
 	exit ;;
