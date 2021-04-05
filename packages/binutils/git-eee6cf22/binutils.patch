@@ -1,0 +1,30 @@
+diff -ur readline/rltty.c /Volumes/ctng/src/crosstool-esp/.build/xtensa-esp32-elf/src/binutils/readline/rltty.c
+--- binutils/readline/rltty.c	2021-03-29 11:47:18.000000000 -0500
++++ binutils/readline/rltty.c	2021-03-29 14:02:37.000000000 -0500
+@@ -37,9 +37,8 @@
+ 
+ #include "rldefs.h"
+ 
+-#if defined (GWINSZ_IN_SYS_IOCTL)
+-#  include <sys/ioctl.h>
+-#endif /* GWINSZ_IN_SYS_IOCTL */
++#include <sys/ioctl.h>
++
+ 
+ #include "rltty.h"
+ #include "readline.h"
+diff -ur readline/terminal.c /Volumes/ctng/src/crosstool-esp/.build/xtensa-esp32-elf/src/binutils/readline/terminal.c
+--- binutils/readline/terminal.c	2021-03-29 11:47:18.000000000 -0500
++++ binutils/readline/terminal.c	2021-03-29 14:03:14.000000000 -0500
+@@ -51,9 +51,8 @@
+ /* System-specific feature definitions and include files. */
+ #include "rldefs.h"
+ 
+-#if defined (GWINSZ_IN_SYS_IOCTL) && !defined (TIOCGWINSZ)
+-#  include <sys/ioctl.h>
+-#endif /* GWINSZ_IN_SYS_IOCTL && !TIOCGWINSZ */
++#include <sys/ioctl.h>
++
+ 
+ #ifdef __MSDOS__
+ # include <pc.h>
