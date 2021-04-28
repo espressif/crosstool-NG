@@ -1,0 +1,52 @@
+From d8f8b4ff1ea4dae95338ecd4c7d336d0255420f9 Mon Sep 17 00:00:00 2001
+From: Jakob Hasse <jakob.hasse@espressif.com>
+Date: Mon, 13 Apr 2020 11:44:46 +0800
+Subject: [PATCH 19/21] libgcc: fde sorting can be switched off
+
+---
+ libgcc/unwind-dw2-fde.c | 9 +++++++++
+ libgcc/unwind-dw2-fde.h | 1 +
+ 2 files changed, 10 insertions(+)
+
+diff --git a/libgcc/unwind-dw2-fde.c b/libgcc/unwind-dw2-fde.c
+index 0bcf51661b8..d9ef2587012 100644
+--- a/libgcc/unwind-dw2-fde.c
++++ b/libgcc/unwind-dw2-fde.c
+@@ -71,6 +71,12 @@ static __gthread_mutex_t object_mutex;
+ #endif
+ #endif
+ 
++static unsigned char enable_exception_fde_sorting = 1;
++
++void _Unwind_SetEnableExceptionFdeSorting(unsigned char enable) {
++    enable_exception_fde_sorting = enable;
++}
++
+ /* Called from crtbegin.o to register the unwind info for an object.  */
+ 
+ void
+@@ -768,6 +774,9 @@ init_object (struct object* ob)
+ 	ob->s.b.count = 0;
+     }
+ 
++  if (!enable_exception_fde_sorting)
++    return;
++
+   if (!start_fde_sort (&accu, count))
+     return;
+ 
+diff --git a/libgcc/unwind-dw2-fde.h b/libgcc/unwind-dw2-fde.h
+index 9d01f572a2c..b9c2a1333be 100644
+--- a/libgcc/unwind-dw2-fde.h
++++ b/libgcc/unwind-dw2-fde.h
+@@ -89,6 +89,7 @@ struct dwarf_eh_bases
+   void *func;
+ };
+ 
++void _Unwind_SetEnableExceptionFdeSorting(unsigned char enable);
+ 
+ extern void __register_frame_info_bases (const void *, struct object *,
+ 					 void *, void *);
+-- 
+2.20.1
+
