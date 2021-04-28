@@ -1,0 +1,188 @@
+From 3afda52a9e815483bf16fc1c50e97bcf850053aa Mon Sep 17 00:00:00 2001
+From: Max Filippov <jcmvbkbc@gmail.com>
+Date: Sat, 6 Jun 2020 05:06:04 -0700
+Subject: [PATCH 21/21] xtensa: libgcc: fix PR target/95571
+
+Rewrite uw_install_context without function calls to avoid register
+spilling in _Unwind_RaiseException during return context installation.
+
+2020-06-08  Max Filippov  <jcmvbkbc@gmail.com>
+gcc/testsuite/
+	* g++.target/xtensa/pr95571.C: New test.
+	* g++.target/xtensa/xtensa.exp: New testsuite.
+
+libgcc/
+	* config/xtensa/unwind-dw2-xtensa.c (uw_install_context): Merge
+	with uw_install_context_1.
+---
+ gcc/testsuite/g++.target/xtensa/pr95571.C  | 43 +++++++++++++++++++++
+ gcc/testsuite/g++.target/xtensa/xtensa.exp | 43 +++++++++++++++++++++
+ libgcc/config/xtensa/unwind-dw2-xtensa.c   | 44 +++++++++++-----------
+ 3 files changed, 107 insertions(+), 23 deletions(-)
+ create mode 100644 gcc/testsuite/g++.target/xtensa/pr95571.C
+ create mode 100644 gcc/testsuite/g++.target/xtensa/xtensa.exp
+
+diff --git a/gcc/testsuite/g++.target/xtensa/pr95571.C b/gcc/testsuite/g++.target/xtensa/pr95571.C
+new file mode 100644
+index 00000000000..59fe2852838
+--- /dev/null
++++ b/gcc/testsuite/g++.target/xtensa/pr95571.C
+@@ -0,0 +1,43 @@
++/* { dg-do run } */
++
++extern "C" void abort(void);
++extern "C" void __xtensa_libgcc_window_spill(void);
++
++static int call;
++static int cnt;
++
++extern "C" void *memcpy(void *dst, const void *src, unsigned int sz)
++{
++  char *a = (char *)dst;
++  const char *b = (const char *)src;
++
++  if (call++ == cnt)
++    __xtensa_libgcc_window_spill();
++
++  while (sz--)
++    *a++ = *b++;
++
++  return dst;
++}
++
++int main()
++{
++  int i;
++
++  for (i = 0; i < 100; ++i)
++    {
++      call = 0;
++      cnt = i;
++
++      try
++	{
++	  throw 1;
++	}
++      catch (int v)
++	{
++	  if (v != 1)
++	    abort ();
++	}
++    }
++  return 0;
++}
+diff --git a/gcc/testsuite/g++.target/xtensa/xtensa.exp b/gcc/testsuite/g++.target/xtensa/xtensa.exp
+new file mode 100644
+index 00000000000..f4191201d11
+--- /dev/null
++++ b/gcc/testsuite/g++.target/xtensa/xtensa.exp
+@@ -0,0 +1,43 @@
++#  Specific regression driver for Xtensa.
++#  Copyright (C) 2020 Free Software Foundation, Inc.
++#
++#  This file is part of GCC.
++#
++#  GCC is free software; you can redistribute it and/or modify it
++#  under the terms of the GNU General Public License as published by
++#  the Free Software Foundation; either version 3, or (at your option)
++#  any later version.
++#
++#  GCC is distributed in the hope that it will be useful, but
++#  WITHOUT ANY WARRANTY; without even the implied warranty of
++#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++#  General Public License for more details.
++#
++#  You should have received a copy of the GNU General Public License
++#  along with GCC; see the file COPYING3.  If not see
++#  <http://www.gnu.org/licenses/>.  */
++
++# GCC testsuite that uses the `dg.exp' driver.
++
++# Exit immediately if this isn't an Xtensa target.
++if {![istarget xtensa*-*-*] } then {
++  return
++}
++
++# Load support procs.
++load_lib g++-dg.exp
++
++global DEFAULT_CXXFLAGS
++if ![info exists DEFAULT_CXXFLAGS] then {
++    set DEFAULT_CXXFLAGS " -pedantic-errors"
++}
++
++# Initialize `dg'.
++dg-init
++
++# Main loop.
++dg-runtest [lsort [glob -nocomplain $srcdir/$subdir/*.C]] \
++        "" $DEFAULT_CXXFLAGS
++
++# All done.
++dg-finish
+diff --git a/libgcc/config/xtensa/unwind-dw2-xtensa.c b/libgcc/config/xtensa/unwind-dw2-xtensa.c
+index 8e579c7617d..dce5d753cea 100644
+--- a/libgcc/config/xtensa/unwind-dw2-xtensa.c
++++ b/libgcc/config/xtensa/unwind-dw2-xtensa.c
+@@ -481,37 +481,35 @@ uw_init_context_1 (struct _Unwind_Context *context, void *outer_cfa,
+ 
+ /* Install TARGET into CURRENT so that we can return to it.  This is a
+    macro because __builtin_eh_return must be invoked in the context of
+-   our caller.  */
++   our caller, and also because spilling registers of the caller before
++   the context installation may result in reload of wrong register values
++   after the context installation due to the change of the stack pointer
++   in the base save area.  This spilling may be caused by an interrupt
++   handler on baremetal host.  */
+ 
+ #define uw_install_context(CURRENT, TARGET)				 \
+   do									 \
+     {									 \
+-      long offset = uw_install_context_1 ((CURRENT), (TARGET));		 \
+       void *handler = __builtin_frob_return_addr ((TARGET)->ra);	 \
+-      __builtin_eh_return (offset, handler);				 \
++      long i;								 \
++									 \
++      /* The eh_return insn assumes a window size of 8, so don't bother	 \
++	 copying the save areas for registers a8-a15 since they won't be \
++	 reloaded.  */							 \
++      for (i = 0; i < 2; ++i)						 \
++	{								 \
++	  _Unwind_Word *c = (CURRENT)->reg[i];				 \
++	  _Unwind_Word *t = (TARGET)->reg[i];				 \
++	  int j;							 \
++									 \
++	  if (t && c && t != c)						 \
++	    for (j = 0; j < 4; ++j)					 \
++	      *c++ = *t++;						 \
++	}								 \
++      __builtin_eh_return (0, handler);					 \
+     }									 \
+   while (0)
+ 
+-static long
+-uw_install_context_1 (struct _Unwind_Context *current,
+-		      struct _Unwind_Context *target)
+-{
+-  long i;
+-
+-  /* The eh_return insn assumes a window size of 8, so don't bother copying
+-     the save areas for registers a8-a15 since they won't be reloaded.  */
+-  for (i = 0; i < 2; ++i)
+-    {
+-      void *c = current->reg[i];
+-      void *t = target->reg[i];
+-
+-      if (t && c && t != c)
+-	memcpy (c, t, 4 * sizeof (_Unwind_Word));
+-    }
+-
+-  return 0;
+-}
+-
+ static inline _Unwind_Ptr
+ uw_identify_context (struct _Unwind_Context *context)
+ {
+-- 
+2.20.1
+

@@ -1,0 +1,87 @@
+From d68ac38fb960b12142f02ad2265595383d3ec8a6 Mon Sep 17 00:00:00 2001
+From: Uros Bizjak <ubizjak@gmail.com>
+Date: Mon, 21 Sep 2015 17:23:52 +0200
+Subject: [PATCH 20/21] re PR middle-end/67619 (ICE at -O1 and above on
+ x86_64-linux-gnu in int_mode_for_mode, at stor-layout.c:425)
+
+	PR middle-end/67619
+	* except.c (expand_builtin_eh_return): Use copy_addr_to_reg to copy
+	the address to a register.
+
+testsuite/ChangeLog:
+
+	PR middle-end/67619
+	* gcc.dg/torture/pr67619.c: New test.
+	* lib/target-supports.exp (check_effective_target_builtin_eh_return):
+	New procedure.
+
+From-SVN: r227976
+---
+ gcc/except.c                           |  4 ++--
+ gcc/testsuite/gcc.dg/torture/pr67619.c | 13 +++++++++++++
+ gcc/testsuite/lib/target-supports.exp  | 10 ++++++++++
+ 3 files changed, 25 insertions(+), 2 deletions(-)
+ create mode 100644 gcc/testsuite/gcc.dg/torture/pr67619.c
+
+diff --git a/gcc/except.c b/gcc/except.c
+index 833ec21f329..a5246b5e124 100644
+--- a/gcc/except.c
++++ b/gcc/except.c
+@@ -2235,7 +2235,7 @@ expand_builtin_eh_return (tree stackadj_tree ATTRIBUTE_UNUSED,
+ 		     VOIDmode, EXPAND_NORMAL);
+   tmp = convert_memory_address (Pmode, tmp);
+   if (!crtl->eh.ehr_stackadj)
+-    crtl->eh.ehr_stackadj = copy_to_reg (tmp);
++    crtl->eh.ehr_stackadj = copy_addr_to_reg (tmp);
+   else if (tmp != crtl->eh.ehr_stackadj)
+     emit_move_insn (crtl->eh.ehr_stackadj, tmp);
+ #endif
+@@ -2244,7 +2244,7 @@ expand_builtin_eh_return (tree stackadj_tree ATTRIBUTE_UNUSED,
+ 		     VOIDmode, EXPAND_NORMAL);
+   tmp = convert_memory_address (Pmode, tmp);
+   if (!crtl->eh.ehr_handler)
+-    crtl->eh.ehr_handler = copy_to_reg (tmp);
++    crtl->eh.ehr_handler = copy_addr_to_reg (tmp);
+   else if (tmp != crtl->eh.ehr_handler)
+     emit_move_insn (crtl->eh.ehr_handler, tmp);
+ 
+diff --git a/gcc/testsuite/gcc.dg/torture/pr67619.c b/gcc/testsuite/gcc.dg/torture/pr67619.c
+new file mode 100644
+index 00000000000..9c6bb6e3171
+--- /dev/null
++++ b/gcc/testsuite/gcc.dg/torture/pr67619.c
+@@ -0,0 +1,13 @@
++/* { dg-do compile } */
++/* { dg-require-effective-target builtin_eh_return } */
++
++void
++foo ()
++{
++  unsigned long l;
++  void *p = 0; 
++
++  __builtin_unwind_init ();
++  l = 0; 
++  __builtin_eh_return (l, p);
++}
+diff --git a/gcc/testsuite/lib/target-supports.exp b/gcc/testsuite/lib/target-supports.exp
+index 8f360c3801d..7807f723f57 100644
+--- a/gcc/testsuite/lib/target-supports.exp
++++ b/gcc/testsuite/lib/target-supports.exp
+@@ -6277,3 +6277,13 @@ proc check_effective_target_comdat_group {} {
+ 	int (*fn) () = foo;
+     }]
+ }
++
++# Return 1 if target supports __builtin_eh_return
++proc check_effective_target_builtin_eh_return { } {
++    return [check_no_compiler_messages builtin_eh_return object {
++	void test (long l, void *p)
++	{
++	    __builtin_eh_return (l, p);
++	}
++    } "" ]
++}
+-- 
+2.20.1
+
