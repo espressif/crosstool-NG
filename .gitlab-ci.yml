@@ -134,14 +134,14 @@ esp32_lin_amd64:
     PLATFORM_NAME: "linux-amd64"
     CONF_TARGET: "xtensa-esp32-elf"
 
-.esp32s2_lin_amd64:
+esp32s2_lin_amd64:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain
   variables:
     PLATFORM_NAME: "linux-amd64"
     CONF_TARGET: "xtensa-esp32s2-elf"
 
-.esp32s3_lin_amd64:
+esp32s3_lin_amd64:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain
   variables:
@@ -198,12 +198,12 @@ esp32_macos:
   variables:
     CONF_TARGET: "xtensa-esp32-elf"
 
-.esp32s2_macos:
+esp32s2_macos:
   extends: .template_macos_cross
   variables:
     CONF_TARGET: "xtensa-esp32s2-elf"
 
-.esp32s3_macos:
+esp32s3_macos:
   extends: .template_macos_cross
   variables:
     CONF_TARGET: "xtensa-esp32s3-elf"
@@ -246,7 +246,7 @@ riscv32_esp_macos:
   variables:
     CONF_TARGET: "xtensa-esp32s3-elf"
 
-riscv32_esp_win:
+.riscv32_esp_win:
   extends: .template_win_cross
   variables:
     CONF_TARGET: "riscv32-esp-elf"
@@ -274,12 +274,12 @@ esp32_win64:
   variables:
     CONF_TARGET: "xtensa-esp32-elf"
 
-.esp32s2_win64:
+esp32s2_win64:
   extends: .template_win64_cross
   variables:
     CONF_TARGET: "xtensa-esp32s2-elf"
 
-.esp32s3_win64:
+esp32s3_win64:
   extends: .template_win64_cross
   variables:
     CONF_TARGET: "xtensa-esp32s3-elf"
@@ -327,7 +327,7 @@ riscv32_esp_win64:
   variables:
     CONF_TARGET: "xtensa-esp32s3-elf"
 
-riscv32_esp_lin_armel:
+.riscv32_esp_lin_armel:
   extends: .template_lin_armel_cross
   variables:
     CONF_TARGET: "riscv32-esp-elf"
@@ -403,7 +403,7 @@ riscv32_esp_lin_armel:
     - source ${CONF_TARGET}-profile
     - ./run-all.sh
 
-esp32-compiler-tests:
+.esp32-compiler-tests:
   extends: .template_compiler_tests
   dependencies:
     - esp32_lin_amd64
