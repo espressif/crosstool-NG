@@ -312,22 +312,22 @@ riscv32_esp_win64:
     - *build_toolchain
     - *package_toolchain
 
-.esp32_lin_armel:
+esp32_lin_armel:
   extends: .template_lin_armel_cross
   variables:
     CONF_TARGET: "xtensa-esp32-elf"
 
-.esp32s2_lin_armel:
+esp32s2_lin_armel:
   extends: .template_lin_armel_cross
   variables:
     CONF_TARGET: "xtensa-esp32s2-elf"
 
-.esp32s3_lin_armel:
+esp32s3_lin_armel:
   extends: .template_lin_armel_cross
   variables:
     CONF_TARGET: "xtensa-esp32s3-elf"
 
-.riscv32_esp_lin_armel:
+riscv32_esp_lin_armel:
   extends: .template_lin_armel_cross
   variables:
     CONF_TARGET: "riscv32-esp-elf"
