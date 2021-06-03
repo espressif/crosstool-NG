@@ -134,21 +134,21 @@ esp32_lin_amd64:
     PLATFORM_NAME: "linux-amd64"
     CONF_TARGET: "xtensa-esp32-elf"
 
-esp32s2_lin_amd64:
+.esp32s2_lin_amd64:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain
   variables:
     PLATFORM_NAME: "linux-amd64"
     CONF_TARGET: "xtensa-esp32s2-elf"
 
-esp32s3_lin_amd64:
+.esp32s3_lin_amd64:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain
   variables:
     PLATFORM_NAME: "linux-amd64"
     CONF_TARGET: "xtensa-esp32s3-elf"
 
-riscv32_esp_lin_amd64:
+.riscv32_esp_lin_amd64:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain
   variables:
@@ -198,17 +198,17 @@ esp32_macos:
   variables:
     CONF_TARGET: "xtensa-esp32-elf"
 
-esp32s2_macos:
+.esp32s2_macos:
   extends: .template_macos_cross
   variables:
     CONF_TARGET: "xtensa-esp32s2-elf"
 
-esp32s3_macos:
+.esp32s3_macos:
   extends: .template_macos_cross
   variables:
     CONF_TARGET: "xtensa-esp32s3-elf"
 
-riscv32_esp_macos:
+.riscv32_esp_macos:
   extends: .template_macos_cross
   variables:
     CONF_TARGET: "riscv32-esp-elf"
@@ -274,17 +274,17 @@ esp32_win64:
   variables:
     CONF_TARGET: "xtensa-esp32-elf"
 
-esp32s2_win64:
+.esp32s2_win64:
   extends: .template_win64_cross
   variables:
     CONF_TARGET: "xtensa-esp32s2-elf"
 
-esp32s3_win64:
+.esp32s3_win64:
   extends: .template_win64_cross
   variables:
     CONF_TARGET: "xtensa-esp32s3-elf"
 
-riscv32_esp_win64:
+.riscv32_esp_win64:
   extends: .template_win64_cross
   variables:
     CONF_TARGET: "riscv32-esp-elf"
@@ -317,17 +317,17 @@ esp32_lin_armel:
   variables:
     CONF_TARGET: "xtensa-esp32-elf"
 
-esp32s2_lin_armel:
+.esp32s2_lin_armel:
   extends: .template_lin_armel_cross
   variables:
     CONF_TARGET: "xtensa-esp32s2-elf"
 
-esp32s3_lin_armel:
+.esp32s3_lin_armel:
   extends: .template_lin_armel_cross
   variables:
     CONF_TARGET: "xtensa-esp32s3-elf"
 
-riscv32_esp_lin_armel:
+.riscv32_esp_lin_armel:
   extends: .template_lin_armel_cross
   variables:
     CONF_TARGET: "riscv32-esp-elf"
