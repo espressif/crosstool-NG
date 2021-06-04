@@ -5,7 +5,7 @@ AC_PREREQ([2.67])
 
 AC_INIT(
     [crosstool-NG],
-    [m4_esyscmd_s([maintainer/git-version-gen --prefix crosstool-ng- .tarball-version])],
+    [m4_esyscmd_s([maintainer/git-version-gen .tarball-version])],
     [crossgcc@sourceware.org],
     [crosstool-ng],
     [http://crosstool-ng.org])
