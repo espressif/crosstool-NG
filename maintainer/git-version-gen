@@ -94,7 +94,7 @@ Options:
 
 Running without arguments will suffice in most cases."
 
-prefix=v
+prefix=
 fallback=
 
 while test $# -gt 0; do
@@ -159,7 +159,7 @@ elif test "`git log -1 --pretty=format:x . 2>&1`" = x \
           || git describe --abbrev=7 HEAD 2>/dev/null` \
     && v=`printf '%s\n' "$v" | sed "$tag_sed_script"` \
     && case $v in
-         $prefix[0-9]*) ;;
+         $prefix*) ;;
          *) (exit 1) ;;
        esac
 then
@@ -214,10 +214,6 @@ if test "x$v_from_git" != x; then
           esac ;;
   esac
 fi
-
-# Replace any dashes with underscores in the resulting version, to keep
-# rpmbuild happy. See https://github.com/semver/semver/issues/145.
-v=`echo "$v" | sed 's/-/_/g'`
 
 # Omit the trailing newline, so that m4_esyscmd can use the result directly.
 printf %s "$v"
