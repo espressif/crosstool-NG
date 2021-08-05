@@ -52,7 +52,7 @@ before_script:
   echo "CT_USE_MIRROR=y" >> .config
   echo "CT_FORCE_MIRROR=y" >> .config
   echo "CT_MIRROR_BASE_URL=\"${MIRROR_BASE}\"" >> .config
-  echo "CT_NEWLIB_DEVEL_URL=\"${GITLAB_SSH_SERVER}/idf/newlib-cygwin.git\"" >> .config
+  echo "CT_NEWLIB_DEVEL_URL=\"https://github.com/sylvioalves/newlib-cygwin.git\"" >> .config
   echo "CT_GCC_DEVEL_URL=\"${GITLAB_SSH_SERVER}/idf/gcc.git\"" >> .config
   echo "CT_BINUTILS_DEVEL_URL=\"${GITLAB_SSH_SERVER}/idf/binutils-gdb.git\"" >> .config
   echo "CT_GDB_DEVEL_URL=\"${GITLAB_SSH_SERVER}/idf/binutils-gdb.git\"" >> .config
