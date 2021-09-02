@@ -339,6 +339,43 @@ riscv32_esp_lin_armel:
   variables:
     CONF_TARGET: "riscv32-esp-elf"
 
+.template_lin_armhf_cross:
+  extends: .build_template
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain-arm-cross
+  variables:
+    PLATFORM_NAME: "linux-armhf"
+    CONF_BUILD: "x86_64-linux-gnu"
+    CONF_HOST: "arm-linux-gnueabihf"
+  script:
+    - *get_release_name
+    - *build_ctng
+    - *configure_common
+    - *configure_docker
+    - *configure_linux_no_pie
+    - *configure_crossbuild
+    - *build_toolchain
+    - *package_toolchain
+
+esp32_lin_armhf:
+  extends: .template_lin_armhf_cross
+  variables:
+    CONF_TARGET: "xtensa-esp32-elf"
+
+esp32s2_lin_armhf:
+  extends: .template_lin_armhf_cross
+  variables:
+    CONF_TARGET: "xtensa-esp32s2-elf"
+
+esp32s3_lin_armhf:
+  extends: .template_lin_armhf_cross
+  variables:
+    CONF_TARGET: "xtensa-esp32s3-elf"
+
+riscv32_esp_lin_armhf:
+  extends: .template_lin_armhf_cross
+  variables:
+    CONF_TARGET: "riscv32-esp-elf"
+
 .test_arm_rpi:
   stage: test
   image: $CI_DOCKER_REGISTRY/rpi-esp-idf-env:1
