@@ -529,7 +529,7 @@ upload_to_http:
     - cit_add_ssh_key "${GITLAB_KEY}"
     - git clone -q --depth 1 ${CTNG_ESP_HELPERS_BRANCH} ${GITLAB_SSH_SERVER}/idf/ctng-esp-helpers.git
     - pushd dist
-    - ../ctng-esp-helpers/print_all_checksum_json.sh "${HTTP_PUBLIC_DIR}" "xtensa-esp32-elf xtensa-esp32s2-elf xtensa-esp32s3-elf riscv32-esp-elf" "linux-amd64 linux-armel linux-i686 macos win32 win64" 2>err.log
+    - ../ctng-esp-helpers/print_all_checksum_json.sh "${HTTP_PUBLIC_DIR}" "xtensa-esp32-elf xtensa-esp32s2-elf xtensa-esp32s3-elf riscv32-esp-elf" "linux-amd64 linux-arm64 linux-armel linux-armhf linux-i686 macos win32 win64" 2>err.log
     - echo ""
     - cat err.log
     - popd
