@@ -505,6 +505,61 @@ riscv32_esp_lin_arm64:
   variables:
     CONF_TARGET: "xtensa-esp32s3-elf"
 
+.template_compiler_tests_armhf:
+  stage: test
+  tags: [ "linux_arm" ]
+  image: $CI_DOCKER_REGISTRY/compiler-testsuite-armhf:1
+  artifacts:
+    when: always
+    paths:
+      - esp-compiler-tests/*/*.log
+      - esp-compiler-tests/*/*.elf
+  variables:
+    GIT_STRATEGY: none
+    PLATFORM_NAME: "linux-armhf"
+    TEST_BRANCH: "-b feature/tools_test"
+  after_script:
+    - source citools/import_functions
+    - cit_rm ${CONF_TARGET}
+  script:
+    - ARCHIVE_NAME=$(cat dist/file_${PLATFORM_NAME}_${CONF_TARGET})
+    - ${UNARCHIVE_TOOL} dist/${ARCHIVE_NAME}
+    - ./${CONF_TARGET}/bin/${CONF_TARGET}-gcc -v
+    - export PATH="${CI_PROJECT_DIR}/${CONF_TARGET}/bin:${PATH}"
+
+    - git clone -q --depth 1 $TEST_BRANCH ${GITLAB_SSH_SERVER}/idf/esp-compiler-tests.git
+    - cd esp-compiler-tests
+    - source ${CONF_TARGET}-profile
+    - ./run-tools.sh
+
+esp32-armhf-tools-test:
+  extends: .template_compiler_tests_armhf
+  dependencies:
+    - esp32_lin_armhf
+  variables:
+    CONF_TARGET: "xtensa-esp32-elf"
+
+esp32s2-armhf-tools-test:
+  extends: .template_compiler_tests_armhf
+  dependencies:
+    - esp32s2_lin_armhf
+  variables:
+    CONF_TARGET: "xtensa-esp32s2-elf"
+
+esp32s3-armhf-tools-test:
+  extends: .template_compiler_tests_armhf
+  dependencies:
+    - esp32s3_lin_armhf
+  variables:
+    CONF_TARGET: "xtensa-esp32s3-elf"
+
+riscv32-armhf-tools-test:
+  extends: .template_compiler_tests_armhf
+  dependencies:
+    - riscv32_esp_lin_armhf
+  variables:
+    CONF_TARGET: "riscv32-esp-elf"
+
 upload_to_http:
   stage: private_deploy
   when: manual
