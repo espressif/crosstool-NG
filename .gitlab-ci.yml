@@ -1,4 +1,5 @@
 stages:
+  _ test_test
   - build
   - private_deploy
   - test
@@ -540,3 +541,8 @@ upload_to_http:
     - echo ""
     - cat err.log
     - popd
+
+linux-armhf-tools-test:
+  stage: test_test
+  tags: [ "linux_arm" ]
+  
