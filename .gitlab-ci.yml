@@ -542,6 +542,14 @@ before_script:
     - cat err.log
     - popd
 
+.test1run: &test1run |
+  for T in ${TARGETS}; do
+    ARCHIVE_NAME=$(cat dist/file_${PLATFORM_NAME}_${T})
+    ${UNARCHIVE_TOOL} dist/${ARCHIVE_NAME}
+    export PATH="${CI_PROJECT_DIR}/${T}/bin:${PATH}"
+    ${T}-gcc --version
+  done
+
 linux-armhf-tools-test:
   stage: test_test
   tags: [ "linux_arm" ]
@@ -551,18 +559,29 @@ linux-armhf-tools-test:
       job: esp32_lin_armhf
       ref: release_2021r2
       artifacts: true
+    - project: idf/crosstool-NG
+      job: esp32s2_lin_armhf
+      ref: release_2021r2
+      artifacts: true
+    - project: idf/crosstool-NG
+      job: esp32s3_lin_armhf
+      ref: release_2021r2
+      artifacts: true
+    - project: idf/crosstool-NG
+      job: riscv32_esp_lin_armhf
+      ref: release_2021r2
+      artifacts: true
   variables:
     GIT_STRATEGY: none
     PLATFORM_NAME: "linux-armhf"
     #ESP_COMPILER_TESTS_BRANCH: "-b esp-2021r2-branch"
-    CONF_TARGET: "xtensa-esp32-elf"
+    TARGETS: "xtensa-esp32-elf xtensa-esp32s2-elf xtensa-esp32s3-elf riscv32-esp-elf"
   before_script: []
+  after_script:
+    - rm -r *
   script:
-    - ARCHIVE_NAME=$(cat dist/file_${PLATFORM_NAME}_${CONF_TARGET})
-    - ${UNARCHIVE_TOOL} dist/${ARCHIVE_NAME}
-    - export PATH="${CI_PROJECT_DIR}/${CONF_TARGET}/bin:${PATH}"
-    - ${CONF_TARGET}-gcc -v
-    - echo "123"
+    - *test1run
+    - echo "Completed"
 
 linux-amd64-tools-test:
   stage: test_test
@@ -579,6 +598,8 @@ linux-amd64-tools-test:
     #ESP_COMPILER_TESTS_BRANCH: "-b esp-2021r2-branch"
     CONF_TARGET: "xtensa-esp32-elf"
   before_script: []
+  after_script:
+    - rm -r *
   script:
     - ARCHIVE_NAME=$(cat dist/file_${PLATFORM_NAME}_${CONF_TARGET})
     - ${UNARCHIVE_TOOL} dist/${ARCHIVE_NAME}
