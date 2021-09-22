@@ -547,6 +547,39 @@ linux-armhf-tools-test:
   tags: [ "linux_arm" ]
   needs:
     - project: idf/crosstool-NG
+      job: esp32_lin_armhf
+      ref: release_2021r2
+      artifacts: true
+  variables:
+    GIT_STRATEGY: none
+    PLATFORM_NAME: "linux-armhf"
+    #ESP_COMPILER_TESTS_BRANCH: "-b esp-2021r2-branch"
+    CONF_TARGET: "xtensa-esp32-elf"
+  before_script: []
+  script:
+    - ARCHIVE_NAME=$(cat dist/file_${PLATFORM_NAME}_${CONF_TARGET})
+    - ${UNARCHIVE_TOOL} dist/${ARCHIVE_NAME}
+    - export PATH="${CI_PROJECT_DIR}/${CONF_TARGET}/bin:${PATH}"
+    - ${CONF_TARGET}-gcc -v
+    - echo "123"
+
+linux-amd64-tools-test:
+  stage: test_test
+  tags: [ "build", "amd64" ]
+  needs:
+    - project: idf/crosstool-NG
       job: esp32_lin_amd64
       ref: release_2021r2
       artifacts: true
+  variables:
+    GIT_STRATEGY: none
+    PLATFORM_NAME: "linux-amd64"
+    #ESP_COMPILER_TESTS_BRANCH: "-b esp-2021r2-branch"
+    CONF_TARGET: "xtensa-esp32-elf"
+  before_script: []
+  script:
+    - ARCHIVE_NAME=$(cat dist/file_${PLATFORM_NAME}_${CONF_TARGET})
+    - ${UNARCHIVE_TOOL} dist/${ARCHIVE_NAME}
+    - export PATH="${CI_PROJECT_DIR}/${CONF_TARGET}/bin:${PATH}"
+    - ${CONF_TARGET}-gcc -v
+    - echo "123"
