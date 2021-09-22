@@ -545,4 +545,8 @@ upload_to_http:
 linux-armhf-tools-test:
   stage: test_test
   tags: [ "linux_arm" ]
-  
+  needs:
+    - project: idf/crosstool-NG
+      job: esp32_lin_amd64
+      ref: release_2021r2
+      artifacts: true
