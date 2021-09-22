@@ -545,6 +545,7 @@ before_script:
 linux-armhf-tools-test:
   stage: test_test
   tags: [ "linux_arm" ]
+  image: ubuntu:18.04
   needs:
     - project: idf/crosstool-NG
       job: esp32_lin_armhf
@@ -566,6 +567,7 @@ linux-armhf-tools-test:
 linux-amd64-tools-test:
   stage: test_test
   tags: [ "build", "amd64" ]
+  image: ubuntu:18.04
   needs:
     - project: idf/crosstool-NG
       job: esp32_lin_amd64
