@@ -606,3 +606,41 @@ linux-amd64-tools-test:
     - export PATH="${CI_PROJECT_DIR}/${CONF_TARGET}/bin:${PATH}"
     - ${CONF_TARGET}-gcc -v
     - echo "123"
+
+win64-tools-test:
+  stage: test_test
+  tags: [ "windows", "powershell" ]
+  image: mcr.microsoft.com/windows/servercore:1809
+  needs:
+    - project: idf/crosstool-NG
+      job: esp32_win64
+      ref: release_2021r2
+      artifacts: true
+    - project: idf/crosstool-NG
+      job: esp32s2_win64
+      ref: release_2021r2
+      artifacts: true
+    - project: idf/crosstool-NG
+      job: esp32s3_win64
+      ref: release_2021r2
+      artifacts: true
+    - project: idf/crosstool-NG
+      job: riscv32_esp_win64
+      ref: release_2021r2
+      artifacts: true
+  variables:
+    GIT_STRATEGY: none
+    PLATFORM_NAME: "win64"
+    #ESP_COMPILER_TESTS_BRANCH: "-b esp-2021r2-branch"
+    #TARGETS: "xtensa-esp32-elf xtensa-esp32s2-elf xtensa-esp32s3-elf riscv32-esp-elf"
+    CONF_TARGET: "riscv32-esp-elf"
+    UNARCHIVE_TOOL: "unzip -q"
+  before_script: []
+  after_script:
+    - rm -r *
+  script:
+    - ARCHIVE_NAME=$(cat dist/file_$PLATFORM_NAME_$CONF_TARGET)
+    - ${UNARCHIVE_TOOL} dist/$ARCHIVE_NAME
+    - $env:path+="C:\Program Files\Git\cmd"
+    - $CONF_TARGET-gdb --version
+    - echo "123"
