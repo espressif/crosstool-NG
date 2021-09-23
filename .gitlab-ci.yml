@@ -634,13 +634,15 @@ win64-tools-test:
     #ESP_COMPILER_TESTS_BRANCH: "-b esp-2021r2-branch"
     #TARGETS: "xtensa-esp32-elf xtensa-esp32s2-elf xtensa-esp32s3-elf riscv32-esp-elf"
     CONF_TARGET: "riscv32-esp-elf"
-    UNARCHIVE_TOOL: "unzip -q"
+    UNARCHIVE_TOOL: "Expand-Archive -DestinationPath . -Path"
   before_script: []
   after_script:
     - rm -r *
   script:
-    - ARCHIVE_NAME=$(cat dist/file_$PLATFORM_NAME_$CONF_TARGET)
-    - ${UNARCHIVE_TOOL} dist/$ARCHIVE_NAME
-    - $env:path+="C:\Program Files\Git\cmd"
-    - $CONF_TARGET-gdb --version
-    - echo "123"
+    - $ARCHIVE_NAME=$(cat dist/file_$PLATFORM_NAME_$CONF_TARGET)
+    - $RUN_UNZIP="$UNARCHIVE_TOOL dist/$ARCHIVE_NAME"
+    - Invoke-Expression $RUN_UNZIP
+
+    - $env:Path="$CI_PROJECT_DIR/$CONF_TARGET/bin;"+$env:Path
+    - $RUN_TOOL="$CONF_TARGET-gdb --version"
+    - Invoke-Expression $RUN_TOOL
