@@ -639,10 +639,12 @@ win64-tools-test:
   after_script:
     - rm -r *
   script:
-    - $ARCHIVE_NAME=$(cat dist/file_$PLATFORM_NAME_$CONF_TARGET)
-    - $RUN_UNZIP="$UNARCHIVE_TOOL dist/$ARCHIVE_NAME"
-    - Invoke-Expression $RUN_UNZIP
+    - dir .
+    - dir dist
+    - $ARCHIVE_NAME=$(cat dist/file_${PLATFORM_NAME}_${CONF_TARGET})
+    - $RUN_UNZIP="${UNARCHIVE_TOOL} dist/${ARCHIVE_NAME}"
+    - Invoke-Expression ${RUN_UNZIP}
 
-    - $env:Path="$CI_PROJECT_DIR/$CONF_TARGET/bin;"+$env:Path
-    - $RUN_TOOL="$CONF_TARGET-gdb --version"
-    - Invoke-Expression $RUN_TOOL
+    - $env:Path="${CI_PROJECT_DIR}/${CONF_TARGET}/bin;"+$env:Path
+    - $RUN_TOOL="${CONF_TARGET}-gdb --version"
+    - Invoke-Expression ${RUN_TOOL}
