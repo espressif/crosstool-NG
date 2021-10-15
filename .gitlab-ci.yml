@@ -455,7 +455,7 @@ riscv32_esp_lin_arm64:
   variables:
     GIT_STRATEGY: none
     PLATFORM_NAME: "linux-amd64"
-    ESP_COMPILER_TESTS_BRANCH: "-b esp-2021r2-branch"
+    ESP_COMPILER_TESTS_BRANCH: "-b esp-2021r2"
   after_script:
     - source citools/import_functions
     - cit_rm ${CONF_TARGET}
