@@ -1,5 +1,5 @@
 repository='git git://repo.or.cz/isl.git'
 bootstrap='./autogen.sh'
-mirrors='http://isl.gforge.inria.fr'
+mirrors='https://libisl.sourceforge.io'
 milestones='0.12 0.13 0.14 0.15'
 archive_formats='.tar.xz .tar.bz2 .tar.gz'
