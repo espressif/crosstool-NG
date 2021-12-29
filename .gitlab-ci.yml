@@ -88,6 +88,11 @@ before_script:
   ./ct-ng oldconfig
   ./ct-ng build
 
+.add_extra_files: &add_extra_files |
+  if [ "${EXTRA_BINS:-}" ]; then
+    cp -v ${EXTRA_BINS} builds/${CONF_TARGET}/bin/
+  fi
+
 # Package the toolchain
 .package_toolchain: &package_toolchain |
   mkdir -p dist
@@ -230,6 +235,7 @@ riscv32_esp_macos:
     CONF_HOST: "i686-w64-mingw32"
     ARCHIVE_TOOL: "zip -r"
     ARCHIVE_EXT: "zip"
+    EXTRA_BINS: "/usr/lib/gcc/i686-w64-mingw32/6.3-win32/libgcc_s_sjlj-1.dll /usr/lib/gcc/i686-w64-mingw32/6.3-win32/libstdc++-6.dll"
   script:
     - *get_release_name
     - *build_ctng
@@ -237,6 +243,7 @@ riscv32_esp_macos:
     - *configure_docker
     - *configure_crossbuild
     - *build_toolchain
+    - *add_extra_files
     - *package_toolchain
 
 esp32_win:
@@ -268,6 +275,7 @@ riscv32_esp_win:
     CONF_HOST: "x86_64-w64-mingw32"
     ARCHIVE_TOOL: "zip -r"
     ARCHIVE_EXT: "zip"
+    EXTRA_BINS: "/usr/lib/gcc/x86_64-w64-mingw32/6.3-win32/libgcc_s_seh-1.dll /usr/lib/gcc/x86_64-w64-mingw32/6.3-win32/libstdc++-6.dll"
   script:
     - *get_release_name
     - *build_ctng
@@ -275,6 +283,7 @@ riscv32_esp_win:
     - *configure_docker
     - *configure_crossbuild
     - *build_toolchain
+    - *add_extra_files
     - *package_toolchain
 
 esp32_win64:
