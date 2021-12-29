@@ -133,56 +133,56 @@ before_script:
     - *build_toolchain
     - *package_toolchain
 
-esp32_lin_amd64:
+.esp32_lin_amd64:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain
   variables:
     PLATFORM_NAME: "linux-amd64"
     CONF_TARGET: "xtensa-esp32-elf"
 
-esp32s2_lin_amd64:
+.esp32s2_lin_amd64:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain
   variables:
     PLATFORM_NAME: "linux-amd64"
     CONF_TARGET: "xtensa-esp32s2-elf"
 
-esp32s3_lin_amd64:
+.esp32s3_lin_amd64:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain
   variables:
     PLATFORM_NAME: "linux-amd64"
     CONF_TARGET: "xtensa-esp32s3-elf"
 
-riscv32_esp_lin_amd64:
+.riscv32_esp_lin_amd64:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain
   variables:
     PLATFORM_NAME: "linux-amd64"
     CONF_TARGET: "riscv32-esp-elf"
 
-esp32_lin_i686:
+.esp32_lin_i686:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
   variables:
     PLATFORM_NAME: "linux-i686"
     CONF_TARGET: "xtensa-esp32-elf"
 
-esp32s2_lin_i686:
+.esp32s2_lin_i686:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
   variables:
     PLATFORM_NAME: "linux-i686"
     CONF_TARGET: "xtensa-esp32s2-elf"
 
-esp32s3_lin_i686:
+.esp32s3_lin_i686:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
   variables:
     PLATFORM_NAME: "linux-i686"
     CONF_TARGET: "xtensa-esp32s3-elf"
 
-riscv32_esp_lin_i686:
+.riscv32_esp_lin_i686:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
   variables:
@@ -206,22 +206,22 @@ riscv32_esp_lin_i686:
     - *build_toolchain
     - *package_toolchain
 
-esp32_macos:
+.esp32_macos:
   extends: .template_macos_cross
   variables:
     CONF_TARGET: "xtensa-esp32-elf"
 
-esp32s2_macos:
+.esp32s2_macos:
   extends: .template_macos_cross
   variables:
     CONF_TARGET: "xtensa-esp32s2-elf"
 
-esp32s3_macos:
+.esp32s3_macos:
   extends: .template_macos_cross
   variables:
     CONF_TARGET: "xtensa-esp32s3-elf"
 
-riscv32_esp_macos:
+.riscv32_esp_macos:
   extends: .template_macos_cross
   variables:
     CONF_TARGET: "riscv32-esp-elf"
@@ -246,22 +246,22 @@ riscv32_esp_macos:
     - *add_extra_files
     - *package_toolchain
 
-esp32_win:
+.esp32_win:
   extends: .template_win_cross
   variables:
     CONF_TARGET: "xtensa-esp32-elf"
 
-esp32s2_win:
+.esp32s2_win:
   extends: .template_win_cross
   variables:
     CONF_TARGET: "xtensa-esp32s2-elf"
 
-esp32s3_win:
+.esp32s3_win:
   extends: .template_win_cross
   variables:
     CONF_TARGET: "xtensa-esp32s3-elf"
 
-riscv32_esp_win:
+.riscv32_esp_win:
   extends: .template_win_cross
   variables:
     CONF_TARGET: "riscv32-esp-elf"
@@ -286,22 +286,22 @@ riscv32_esp_win:
     - *add_extra_files
     - *package_toolchain
 
-esp32_win64:
+.esp32_win64:
   extends: .template_win64_cross
   variables:
     CONF_TARGET: "xtensa-esp32-elf"
 
-esp32s2_win64:
+.esp32s2_win64:
   extends: .template_win64_cross
   variables:
     CONF_TARGET: "xtensa-esp32s2-elf"
 
-esp32s3_win64:
+.esp32s3_win64:
   extends: .template_win64_cross
   variables:
     CONF_TARGET: "xtensa-esp32s3-elf"
 
-riscv32_esp_win64:
+.riscv32_esp_win64:
   extends: .template_win64_cross
   variables:
     CONF_TARGET: "riscv32-esp-elf"
@@ -351,28 +351,28 @@ riscv32_esp_lin_armel:
 
 # ARMHF
 
-esp32_lin_armhf:
+.esp32_lin_armhf:
   extends: .template_lin_arm_cross
   variables:
     PLATFORM_NAME: "linux-armhf"
     CONF_TARGET: "xtensa-esp32-elf"
     CONF_HOST: "arm-linux-gnueabihf"
 
-esp32s2_lin_armhf:
+.esp32s2_lin_armhf:
   extends: .template_lin_arm_cross
   variables:
     PLATFORM_NAME: "linux-armhf"
     CONF_TARGET: "xtensa-esp32s2-elf"
     CONF_HOST: "arm-linux-gnueabihf"
 
-esp32s3_lin_armhf:
+.esp32s3_lin_armhf:
   extends: .template_lin_arm_cross
   variables:
     PLATFORM_NAME: "linux-armhf"
     CONF_TARGET: "xtensa-esp32s3-elf"
     CONF_HOST: "arm-linux-gnueabihf"
 
-riscv32_esp_lin_armhf:
+.riscv32_esp_lin_armhf:
   extends: .template_lin_arm_cross
   variables:
     PLATFORM_NAME: "linux-armhf"
@@ -381,28 +381,28 @@ riscv32_esp_lin_armhf:
 
 # ARM64
 
-esp32_lin_arm64:
+.esp32_lin_arm64:
   extends: .template_lin_arm_cross
   variables:
     PLATFORM_NAME: "linux-arm64"
     CONF_TARGET: "xtensa-esp32-elf"
     CONF_HOST: "aarch64-linux-gnu"
 
-esp32s2_lin_arm64:
+.esp32s2_lin_arm64:
   extends: .template_lin_arm_cross
   variables:
     PLATFORM_NAME: "linux-arm64"
     CONF_TARGET: "xtensa-esp32s2-elf"
     CONF_HOST: "aarch64-linux-gnu"
 
-esp32s3_lin_arm64:
+.esp32s3_lin_arm64:
   extends: .template_lin_arm_cross
   variables:
     PLATFORM_NAME: "linux-arm64"
     CONF_TARGET: "xtensa-esp32s3-elf"
     CONF_HOST: "aarch64-linux-gnu"
 
-riscv32_esp_lin_arm64:
+.riscv32_esp_lin_arm64:
   extends: .template_lin_arm_cross
   variables:
     PLATFORM_NAME: "linux-arm64"
@@ -457,28 +457,28 @@ prep_tests:
     - source ${CONF_TARGET}-profile
     - ./run-all.sh
 
-esp32-compiler-tests:
+.esp32-compiler-tests:
   extends: .template_compiler_tests
   needs:
     - esp32_lin_amd64
   variables:
     CONF_TARGET: "xtensa-esp32-elf"
 
-esp32s2-compiler-tests:
+.esp32s2-compiler-tests:
   extends: .template_compiler_tests
   needs:
     - esp32s2_lin_amd64
   variables:
     CONF_TARGET: "xtensa-esp32s2-elf"
 
-esp32s3-compiler-tests:
+.esp32s3-compiler-tests:
   extends: .template_compiler_tests
   needs:
     - esp32s3_lin_amd64
   variables:
     CONF_TARGET: "xtensa-esp32s3-elf"
 
-riscv32-compiler-tests:
+.riscv32-compiler-tests:
   extends: .template_compiler_tests
   needs:
     - riscv32_esp_lin_amd64
@@ -504,7 +504,7 @@ riscv32-compiler-tests:
 
 # tools test win64
 
-native_win64_tools_test_esp32:
+.native_win64_tools_test_esp32:
   extends: .native_win64_tools_test_template
   needs:
     - prep_tests
@@ -512,7 +512,7 @@ native_win64_tools_test_esp32:
   variables:
     CONF_TARGET: "xtensa-esp32-elf"
 
-native_win64_tools_test_esp32s2:
+.native_win64_tools_test_esp32s2:
   extends: .native_win64_tools_test_template
   needs:
     - prep_tests
@@ -520,7 +520,7 @@ native_win64_tools_test_esp32s2:
   variables:
     CONF_TARGET: "xtensa-esp32s2-elf"
 
-native_win64_tools_test_esp32s3:
+.native_win64_tools_test_esp32s3:
   extends: .native_win64_tools_test_template
   needs:
     - prep_tests
@@ -528,7 +528,7 @@ native_win64_tools_test_esp32s3:
   variables:
     CONF_TARGET: "xtensa-esp32s3-elf"
 
-native_win64_tools_test_riscv32:
+.native_win64_tools_test_riscv32:
   extends: .native_win64_tools_test_template
   needs:
     - prep_tests
@@ -538,7 +538,7 @@ native_win64_tools_test_riscv32:
 
 # tools test win32
 
-native_win32_tools_test_esp32:
+.native_win32_tools_test_esp32:
   extends: .native_win64_tools_test_template
   needs:
     - prep_tests
@@ -547,7 +547,7 @@ native_win32_tools_test_esp32:
     CONF_TARGET: "xtensa-esp32-elf"
     PLATFORM_NAME: "win32"
 
-native_win32_tools_test_esp32s2:
+.native_win32_tools_test_esp32s2:
   extends: .native_win64_tools_test_template
   needs:
     - prep_tests
@@ -556,7 +556,7 @@ native_win32_tools_test_esp32s2:
     CONF_TARGET: "xtensa-esp32s2-elf"
     PLATFORM_NAME: "win32"
 
-native_win32_tools_test_esp32s3:
+.native_win32_tools_test_esp32s3:
   extends: .native_win64_tools_test_template
   needs:
     - prep_tests
@@ -565,7 +565,7 @@ native_win32_tools_test_esp32s3:
     CONF_TARGET: "xtensa-esp32s3-elf"
     PLATFORM_NAME: "win32"
 
-native_win32_tools_test_riscv32:
+.native_win32_tools_test_riscv32:
   extends: .native_win64_tools_test_template
   needs:
     - prep_tests
