@@ -662,6 +662,23 @@ raspbian_stretch_armel_riscv32:
     - prep_tests
     - riscv32_esp_lin_armel
 
+# RPi 3, armel
+
+.rpi3_stretch_armel_tools_test_template:
+  extends: .multiarch_tools_test_template
+  variables:
+    MULTIARCH_IMAGE: "balenalib/raspberrypi3:stretch"
+    MULTIARCH_PLATFORM: "linux/arm/v7"
+    PLATFORM_NAME: "linux-armel"
+
+rpi3_stretch_armel_esp32:
+  extends: .rpi3_stretch_armel_tools_test_template
+  variables:
+    TARGETS: "xtensa-esp32-elf"
+  needs:
+    - prep_tests
+    - esp32_lin_armel
+
 
 upload_to_http:
   stage: private_deploy
