@@ -321,21 +321,21 @@ before_script:
     - *build_toolchain
     - *package_toolchain
 
-esp32_lin_armel:
+.esp32_lin_armel:
   extends: .template_lin_arm_cross
   variables:
     PLATFORM_NAME: "linux-armel"
     CONF_TARGET: "xtensa-esp32-elf"
     CONF_HOST: "arm-linux-gnueabi"
 
-esp32s2_lin_armel:
+.esp32s2_lin_armel:
   extends: .template_lin_arm_cross
   variables:
     PLATFORM_NAME: "linux-armel"
     CONF_TARGET: "xtensa-esp32s2-elf"
     CONF_HOST: "arm-linux-gnueabi"
 
-esp32s3_lin_armel:
+.esp32s3_lin_armel:
   extends: .template_lin_arm_cross
   variables:
     PLATFORM_NAME: "linux-armel"
@@ -630,7 +630,7 @@ prep_tests:
     MULTIARCH_PLATFORM: "linux/arm/v6"
     PLATFORM_NAME: "linux-armel"
 
-raspbian_stretch_armel_esp32:
+.raspbian_stretch_armel_esp32:
   extends: .raspbian_stretch_armel_tools_test_template
   variables:
     TARGETS: "xtensa-esp32-elf"
@@ -638,7 +638,7 @@ raspbian_stretch_armel_esp32:
     - prep_tests
     - esp32_lin_armel
 
-raspbian_stretch_armel_esp32s2:
+.raspbian_stretch_armel_esp32s2:
   extends: .raspbian_stretch_armel_tools_test_template
   variables:
     TARGETS: "xtensa-esp32s2-elf"
@@ -646,7 +646,7 @@ raspbian_stretch_armel_esp32s2:
     - prep_tests
     - esp32s2_lin_armel
 
-raspbian_stretch_armel_esp32s3:
+.raspbian_stretch_armel_esp32s3:
   extends: .raspbian_stretch_armel_tools_test_template
   variables:
     TARGETS: "xtensa-esp32s3-elf"
@@ -671,13 +671,22 @@ raspbian_stretch_armel_riscv32:
     MULTIARCH_PLATFORM: "linux/arm/v7"
     PLATFORM_NAME: "linux-armel"
 
-rpi3_stretch_armel_esp32:
+.rpi3_stretch_armel_esp32:
   extends: .rpi3_stretch_armel_tools_test_template
   variables:
     TARGETS: "xtensa-esp32-elf"
   needs:
     - prep_tests
     - esp32_lin_armel
+
+rpi3_stretch_armel_riscv32:
+  extends: .rpi3_stretch_armel_tools_test_template
+  variables:
+    TARGETS: "riscv32-esp-elf"
+  needs:
+    - prep_tests
+    - riscv32_esp_lin_armel
+
 
 
 upload_to_http:
