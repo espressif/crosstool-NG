@@ -459,28 +459,28 @@ prep_tests:
 
 esp32-compiler-tests:
   extends: .template_compiler_tests
-  dependencies:
+  needs:
     - esp32_lin_amd64
   variables:
     CONF_TARGET: "xtensa-esp32-elf"
 
 esp32s2-compiler-tests:
   extends: .template_compiler_tests
-  dependencies:
+  needs:
     - esp32s2_lin_amd64
   variables:
     CONF_TARGET: "xtensa-esp32s2-elf"
 
 esp32s3-compiler-tests:
   extends: .template_compiler_tests
-  dependencies:
+  needs:
     - esp32s3_lin_amd64
   variables:
     CONF_TARGET: "xtensa-esp32s3-elf"
 
 riscv32-compiler-tests:
   extends: .template_compiler_tests
-  dependencies:
+  needs:
     - riscv32_esp_lin_amd64
   variables:
     CONF_TARGET: "riscv32-esp-elf"
@@ -507,40 +507,32 @@ riscv32-compiler-tests:
 native_win64_tools_test_esp32:
   extends: .native_win64_tools_test_template
   needs:
-    - job: prep_tests
-      artifacts: true
-    - job: esp32_win64
-      artifacts: true
+    - prep_tests
+    - esp32_win64
   variables:
     CONF_TARGET: "xtensa-esp32-elf"
 
 native_win64_tools_test_esp32s2:
   extends: .native_win64_tools_test_template
   needs:
-    - job: prep_tests
-      artifacts: true
-    - job: esp32s2_win64
-      artifacts: true
+    - prep_tests
+    - esp32s2_win64
   variables:
     CONF_TARGET: "xtensa-esp32s2-elf"
 
 native_win64_tools_test_esp32s3:
   extends: .native_win64_tools_test_template
   needs:
-    - job: prep_tests
-      artifacts: true
-    - job: esp32s3_win64
-      artifacts: true
+    - prep_tests
+    - esp32s3_win64
   variables:
     CONF_TARGET: "xtensa-esp32s3-elf"
 
 native_win64_tools_test_riscv32:
   extends: .native_win64_tools_test_template
   needs:
-    - job: prep_tests
-      artifacts: true
-    - job: riscv32_esp_win64
-      artifacts: true
+    - prep_tests
+    - riscv32_esp_win64
   variables:
     CONF_TARGET: "riscv32-esp-elf"
 
@@ -549,10 +541,8 @@ native_win64_tools_test_riscv32:
 native_win32_tools_test_esp32:
   extends: .native_win64_tools_test_template
   needs:
-    - job: prep_tests
-      artifacts: true
-    - job: esp32_win
-      artifacts: true
+    - prep_tests
+    - esp32_win
   variables:
     CONF_TARGET: "xtensa-esp32-elf"
     PLATFORM_NAME: "win32"
@@ -560,10 +550,8 @@ native_win32_tools_test_esp32:
 native_win32_tools_test_esp32s2:
   extends: .native_win64_tools_test_template
   needs:
-    - job: prep_tests
-      artifacts: true
-    - job: esp32s2_win
-      artifacts: true
+    - prep_tests
+    - esp32s2_win
   variables:
     CONF_TARGET: "xtensa-esp32s2-elf"
     PLATFORM_NAME: "win32"
@@ -571,10 +559,8 @@ native_win32_tools_test_esp32s2:
 native_win32_tools_test_esp32s3:
   extends: .native_win64_tools_test_template
   needs:
-    - job: prep_tests
-      artifacts: true
-    - job: esp32s3_win
-      artifacts: true
+    - prep_tests
+    - esp32s3_win
   variables:
     CONF_TARGET: "xtensa-esp32s3-elf"
     PLATFORM_NAME: "win32"
@@ -582,10 +568,8 @@ native_win32_tools_test_esp32s3:
 native_win32_tools_test_riscv32:
   extends: .native_win64_tools_test_template
   needs:
-    - job: prep_tests
-      artifacts: true
-    - job: riscv32_esp_win
-      artifacts: true
+    - prep_tests
+    - riscv32_esp_win
   variables:
     CONF_TARGET: "riscv32-esp-elf"
     PLATFORM_NAME: "win32"
