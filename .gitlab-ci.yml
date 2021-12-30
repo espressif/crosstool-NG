@@ -574,6 +574,95 @@ native_win32_tools_test_riscv32:
     CONF_TARGET: "riscv32-esp-elf"
     PLATFORM_NAME: "win32"
 
+
+.multiarch_tools_test_template:
+  tags: [ "dind", "amd64" ]
+  stage: test
+  image: docker:20.10
+  variables:
+    GIT_STRATEGY: none
+  before_script:
+    - set -euo pipefail
+    # https://hub.docker.com/r/multiarch/qemu-user-static
+    - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+  after_script:
+    - rm -rf ${CI_PROJECT_DIR}/*
+  script:
+    # Print info
+
+    - RUN="docker run --platform ${MULTIARCH_PLATFORM} --rm ${MULTIARCH_IMAGE}"
+    - printf "\n*** Info uname:\n"
+    - ${RUN} uname -a
+    - printf "\n*** System triplet:\n"
+    # 'bash --version' is the easiest way to get triplet
+    - ${RUN} sh -c "bash --version | head -1"
+
+    # Run tests
+    - |
+      for T in ${TARGETS}; do
+        ARCHIVE_NAME=$(cat dist/file_${PLATFORM_NAME}_${T})
+        ${UNARCHIVE_TOOL} dist/${ARCHIVE_NAME}
+
+        # Can't access from a docker-in-docker containter to a current's container directory, should use a host path
+        # https://stackoverflow.com/a/53542041
+        # `/storage4dind` is a volume from config.toml
+        TMP=/storage4dind/${CI_JOB_ID}
+
+        mkdir -p ${TMP}
+        mv ${T} ${TMP}/
+        cp -r esp-compiler-tests ${TMP}/
+
+        export TARGET_DIR=/opt/target
+        export CONF_TARGET=${T}
+        docker run --platform ${MULTIARCH_PLATFORM} --rm -e TARGET_DIR -e CONF_TARGET \
+          -v ${TMP}/${T}:${TARGET_DIR} -v ${TMP}/esp-compiler-tests:/opt/tests \
+          ${MULTIARCH_IMAGE} /opt/tests/tools/target-run.sh
+
+        rm -rf ${TMP}
+      done
+
+# RPi 1, armel
+
+.raspbian_stretch_armel_tools_test_template:
+  extends: .multiarch_tools_test_template
+  variables:
+    MULTIARCH_IMAGE: "balenalib/rpi-raspbian:stretch"
+    MULTIARCH_PLATFORM: "linux/arm/v6"
+    PLATFORM_NAME: "linux-armel"
+
+raspbian_stretch_armel_esp32:
+  extends: .raspbian_stretch_armel_tools_test_template
+  variables:
+    TARGETS: "xtensa-esp32-elf"
+  needs:
+    - prep_tests
+    - esp32_lin_armel
+
+raspbian_stretch_armel_esp32s2:
+  extends: .raspbian_stretch_armel_tools_test_template
+  variables:
+    TARGETS: "xtensa-esp32s2-elf"
+  needs:
+    - prep_tests
+    - esp32s2_lin_armel
+
+raspbian_stretch_armel_esp32s3:
+  extends: .raspbian_stretch_armel_tools_test_template
+  variables:
+    TARGETS: "xtensa-esp32s3-elf"
+  needs:
+    - prep_tests
+    - esp32s3_lin_armel
+
+raspbian_stretch_armel_riscv32:
+  extends: .raspbian_stretch_armel_tools_test_template
+  variables:
+    TARGETS: "riscv32-esp-elf"
+  needs:
+    - prep_tests
+    - riscv32_esp_lin_armel
+
+
 upload_to_http:
   stage: private_deploy
   when: manual
