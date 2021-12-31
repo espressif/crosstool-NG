@@ -10,9 +10,9 @@ variables:
   # GIT_STRATEGY - use option from "CI / CD Settings" - "General pipelines"
   GIT_SUBMODULE_STRATEGY: normal
 
-  ARCHIVE_TOOL: "tar czvf" # 'v' we need to check the contents of the archive by log
-  UNARCHIVE_TOOL: "tar xf"
-  ARCHIVE_EXT: "tar.gz"
+  ARCHIVE_TOOL: "tar -cJvf" # 'v' we need to check the contents of the archive by log
+  UNARCHIVE_TOOL: "tar -xf"
+  ARCHIVE_EXT: "tar.xz"
 
 .use_ci_tools: &use_ci_tools |
   curl -sSL ${CIT_LOADER_URL} -o cit_loader.sh && sh cit_loader.sh
@@ -99,7 +99,8 @@ before_script:
   pushd builds
   rm -f ../build.log
   mv ${CONF_TARGET}/build.log.bz2 ..
-  ${ARCHIVE_TOOL} ${ARCHIVE_NAME} ${CONF_TARGET}/
+  ${ARCHIVE_TOOL} ${ARCHIVE_NAME} ${CONF_TARGET}/ > tar-list.txt
+  mv tar-list.txt ..
   mv ${ARCHIVE_NAME} ../dist/
   echo "${ARCHIVE_NAME}" > ../dist/file_${PLATFORM_NAME}_${CONF_TARGET}
   ls -l ../dist/
@@ -114,12 +115,13 @@ before_script:
       - .config
       # suggest you use `bzless` tool to easily read this log
       - build.log.bz2
+      - tar-list.txt
       - dist
     when: always
     expire_in: 6 weeks
   after_script:
     # save artifacts in any case (both failure or success)
-    - git add -f dist build.log.bz2 .config
+    - git add -f dist tar-list.txt build.log.bz2 .config
     - git clean -d -x -f -f
 
 .build_template_linux:
@@ -233,7 +235,7 @@ riscv32_esp_macos:
     PLATFORM_NAME: "win32"
     CONF_BUILD: "x86_64-linux-gnu"
     CONF_HOST: "i686-w64-mingw32"
-    ARCHIVE_TOOL: "zip -r"
+    ARCHIVE_TOOL: "zip -9 -r"
     ARCHIVE_EXT: "zip"
     EXTRA_BINS: "/usr/lib/gcc/i686-w64-mingw32/6.3-win32/libgcc_s_sjlj-1.dll /usr/lib/gcc/i686-w64-mingw32/6.3-win32/libstdc++-6.dll"
   script:
@@ -273,7 +275,7 @@ riscv32_esp_win:
     PLATFORM_NAME: "win64"
     CONF_BUILD: "x86_64-linux-gnu"
     CONF_HOST: "x86_64-w64-mingw32"
-    ARCHIVE_TOOL: "zip -r"
+    ARCHIVE_TOOL: "zip -9 -r"
     ARCHIVE_EXT: "zip"
     EXTRA_BINS: "/usr/lib/gcc/x86_64-w64-mingw32/6.3-win32/libgcc_s_seh-1.dll /usr/lib/gcc/x86_64-w64-mingw32/6.3-win32/libstdc++-6.dll"
   script:
