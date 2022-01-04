@@ -105,6 +105,10 @@ before_script:
   ls -l ../dist/
   popd
 
+.rules_only_main_branch:
+  rules:
+    - if: '$CI_COMMIT_BRANCH =~ /^esp-\d+\.\d+\.x$/'
+
 # Common template for all builds
 .build_template:
   stage: build
@@ -321,7 +325,7 @@ before_script:
     - *build_toolchain
     - *package_toolchain
 
-.esp32_lin_armel:
+esp32_lin_armel:
   extends: .template_lin_arm_cross
   variables:
     PLATFORM_NAME: "linux-armel"
@@ -514,6 +518,7 @@ prep_tests:
 
 .native_win64_tools_test_esp32s2:
   extends: .native_win64_tools_test_template
+  extends: .rules_only_main_branch
   needs:
     - prep_tests
     - esp32s2_win64
@@ -522,6 +527,7 @@ prep_tests:
 
 .native_win64_tools_test_esp32s3:
   extends: .native_win64_tools_test_template
+  extends: .rules_only_main_branch
   needs:
     - prep_tests
     - esp32s3_win64
@@ -549,6 +555,7 @@ prep_tests:
 
 .native_win32_tools_test_esp32s2:
   extends: .native_win64_tools_test_template
+  extends: .rules_only_main_branch
   needs:
     - prep_tests
     - esp32s2_win
@@ -558,6 +565,7 @@ prep_tests:
 
 .native_win32_tools_test_esp32s3:
   extends: .native_win64_tools_test_template
+  extends: .rules_only_main_branch
   needs:
     - prep_tests
     - esp32s3_win
@@ -567,6 +575,7 @@ prep_tests:
 
 .native_win32_tools_test_riscv32:
   extends: .native_win64_tools_test_template
+  extends: .rules_only_main_branch
   needs:
     - prep_tests
     - riscv32_esp_win
@@ -630,7 +639,7 @@ prep_tests:
     MULTIARCH_PLATFORM: "linux/arm/v6"
     PLATFORM_NAME: "linux-armel"
 
-.raspbian_stretch_armel_esp32:
+raspbian_stretch_armel_esp32:
   extends: .raspbian_stretch_armel_tools_test_template
   variables:
     TARGETS: "xtensa-esp32-elf"
@@ -640,6 +649,7 @@ prep_tests:
 
 .raspbian_stretch_armel_esp32s2:
   extends: .raspbian_stretch_armel_tools_test_template
+  extends: .rules_only_main_branch
   variables:
     TARGETS: "xtensa-esp32s2-elf"
   needs:
@@ -648,6 +658,7 @@ prep_tests:
 
 .raspbian_stretch_armel_esp32s3:
   extends: .raspbian_stretch_armel_tools_test_template
+  extends: .rules_only_main_branch
   variables:
     TARGETS: "xtensa-esp32s3-elf"
   needs:
@@ -671,7 +682,7 @@ raspbian_stretch_armel_riscv32:
     MULTIARCH_PLATFORM: "linux/arm/v7"
     PLATFORM_NAME: "linux-armel"
 
-.rpi3_stretch_armel_esp32:
+rpi3_stretch_armel_esp32:
   extends: .rpi3_stretch_armel_tools_test_template
   variables:
     TARGETS: "xtensa-esp32-elf"
