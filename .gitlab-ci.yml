@@ -135,98 +135,98 @@ before_script:
     - *build_toolchain
     - *package_toolchain
 
-esp32_lin_amd64:
-  extends: .build_template_linux
-  image: $CI_DOCKER_REGISTRY/esp32-toolchain
-  variables:
-    PLATFORM_NAME: "linux-amd64"
-    CONF_TARGET: "xtensa-esp32-elf"
+# esp32_lin_amd64:
+#   extends: .build_template_linux
+#   image: $CI_DOCKER_REGISTRY/esp32-toolchain
+#   variables:
+#     PLATFORM_NAME: "linux-amd64"
+#     CONF_TARGET: "xtensa-esp32-elf"
 
-esp32s2_lin_amd64:
-  extends: .build_template_linux
-  image: $CI_DOCKER_REGISTRY/esp32-toolchain
-  variables:
-    PLATFORM_NAME: "linux-amd64"
-    CONF_TARGET: "xtensa-esp32s2-elf"
+# esp32s2_lin_amd64:
+#   extends: .build_template_linux
+#   image: $CI_DOCKER_REGISTRY/esp32-toolchain
+#   variables:
+#     PLATFORM_NAME: "linux-amd64"
+#     CONF_TARGET: "xtensa-esp32s2-elf"
 
-esp32s3_lin_amd64:
-  extends: .build_template_linux
-  image: $CI_DOCKER_REGISTRY/esp32-toolchain
-  variables:
-    PLATFORM_NAME: "linux-amd64"
-    CONF_TARGET: "xtensa-esp32s3-elf"
+# esp32s3_lin_amd64:
+#   extends: .build_template_linux
+#   image: $CI_DOCKER_REGISTRY/esp32-toolchain
+#   variables:
+#     PLATFORM_NAME: "linux-amd64"
+#     CONF_TARGET: "xtensa-esp32s3-elf"
 
-riscv32_esp_lin_amd64:
-  extends: .build_template_linux
-  image: $CI_DOCKER_REGISTRY/esp32-toolchain
-  variables:
-    PLATFORM_NAME: "linux-amd64"
-    CONF_TARGET: "riscv32-esp-elf"
+# riscv32_esp_lin_amd64:
+#   extends: .build_template_linux
+#   image: $CI_DOCKER_REGISTRY/esp32-toolchain
+#   variables:
+#     PLATFORM_NAME: "linux-amd64"
+#     CONF_TARGET: "riscv32-esp-elf"
 
-esp32_lin_i686:
-  extends: .build_template_linux
-  image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
-  variables:
-    PLATFORM_NAME: "linux-i686"
-    CONF_TARGET: "xtensa-esp32-elf"
+# esp32_lin_i686:
+#   extends: .build_template_linux
+#   image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
+#   variables:
+#     PLATFORM_NAME: "linux-i686"
+#     CONF_TARGET: "xtensa-esp32-elf"
 
-esp32s2_lin_i686:
-  extends: .build_template_linux
-  image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
-  variables:
-    PLATFORM_NAME: "linux-i686"
-    CONF_TARGET: "xtensa-esp32s2-elf"
+# esp32s2_lin_i686:
+#   extends: .build_template_linux
+#   image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
+#   variables:
+#     PLATFORM_NAME: "linux-i686"
+#     CONF_TARGET: "xtensa-esp32s2-elf"
 
-esp32s3_lin_i686:
-  extends: .build_template_linux
-  image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
-  variables:
-    PLATFORM_NAME: "linux-i686"
-    CONF_TARGET: "xtensa-esp32s3-elf"
+# esp32s3_lin_i686:
+#   extends: .build_template_linux
+#   image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
+#   variables:
+#     PLATFORM_NAME: "linux-i686"
+#     CONF_TARGET: "xtensa-esp32s3-elf"
 
-riscv32_esp_lin_i686:
-  extends: .build_template_linux
-  image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
-  variables:
-    PLATFORM_NAME: "linux-i686"
-    CONF_TARGET: "riscv32-esp-elf"
+# riscv32_esp_lin_i686:
+#   extends: .build_template_linux
+#   image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
+#   variables:
+#     PLATFORM_NAME: "linux-i686"
+#     CONF_TARGET: "riscv32-esp-elf"
 
-.template_macos_cross:
-  extends: .build_template
-  image: $CI_DOCKER_REGISTRY/esp32-toolchain-macos-cross
-  variables:
-    PLATFORM_NAME: "macos"
-    CONF_BUILD: "x86_64-linux-gnu"
-    CONF_HOST: "x86_64-apple-darwin12"
-    MACOSX_DEPLOYMENT_TARGET: "10.8"
-  script:
-    - *get_release_name
-    - *build_ctng
-    - *configure_common
-    - *configure_docker
-    - *configure_crossbuild
-    - *build_toolchain
-    - *package_toolchain
+# .template_macos_cross:
+#   extends: .build_template
+#   image: $CI_DOCKER_REGISTRY/esp32-toolchain-macos-cross
+#   variables:
+#     PLATFORM_NAME: "macos"
+#     CONF_BUILD: "x86_64-linux-gnu"
+#     CONF_HOST: "x86_64-apple-darwin12"
+#     MACOSX_DEPLOYMENT_TARGET: "10.8"
+#   script:
+#     - *get_release_name
+#     - *build_ctng
+#     - *configure_common
+#     - *configure_docker
+#     - *configure_crossbuild
+#     - *build_toolchain
+#     - *package_toolchain
 
-esp32_macos:
-  extends: .template_macos_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32-elf"
+# esp32_macos:
+#   extends: .template_macos_cross
+#   variables:
+#     CONF_TARGET: "xtensa-esp32-elf"
 
-esp32s2_macos:
-  extends: .template_macos_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32s2-elf"
+# esp32s2_macos:
+#   extends: .template_macos_cross
+#   variables:
+#     CONF_TARGET: "xtensa-esp32s2-elf"
 
-esp32s3_macos:
-  extends: .template_macos_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32s3-elf"
+# esp32s3_macos:
+#   extends: .template_macos_cross
+#   variables:
+#     CONF_TARGET: "xtensa-esp32s3-elf"
 
-riscv32_esp_macos:
-  extends: .template_macos_cross
-  variables:
-    CONF_TARGET: "riscv32-esp-elf"
+# riscv32_esp_macos:
+#   extends: .template_macos_cross
+#   variables:
+#     CONF_TARGET: "riscv32-esp-elf"
 
 .template_win_cross:
   extends: .build_template
@@ -248,20 +248,20 @@ riscv32_esp_macos:
     - *add_extra_files
     - *package_toolchain
 
-esp32_win:
-  extends: .template_win_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32-elf"
+# esp32_win:
+#   extends: .template_win_cross
+#   variables:
+#     CONF_TARGET: "xtensa-esp32-elf"
 
-esp32s2_win:
-  extends: .template_win_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32s2-elf"
+# esp32s2_win:
+#   extends: .template_win_cross
+#   variables:
+#     CONF_TARGET: "xtensa-esp32s2-elf"
 
-esp32s3_win:
-  extends: .template_win_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32s3-elf"
+# esp32s3_win:
+#   extends: .template_win_cross
+#   variables:
+#     CONF_TARGET: "xtensa-esp32s3-elf"
 
 riscv32_esp_win:
   extends: .template_win_cross
@@ -293,123 +293,123 @@ esp32_win64:
   variables:
     CONF_TARGET: "xtensa-esp32-elf"
 
-esp32s2_win64:
-  extends: .template_win64_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32s2-elf"
+# esp32s2_win64:
+#   extends: .template_win64_cross
+#   variables:
+#     CONF_TARGET: "xtensa-esp32s2-elf"
 
-esp32s3_win64:
-  extends: .template_win64_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32s3-elf"
+# esp32s3_win64:
+#   extends: .template_win64_cross
+#   variables:
+#     CONF_TARGET: "xtensa-esp32s3-elf"
 
 riscv32_esp_win64:
   extends: .template_win64_cross
   variables:
     CONF_TARGET: "riscv32-esp-elf"
 
-.template_lin_arm_cross:
-  extends: .build_template
-  image: $CI_DOCKER_REGISTRY/esp32-toolchain-arm-cross
-  variables:
-    CONF_BUILD: "x86_64-linux-gnu"
-  script:
-    - *get_release_name
-    - *build_ctng
-    - *configure_common
-    - *configure_docker
-    - *configure_linux_no_pie
-    - *configure_crossbuild
-    - *build_toolchain
-    - *package_toolchain
+# .template_lin_arm_cross:
+#   extends: .build_template
+#   image: $CI_DOCKER_REGISTRY/esp32-toolchain-arm-cross
+#   variables:
+#     CONF_BUILD: "x86_64-linux-gnu"
+#   script:
+#     - *get_release_name
+#     - *build_ctng
+#     - *configure_common
+#     - *configure_docker
+#     - *configure_linux_no_pie
+#     - *configure_crossbuild
+#     - *build_toolchain
+#     - *package_toolchain
 
-esp32_lin_armel:
-  extends: .template_lin_arm_cross
-  variables:
-    PLATFORM_NAME: "linux-armel"
-    CONF_TARGET: "xtensa-esp32-elf"
-    CONF_HOST: "arm-linux-gnueabi"
+# esp32_lin_armel:
+#   extends: .template_lin_arm_cross
+#   variables:
+#     PLATFORM_NAME: "linux-armel"
+#     CONF_TARGET: "xtensa-esp32-elf"
+#     CONF_HOST: "arm-linux-gnueabi"
 
-esp32s2_lin_armel:
-  extends: .template_lin_arm_cross
-  variables:
-    PLATFORM_NAME: "linux-armel"
-    CONF_TARGET: "xtensa-esp32s2-elf"
-    CONF_HOST: "arm-linux-gnueabi"
+# esp32s2_lin_armel:
+#   extends: .template_lin_arm_cross
+#   variables:
+#     PLATFORM_NAME: "linux-armel"
+#     CONF_TARGET: "xtensa-esp32s2-elf"
+#     CONF_HOST: "arm-linux-gnueabi"
 
-esp32s3_lin_armel:
-  extends: .template_lin_arm_cross
-  variables:
-    PLATFORM_NAME: "linux-armel"
-    CONF_TARGET: "xtensa-esp32s3-elf"
-    CONF_HOST: "arm-linux-gnueabi"
+# esp32s3_lin_armel:
+#   extends: .template_lin_arm_cross
+#   variables:
+#     PLATFORM_NAME: "linux-armel"
+#     CONF_TARGET: "xtensa-esp32s3-elf"
+#     CONF_HOST: "arm-linux-gnueabi"
 
-riscv32_esp_lin_armel:
-  extends: .template_lin_arm_cross
-  variables:
-    PLATFORM_NAME: "linux-armel"
-    CONF_TARGET: "riscv32-esp-elf"
-    CONF_HOST: "arm-linux-gnueabi"
+# riscv32_esp_lin_armel:
+#   extends: .template_lin_arm_cross
+#   variables:
+#     PLATFORM_NAME: "linux-armel"
+#     CONF_TARGET: "riscv32-esp-elf"
+#     CONF_HOST: "arm-linux-gnueabi"
 
-# ARMHF
+# # ARMHF
 
-esp32_lin_armhf:
-  extends: .template_lin_arm_cross
-  variables:
-    PLATFORM_NAME: "linux-armhf"
-    CONF_TARGET: "xtensa-esp32-elf"
-    CONF_HOST: "arm-linux-gnueabihf"
+# esp32_lin_armhf:
+#   extends: .template_lin_arm_cross
+#   variables:
+#     PLATFORM_NAME: "linux-armhf"
+#     CONF_TARGET: "xtensa-esp32-elf"
+#     CONF_HOST: "arm-linux-gnueabihf"
 
-esp32s2_lin_armhf:
-  extends: .template_lin_arm_cross
-  variables:
-    PLATFORM_NAME: "linux-armhf"
-    CONF_TARGET: "xtensa-esp32s2-elf"
-    CONF_HOST: "arm-linux-gnueabihf"
+# esp32s2_lin_armhf:
+#   extends: .template_lin_arm_cross
+#   variables:
+#     PLATFORM_NAME: "linux-armhf"
+#     CONF_TARGET: "xtensa-esp32s2-elf"
+#     CONF_HOST: "arm-linux-gnueabihf"
 
-esp32s3_lin_armhf:
-  extends: .template_lin_arm_cross
-  variables:
-    PLATFORM_NAME: "linux-armhf"
-    CONF_TARGET: "xtensa-esp32s3-elf"
-    CONF_HOST: "arm-linux-gnueabihf"
+# esp32s3_lin_armhf:
+#   extends: .template_lin_arm_cross
+#   variables:
+#     PLATFORM_NAME: "linux-armhf"
+#     CONF_TARGET: "xtensa-esp32s3-elf"
+#     CONF_HOST: "arm-linux-gnueabihf"
 
-riscv32_esp_lin_armhf:
-  extends: .template_lin_arm_cross
-  variables:
-    PLATFORM_NAME: "linux-armhf"
-    CONF_TARGET: "riscv32-esp-elf"
-    CONF_HOST: "arm-linux-gnueabihf"
+# riscv32_esp_lin_armhf:
+#   extends: .template_lin_arm_cross
+#   variables:
+#     PLATFORM_NAME: "linux-armhf"
+#     CONF_TARGET: "riscv32-esp-elf"
+#     CONF_HOST: "arm-linux-gnueabihf"
 
-# ARM64
+# # ARM64
 
-esp32_lin_arm64:
-  extends: .template_lin_arm_cross
-  variables:
-    PLATFORM_NAME: "linux-arm64"
-    CONF_TARGET: "xtensa-esp32-elf"
-    CONF_HOST: "aarch64-linux-gnu"
+# esp32_lin_arm64:
+#   extends: .template_lin_arm_cross
+#   variables:
+#     PLATFORM_NAME: "linux-arm64"
+#     CONF_TARGET: "xtensa-esp32-elf"
+#     CONF_HOST: "aarch64-linux-gnu"
 
-esp32s2_lin_arm64:
-  extends: .template_lin_arm_cross
-  variables:
-    PLATFORM_NAME: "linux-arm64"
-    CONF_TARGET: "xtensa-esp32s2-elf"
-    CONF_HOST: "aarch64-linux-gnu"
+# esp32s2_lin_arm64:
+#   extends: .template_lin_arm_cross
+#   variables:
+#     PLATFORM_NAME: "linux-arm64"
+#     CONF_TARGET: "xtensa-esp32s2-elf"
+#     CONF_HOST: "aarch64-linux-gnu"
 
-esp32s3_lin_arm64:
-  extends: .template_lin_arm_cross
-  variables:
-    PLATFORM_NAME: "linux-arm64"
-    CONF_TARGET: "xtensa-esp32s3-elf"
-    CONF_HOST: "aarch64-linux-gnu"
+# esp32s3_lin_arm64:
+#   extends: .template_lin_arm_cross
+#   variables:
+#     PLATFORM_NAME: "linux-arm64"
+#     CONF_TARGET: "xtensa-esp32s3-elf"
+#     CONF_HOST: "aarch64-linux-gnu"
 
-riscv32_esp_lin_arm64:
-  extends: .template_lin_arm_cross
-  variables:
-    PLATFORM_NAME: "linux-arm64"
-    CONF_TARGET: "riscv32-esp-elf"
-    CONF_HOST: "aarch64-linux-gnu"
+# riscv32_esp_lin_arm64:
+#   extends: .template_lin_arm_cross
+#   variables:
+#     PLATFORM_NAME: "linux-arm64"
+#     CONF_TARGET: "riscv32-esp-elf"
+#     CONF_HOST: "aarch64-linux-gnu"
 
 # We use prep_tests job to collect all test data and scripts in artifacts,
 # to avoid dependencies for git, because we run some tests on original images.
@@ -432,104 +432,104 @@ prep_tests:
     - cd esp-compiler-tests
     - git log -n10 --oneline
 
-.test_arm_rpi:
-  stage: test
-  image: $CI_DOCKER_REGISTRY/rpi-esp-idf-env:1
-  tags: [ "arm" ]
-  variables:
-    GIT_STRATEGY: none
-    PLATFORM_NAME: "linux-armel"
-    IDF_PATH: "${CI_PROJECT_DIR}/esp-idf"
-    ESP_IDF_BRANCH: "-b master"
-  after_script:
-    - rm -rf ${CI_PROJECT_DIR}/*
-  script:
-    - pwd; id; uname -a
-    - ARCHIVE_NAME=$(cat dist/file_${PLATFORM_NAME}_${CONF_TARGET})
-    - ${UNARCHIVE_TOOL} dist/${ARCHIVE_NAME}
-    - export PATH="${CI_PROJECT_DIR}/${CONF_TARGET}/bin:${PATH}"
+# .test_arm_rpi:
+#   stage: test
+#   image: $CI_DOCKER_REGISTRY/rpi-esp-idf-env:1
+#   tags: [ "arm" ]
+#   variables:
+#     GIT_STRATEGY: none
+#     PLATFORM_NAME: "linux-armel"
+#     IDF_PATH: "${CI_PROJECT_DIR}/esp-idf"
+#     ESP_IDF_BRANCH: "-b master"
+#   after_script:
+#     - rm -rf ${CI_PROJECT_DIR}/*
+#   script:
+#     - pwd; id; uname -a
+#     - ARCHIVE_NAME=$(cat dist/file_${PLATFORM_NAME}_${CONF_TARGET})
+#     - ${UNARCHIVE_TOOL} dist/${ARCHIVE_NAME}
+#     - export PATH="${CI_PROJECT_DIR}/${CONF_TARGET}/bin:${PATH}"
 
-    - file ./${CONF_TARGET}/bin/${CONF_TARGET}-gcc
-    - ./${CONF_TARGET}/bin/${CONF_TARGET}-gcc -v
+#     - file ./${CONF_TARGET}/bin/${CONF_TARGET}-gcc
+#     - ./${CONF_TARGET}/bin/${CONF_TARGET}-gcc -v
 
-    - rm -rf ${IDF_PATH}
-    - git clone -q --depth 1 ${ESP_IDF_BRANCH} ${GITLAB_SSH_SERVER}/idf/esp-idf ${IDF_PATH}
-    - cd ${IDF_PATH}
-    - git submodule update --init
-    - source add_path.sh
-    - cd ${IDF_PATH}/examples/get-started/hello_world
-    - idf.py build
+#     - rm -rf ${IDF_PATH}
+#     - git clone -q --depth 1 ${ESP_IDF_BRANCH} ${GITLAB_SSH_SERVER}/idf/esp-idf ${IDF_PATH}
+#     - cd ${IDF_PATH}
+#     - git submodule update --init
+#     - source add_path.sh
+#     - cd ${IDF_PATH}/examples/get-started/hello_world
+#     - idf.py build
 
-.esp32-rpi-test:
-  extends: .test_arm_rpi
-  dependencies:
-    - esp32_lin_armel
-  variables:
-    CONF_TARGET: "xtensa-esp32-elf"
-    IDF_TARGET: "esp32"
+# .esp32-rpi-test:
+#   extends: .test_arm_rpi
+#   dependencies:
+#     - esp32_lin_armel
+#   variables:
+#     CONF_TARGET: "xtensa-esp32-elf"
+#     IDF_TARGET: "esp32"
 
-.esp32s2-rpi-test:
-  extends: .test_arm_rpi
-  dependencies:
-    - esp32s2_lin_armel
-  variables:
-    CONF_TARGET: "xtensa-esp32s2-elf"
-    IDF_TARGET: "esp32s2beta"
+# .esp32s2-rpi-test:
+#   extends: .test_arm_rpi
+#   dependencies:
+#     - esp32s2_lin_armel
+#   variables:
+#     CONF_TARGET: "xtensa-esp32s2-elf"
+#     IDF_TARGET: "esp32s2beta"
 
-.template_compiler_tests:
-  stage: test
-  tags: [ "build", "amd64" ]
-  image: $CI_DOCKER_REGISTRY/compiler-testsuite:1
-  artifacts:
-    when: always
-    paths:
-      - esp-compiler-tests/*/*.log
-      - esp-compiler-tests/*/*.elf
-  variables:
-    GIT_STRATEGY: none
-    PLATFORM_NAME: "linux-amd64"
-    ESP_COMPILER_TESTS_BRANCH: "-b master"
-  after_script:
-    - source citools/import_functions
-    - cit_rm ${CONF_TARGET}
-  script:
-    - ARCHIVE_NAME=$(cat dist/file_${PLATFORM_NAME}_${CONF_TARGET})
-    - ${UNARCHIVE_TOOL} dist/${ARCHIVE_NAME}
-    - ./${CONF_TARGET}/bin/${CONF_TARGET}-gcc -v
-    - export PATH="${CI_PROJECT_DIR}/${CONF_TARGET}/bin:${PATH}"
+# .template_compiler_tests:
+#   stage: test
+#   tags: [ "build", "amd64" ]
+#   image: $CI_DOCKER_REGISTRY/compiler-testsuite:1
+#   artifacts:
+#     when: always
+#     paths:
+#       - esp-compiler-tests/*/*.log
+#       - esp-compiler-tests/*/*.elf
+#   variables:
+#     GIT_STRATEGY: none
+#     PLATFORM_NAME: "linux-amd64"
+#     ESP_COMPILER_TESTS_BRANCH: "-b master"
+#   after_script:
+#     - source citools/import_functions
+#     - cit_rm ${CONF_TARGET}
+#   script:
+#     - ARCHIVE_NAME=$(cat dist/file_${PLATFORM_NAME}_${CONF_TARGET})
+#     - ${UNARCHIVE_TOOL} dist/${ARCHIVE_NAME}
+#     - ./${CONF_TARGET}/bin/${CONF_TARGET}-gcc -v
+#     - export PATH="${CI_PROJECT_DIR}/${CONF_TARGET}/bin:${PATH}"
 
-    - git clone -q --depth 1 $ESP_COMPILER_TESTS_BRANCH ${GITLAB_SSH_SERVER}/idf/esp-compiler-tests.git
-    - cd esp-compiler-tests
-    - source ${CONF_TARGET}-profile
-    - ./run-all.sh
+#     - git clone -q --depth 1 $ESP_COMPILER_TESTS_BRANCH ${GITLAB_SSH_SERVER}/idf/esp-compiler-tests.git
+#     - cd esp-compiler-tests
+#     - source ${CONF_TARGET}-profile
+#     - ./run-all.sh
 
-esp32-compiler-tests:
-  extends: .template_compiler_tests
-  dependencies:
-    - esp32_lin_amd64
-  variables:
-    CONF_TARGET: "xtensa-esp32-elf"
+# esp32-compiler-tests:
+#   extends: .template_compiler_tests
+#   dependencies:
+#     - esp32_lin_amd64
+#   variables:
+#     CONF_TARGET: "xtensa-esp32-elf"
 
-esp32s2-compiler-tests:
-  extends: .template_compiler_tests
-  dependencies:
-    - esp32s2_lin_amd64
-  variables:
-    CONF_TARGET: "xtensa-esp32s2-elf"
+# esp32s2-compiler-tests:
+#   extends: .template_compiler_tests
+#   dependencies:
+#     - esp32s2_lin_amd64
+#   variables:
+#     CONF_TARGET: "xtensa-esp32s2-elf"
 
-esp32s3-compiler-tests:
-  extends: .template_compiler_tests
-  dependencies:
-    - esp32s3_lin_amd64
-  variables:
-    CONF_TARGET: "xtensa-esp32s3-elf"
+# esp32s3-compiler-tests:
+#   extends: .template_compiler_tests
+#   dependencies:
+#     - esp32s3_lin_amd64
+#   variables:
+#     CONF_TARGET: "xtensa-esp32s3-elf"
 
-riscv32-compiler-tests:
-  extends: .template_compiler_tests
-  dependencies:
-    - riscv32_esp_lin_amd64
-  variables:
-    CONF_TARGET: "riscv32-esp-elf"
+# riscv32-compiler-tests:
+#   extends: .template_compiler_tests
+#   dependencies:
+#     - riscv32_esp_lin_amd64
+#   variables:
+#     CONF_TARGET: "riscv32-esp-elf"
 
 .native_win64_tools_test_template:
   stage: test
@@ -560,25 +560,25 @@ native_win64_tools_test_esp32:
   variables:
     CONF_TARGET: "xtensa-esp32-elf"
 
-native_win64_tools_test_esp32s2:
-  extends: .native_win64_tools_test_template
-  needs:
-    - job: prep_tests
-      artifacts: true
-    - job: esp32s2_win64
-      artifacts: true
-  variables:
-    CONF_TARGET: "xtensa-esp32s2-elf"
+# native_win64_tools_test_esp32s2:
+#   extends: .native_win64_tools_test_template
+#   needs:
+#     - job: prep_tests
+#       artifacts: true
+#     - job: esp32s2_win64
+#       artifacts: true
+#   variables:
+#     CONF_TARGET: "xtensa-esp32s2-elf"
 
-native_win64_tools_test_esp32s3:
-  extends: .native_win64_tools_test_template
-  needs:
-    - job: prep_tests
-      artifacts: true
-    - job: esp32s3_win64
-      artifacts: true
-  variables:
-    CONF_TARGET: "xtensa-esp32s3-elf"
+# native_win64_tools_test_esp32s3:
+#   extends: .native_win64_tools_test_template
+#   needs:
+#     - job: prep_tests
+#       artifacts: true
+#     - job: esp32s3_win64
+#       artifacts: true
+#   variables:
+#     CONF_TARGET: "xtensa-esp32s3-elf"
 
 native_win64_tools_test_riscv32:
   extends: .native_win64_tools_test_template
@@ -592,38 +592,38 @@ native_win64_tools_test_riscv32:
 
 # tools test win32
 
-native_win32_tools_test_esp32:
-  extends: .native_win64_tools_test_template
-  needs:
-    - job: prep_tests
-      artifacts: true
-    - job: esp32_win
-      artifacts: true
-  variables:
-    CONF_TARGET: "xtensa-esp32-elf"
-    PLATFORM_NAME: "win32"
+# native_win32_tools_test_esp32:
+#   extends: .native_win64_tools_test_template
+#   needs:
+#     - job: prep_tests
+#       artifacts: true
+#     - job: esp32_win
+#       artifacts: true
+#   variables:
+#     CONF_TARGET: "xtensa-esp32-elf"
+#     PLATFORM_NAME: "win32"
 
-native_win32_tools_test_esp32s2:
-  extends: .native_win64_tools_test_template
-  needs:
-    - job: prep_tests
-      artifacts: true
-    - job: esp32s2_win
-      artifacts: true
-  variables:
-    CONF_TARGET: "xtensa-esp32s2-elf"
-    PLATFORM_NAME: "win32"
+# native_win32_tools_test_esp32s2:
+#   extends: .native_win64_tools_test_template
+#   needs:
+#     - job: prep_tests
+#       artifacts: true
+#     - job: esp32s2_win
+#       artifacts: true
+#   variables:
+#     CONF_TARGET: "xtensa-esp32s2-elf"
+#     PLATFORM_NAME: "win32"
 
-native_win32_tools_test_esp32s3:
-  extends: .native_win64_tools_test_template
-  needs:
-    - job: prep_tests
-      artifacts: true
-    - job: esp32s3_win
-      artifacts: true
-  variables:
-    CONF_TARGET: "xtensa-esp32s3-elf"
-    PLATFORM_NAME: "win32"
+# native_win32_tools_test_esp32s3:
+#   extends: .native_win64_tools_test_template
+#   needs:
+#     - job: prep_tests
+#       artifacts: true
+#     - job: esp32s3_win
+#       artifacts: true
+#   variables:
+#     CONF_TARGET: "xtensa-esp32s3-elf"
+#     PLATFORM_NAME: "win32"
 
 native_win32_tools_test_riscv32:
   extends: .native_win64_tools_test_template
