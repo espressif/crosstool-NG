@@ -83,6 +83,13 @@ before_script:
   # see https://stackoverflow.com/questions/33512541/cross-compiling-gdb-for-arm-with-python-failed#34625177
   echo "# CT_GDB_CROSS_PYTHON is not set" >> .config
 
+.configure_win_crossbuild: &configure_win_crossbuild |
+  # Append option
+  ( \
+    KV=$(grep "CT_CC_GCC_EXTRA_CONFIG_ARRAY" .config) \
+    && echo "${KV%\"} --with-gnu-ld\"" >> .config; \
+  )
+
 # Actual build
 .build_toolchain: &build_toolchain |
   ./ct-ng oldconfig
@@ -244,6 +251,7 @@ riscv32_esp_macos:
     - *configure_common
     - *configure_docker
     - *configure_crossbuild
+    - *configure_win_crossbuild
     - *build_toolchain
     - *add_extra_files
     - *package_toolchain
@@ -284,6 +292,7 @@ riscv32_esp_win:
     - *configure_common
     - *configure_docker
     - *configure_crossbuild
+    - *configure_win_crossbuild
     - *build_toolchain
     - *add_extra_files
     - *package_toolchain
