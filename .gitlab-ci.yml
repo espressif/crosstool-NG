@@ -513,7 +513,7 @@ prep_tests:
     - ./run-all.sh
 
 esp32-compiler-tests:
-  extends: .template_compiler_tests:
+  extends: .template_compiler_tests
   dependencies:
     - esp32_lin_amd64
   variables:
