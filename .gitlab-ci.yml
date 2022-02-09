@@ -430,7 +430,7 @@ prep_tests:
   variables:
     GIT_STRATEGY: none
     GIT_SERVER: "https://gitlab-ci-token:${ESPCI_TOKEN}@${CI_SERVER_HOST}:${CI_SERVER_PORT}"
-    ESP_COMPILER_TESTS_BRANCH: "-b master"
+    ESP_COMPILER_TESTS_BRANCH: "-b esp-2022r1-branch"
   before_script: []
   artifacts:
     paths:
@@ -497,7 +497,7 @@ prep_tests:
   variables:
     GIT_STRATEGY: none
     PLATFORM_NAME: "linux-amd64"
-    ESP_COMPILER_TESTS_BRANCH: "-b master"
+    ESP_COMPILER_TESTS_BRANCH: "-b esp-2022r1-branch"
   after_script:
     - source citools/import_functions
     - cit_rm ${CONF_TARGET}
