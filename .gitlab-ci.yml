@@ -3,6 +3,7 @@ stages:
   - private_deploy
   - pre_test
   - test
+  - dejagnu-test
 
 image: ${CI_DOCKER_REGISTRY}/esp32-ci-env
 
@@ -15,6 +16,8 @@ variables:
   ARCHIVE_TOOL: "tar -cJvf" # 'v' we need to check the contents of the archive by log
   UNARCHIVE_TOOL: "tar -xf"
   ARCHIVE_EXT: "tar.xz"
+
+  DEJAGNU_IMAGE_TAG: 20210826-3
 
 .use_ci_tools: &use_ci_tools |
   curl -sSL ${CIT_LOADER_URL} -o cit_loader.sh && sh cit_loader.sh
@@ -675,3 +678,78 @@ upload_to_http:
     - echo ""
     - cat err.log
     - popd
+
+include: '.gitlab/ci/dejagnu-test.yml'
+
+# esp32 tests
+
+test_ld_esp32_lin_amd64:
+  extends: .dejagnu-test-ld-template
+  needs: [ esp32_lin_amd64, prep_tests ]
+
+test_gas_esp32_lin_amd64:
+  extends: .dejagnu-test-gas-template
+  needs: [ esp32_lin_amd64, prep_tests ]
+
+test_gcc_esp32_lin_amd64:
+  extends: .dejagnu-test-gcc-template
+  needs: [ esp32_lin_amd64, prep_tests ]
+
+test_gxx_esp32_lin_amd64:
+  extends: .dejagnu-test-gxx-template
+  needs: [ esp32_lin_amd64, prep_tests ]
+
+#esp32s2 tests
+
+test_ld_esp32s2_lin_amd64:
+  extends: .dejagnu-test-ld-template
+  needs: [ esp32s2_lin_amd64, prep_tests ]
+
+test_gas_esp32s2_lin_amd64:
+  extends: .dejagnu-test-gas-template
+  needs: [ esp32s2_lin_amd64, prep_tests ]
+
+test_gcc_esp32s2_lin_amd64:
+  extends: .dejagnu-test-gcc-template
+  needs: [ esp32s2_lin_amd64, prep_tests ]
+
+test_gxx_esp32s2_lin_amd64:
+  extends: .dejagnu-test-gxx-template
+  needs: [ esp32s2_lin_amd64, prep_tests ]
+
+#esp32s3 tests
+
+test_ld_esp32s3_lin_amd64:
+  extends: .dejagnu-test-ld-template
+  needs: [ esp32s3_lin_amd64, prep_tests ]
+
+test_gas_esp32s3_lin_amd64:
+  extends: .dejagnu-test-gas-template
+  needs: [ esp32s3_lin_amd64, prep_tests ]
+
+test_gcc_esp32s3_lin_amd64:
+  extends: .dejagnu-test-gcc-template
+  needs: [ esp32s3_lin_amd64, prep_tests ]
+
+test_gxx_esp32s3_lin_amd64:
+  extends: .dejagnu-test-gxx-template
+  needs: [ esp32s3_lin_amd64, prep_tests ]
+
+# riscv32 tests
+
+test_ld_riscv32_esp_lin_amd64:
+  extends: .dejagnu-test-ld-template
+  needs: [ riscv32_esp_lin_amd64, prep_tests ]
+
+test_gas_riscv32_esp_lin_amd64:
+  extends: .dejagnu-test-gas-template
+  needs: [ riscv32_esp_lin_amd64, prep_tests ]
+
+test_gcc_riscv32_esp_lin_amd64:
+  extends: .dejagnu-test-gcc-template
+  needs: [ riscv32_esp_lin_amd64, prep_tests ]
+
+test_gxx_riscv32_esp_lin_amd64:
+  extends: .dejagnu-test-gxx-template
+  needs: [ riscv32_esp_lin_amd64, prep_tests ]
+

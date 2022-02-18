@@ -1,0 +1,59 @@
+.set_archive_name: &set_archive_name |
+    FILE=$(find dist -type f -name "file_*")
+    ARCHIVE_NAME=$(cat "$FILE")
+
+.set_target_from_archive_name: &set_target_from_archive_name |
+    CONF_TARGET=$(echo "$ARCHIVE_NAME" | cut -d '-' -f1-3)
+
+.unarchive_and_set_path: &unarchive_and_set_path |
+    ${UNARCHIVE_TOOL} "dist/${ARCHIVE_NAME}"
+    export PATH="${CI_PROJECT_DIR}/${CONF_TARGET}/bin:${PATH}"
+
+.clone_testuite_repo: &clone_testuite_repo |
+    # make bash happy (unbound variable error)
+    CT_TOP_DIR="" && CT_TARGET=""
+    # load crosstool variables to get repo url and branch name
+    set -a
+    . "${CI_PROJECT_DIR}/samples/${CONF_TARGET}/crosstool.config"
+    set +a
+    git clone --depth 1 --branch "${!REPO_BRANCH}" "${!REPO_URL}"
+
+.dejagnu-test-template:
+  stage: dejagnu-test
+  image: $CI_DOCKER_REGISTRY/esp32-dejagnu:$DEJAGNU_IMAGE_TAG
+  tags: [ "build", "amd64" ]
+  script:
+    - *set_archive_name
+    - *set_target_from_archive_name
+    - *unarchive_and_set_path
+    - *clone_testuite_repo
+    - esp-compiler-tests/dejagnu/run.sh "$CONF_TARGET" "$TEST_TOOL"
+
+.dejagnu-test-ld-template:
+  extends: .dejagnu-test-template
+  variables:
+    REPO_URL: "CT_BINUTILS_DEVEL_URL"
+    REPO_BRANCH: "CT_BINUTILS_DEVEL_BRANCH"
+    TEST_TOOL: "ld"
+
+.dejagnu-test-gas-template:
+  extends: .dejagnu-test-template
+  variables:
+    REPO_URL: "CT_BINUTILS_DEVEL_URL"
+    REPO_BRANCH: "CT_BINUTILS_DEVEL_BRANCH"
+    TEST_TOOL: "gas"
+
+.dejagnu-test-gcc-template:
+  extends: .dejagnu-test-template
+  variables:
+    REPO_URL: "CT_GCC_DEVEL_URL"
+    REPO_BRANCH: "CT_GCC_DEVEL_BRANCH"
+    TEST_TOOL: "gcc"
+
+.dejagnu-test-gxx-template:
+  extends: .dejagnu-test-template
+  variables:
+    REPO_URL: "CT_GCC_DEVEL_URL"
+    REPO_BRANCH: "CT_GCC_DEVEL_BRANCH"
+    TEST_TOOL: "g++"
+
