@@ -10,6 +10,8 @@ variables:
   # GIT_STRATEGY - use option from "CI / CD Settings" - "General pipelines"
   GIT_SUBMODULE_STRATEGY: normal
 
+  ESP_COMPILER_TESTS_BRANCH: "esp-2022r1-branch"
+
   ARCHIVE_TOOL: "tar -cJvf" # 'v' we need to check the contents of the archive by log
   UNARCHIVE_TOOL: "tar -xf"
   ARCHIVE_EXT: "tar.xz"
@@ -430,14 +432,14 @@ prep_tests:
   variables:
     GIT_STRATEGY: none
     GIT_SERVER: "https://gitlab-ci-token:${ESPCI_TOKEN}@${CI_SERVER_HOST}:${CI_SERVER_PORT}"
-    ESP_COMPILER_TESTS_BRANCH: "-b esp-2022r1-branch"
   before_script: []
   artifacts:
     paths:
       - esp-compiler-tests
     expire_in: 6 weeks
   script:
-    - git clone -q ${ESP_COMPILER_TESTS_BRANCH} "${GIT_SERVER}/idf/esp-compiler-tests.git"
+    - test -n "${ESP_COMPILER_TESTS_BRANCH:-}" || exit 1
+    - git clone -q -b ${ESP_COMPILER_TESTS_BRANCH} "${GIT_SERVER}/idf/esp-compiler-tests.git"
     - cd esp-compiler-tests
     - git log -n10 --oneline
 
@@ -497,7 +499,6 @@ prep_tests:
   variables:
     GIT_STRATEGY: none
     PLATFORM_NAME: "linux-amd64"
-    ESP_COMPILER_TESTS_BRANCH: "-b esp-2022r1-branch"
   after_script:
     - source citools/import_functions
     - cit_rm ${CONF_TARGET}
@@ -507,7 +508,8 @@ prep_tests:
     - ./${CONF_TARGET}/bin/${CONF_TARGET}-gcc -v
     - export PATH="${CI_PROJECT_DIR}/${CONF_TARGET}/bin:${PATH}"
 
-    - git clone -q --depth 1 $ESP_COMPILER_TESTS_BRANCH ${GITLAB_SSH_SERVER}/idf/esp-compiler-tests.git
+    - test -n "${ESP_COMPILER_TESTS_BRANCH:-}" || exit 1
+    - git clone -q --depth 1 -b ${ESP_COMPILER_TESTS_BRANCH} ${GITLAB_SSH_SERVER}/idf/esp-compiler-tests.git
     - cd esp-compiler-tests
     - source ${CONF_TARGET}-profile
     - ./run-all.sh
