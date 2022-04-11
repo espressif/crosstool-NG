@@ -118,9 +118,9 @@ CT_DoExecLog ALL mkdir -p "${CT_WORK_DIR}"
 CT_DoExecLog DEBUG rm -f "${CT_WORK_DIR}/backtrace"
 
 # Check build file system case-sensitiveness
-CT_DoExecLog DEBUG touch "${CT_WORK_DIR}/foo"
-CT_TestAndAbort "Your file system in '${CT_WORK_DIR}' is *not* case-sensitive!" -f "${CT_WORK_DIR}/FOO"
-CT_DoExecLog DEBUG rm -f "${CT_WORK_DIR}/foo"
+#CT_DoExecLog DEBUG touch "${CT_WORK_DIR}/foo"
+#CT_TestAndAbort "Your file system in '${CT_WORK_DIR}' is *not* case-sensitive!" -f "${CT_WORK_DIR}/FOO"
+#CT_DoExecLog DEBUG rm -f "${CT_WORK_DIR}/foo"
 
 # Check the user is using an existing SHELL to be used by ./configure and Makefiles
 CT_TestOrAbort "The CONFIG_SHELL '${CT_CONFIG_SHELL}' is not valid" -f "${CT_CONFIG_SHELL}" -a -x "${CT_CONFIG_SHELL}"
@@ -325,9 +325,9 @@ CT_DoExecLog ALL mkdir -p "${CT_HOST_COMPLIBS_DIR}"
 CT_DoExecLog ALL chmod -R u+w "${CT_PREFIX_DIR}"
 
 # Check install file system case-sensitiveness
-CT_DoExecLog DEBUG touch "${CT_PREFIX_DIR}/foo"
-CT_TestAndAbort "Your file system in '${CT_PREFIX_DIR}' is *not* case-sensitive!" -f "${CT_PREFIX_DIR}/FOO"
-CT_DoExecLog DEBUG rm -f "${CT_PREFIX_DIR}/foo"
+#CT_DoExecLog DEBUG touch "${CT_PREFIX_DIR}/foo"
+#CT_TestAndAbort "Your file system in '${CT_PREFIX_DIR}' is *not* case-sensitive!" -f "${CT_PREFIX_DIR}/FOO"
+#CT_DoExecLog DEBUG rm -f "${CT_PREFIX_DIR}/foo"
 
 # Setting up the rest of the environment only if not restarting
 if [ -z "${CT_RESTART}" ]; then
