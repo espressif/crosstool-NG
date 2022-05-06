@@ -20,6 +20,7 @@
 
 .dejagnu-test-template:
   stage: dejagnu-test
+  allow_failure: true
   image: $CI_DOCKER_REGISTRY/esp32-dejagnu:$DEJAGNU_IMAGE_TAG
   tags: [ "build", "amd64" ]
   script:
