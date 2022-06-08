@@ -26,9 +26,16 @@ variables:
 .add_gitlab_key: &add_gitlab_key |
   cit_add_ssh_key "${GITLAB_KEY}"
 
+# ESPCI_HOMEBREW_PREFIX is set up in runner's config.toml
+.check_and_setup_homebrew: &check_and_setup_homebrew |
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    eval "$(${ESPCI_HOMEBREW_PREFIX}/bin/brew shellenv)"
+  fi
+
 before_script:
   - *use_ci_tools
   - *add_gitlab_key
+  - *check_and_setup_homebrew
 
 # Prepare release name/number
 .get_release_name: &get_release_name |
@@ -48,6 +55,24 @@ before_script:
   ./configure --enable-local
   make
   ./ct-ng ${CONF_TARGET}
+
+# HOMEBREW_PREFIX is an original variable from "brew shellenv"
+.build_ctng_macos_native: &build_ctng_macos_native |
+  (
+    PATH="${HOMEBREW_PREFIX}/opt/gnu-sed/libexec/gnubin:${PATH:-}";
+    PATH="${HOMEBREW_PREFIX}/opt/openssl@3/bin:${PATH:-}";
+    PATH="${HOMEBREW_PREFIX}/opt/binutils/bin:${PATH:-}";
+    PATH="${HOMEBREW_PREFIX}/opt/libtool/libexec/gnubin:${PATH:-}";
+    PATH="${HOMEBREW_PREFIX}/opt/ncurses/bin:${PATH:-}";
+    export PATH;
+    export LDFLAGS="-L${HOMEBREW_PREFIX}/opt/ncurses/lib ${LDFLAGS:-}";
+    export CPPFLAGS="-I${HOMEBREW_PREFIX}/opt/ncurses/include ${CPPFLAGS:-}";
+
+    ./bootstrap;
+    ./configure --enable-local;
+    make;
+    ./ct-ng ${CONF_TARGET};
+  )
 
 # ct-ng options common for all platforms
 .configure_common: &configure_common |
@@ -86,6 +111,12 @@ before_script:
 
   # No support Python in GDB in cross-compilation now,
   # see https://stackoverflow.com/questions/33512541/cross-compiling-gdb-for-arm-with-python-failed#34625177
+  # Espressif provides GDB 11+ with Python 3 support separately
+  echo "# CT_GDB_CROSS_PYTHON is not set" >> .config
+
+.configure_macos_native: &configure_macos_native |
+  # No old Python 2 on macOS anymore
+  # Espressif provides GDB 11+ with Python 3 support separately
   echo "# CT_GDB_CROSS_PYTHON is not set" >> .config
 
 .configure_win_crossbuild: &configure_win_crossbuild |
@@ -111,7 +142,7 @@ before_script:
   pushd builds
   rm -f ../build.log
   mv ${CONF_TARGET}/build.log.bz2 ..
-  ${ARCHIVE_TOOL} ${ARCHIVE_NAME} ${CONF_TARGET}/ > tar-list.txt
+  ${ARCHIVE_TOOL} ${ARCHIVE_NAME} ${CONF_TARGET}/ > tar-list.txt 2>&1
   mv tar-list.txt ..
   mv ${ARCHIVE_NAME} ../dist/
   echo "${ARCHIVE_NAME}" > ../dist/file_${PLATFORM_NAME}_${CONF_TARGET}
@@ -237,6 +268,41 @@ esp32s3_macos:
 
 riscv32_esp_macos:
   extends: .template_macos_cross
+  variables:
+    CONF_TARGET: "riscv32-esp-elf"
+
+.template_macos_arm64_native:
+  extends: .build_template
+  tags: [ "darwin", "aarch64" ]
+  variables:
+    PLATFORM_NAME: "macos-arm64"
+    CONF_TARGET: "xtensa-esp32-elf"
+  script:
+    - *get_release_name
+    - *build_ctng_macos_native
+    - *configure_common
+    - *configure_macos_native
+    - *configure_docker
+    - *build_toolchain
+    - *package_toolchain
+
+esp32_macos_arm64:
+  extends: .template_macos_arm64_native
+  variables:
+    CONF_TARGET: "xtensa-esp32-elf"
+
+esp32s2_macos_arm64:
+  extends: .template_macos_arm64_native
+  variables:
+    CONF_TARGET: "xtensa-esp32s2-elf"
+
+esp32s3_macos_arm64:
+  extends: .template_macos_arm64_native
+  variables:
+    CONF_TARGET: "xtensa-esp32s3-elf"
+
+riscv32_esp_macos_arm64:
+  extends: .template_macos_arm64_native
   variables:
     CONF_TARGET: "riscv32-esp-elf"
 
@@ -668,6 +734,8 @@ upload_to_http:
     # force the fetch strategy to clean a working dir
     GIT_STRATEGY: fetch
     CTNG_ESP_HELPERS_BRANCH: "-b master"
+    TARGETS: "xtensa-esp32-elf xtensa-esp32s2-elf xtensa-esp32s3-elf riscv32-esp-elf"
+    HOSTS: "linux-amd64 linux-arm64 linux-armel linux-armhf linux-i686 macos macos-arm64 win32 win64"
   before_script:
     - *use_ci_tools
   script:
@@ -683,7 +751,7 @@ upload_to_http:
     - cit_add_ssh_key "${GITLAB_KEY}"
     - git clone -q --depth 1 ${CTNG_ESP_HELPERS_BRANCH} ${GITLAB_SSH_SERVER}/idf/ctng-esp-helpers.git
     - pushd dist
-    - ../ctng-esp-helpers/print_all_checksum_json.sh "${HTTP_PUBLIC_DIR}" "xtensa-esp32-elf xtensa-esp32s2-elf xtensa-esp32s3-elf riscv32-esp-elf" "linux-amd64 linux-arm64 linux-armel linux-armhf linux-i686 macos win32 win64" 2>err.log
+    - ../ctng-esp-helpers/print_all_checksum_json.sh "${HTTP_PUBLIC_DIR}" "${TARGETS}" "${HOSTS}" 2>err.log
     - echo ""
     - cat err.log
     - popd
