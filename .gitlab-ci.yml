@@ -442,7 +442,7 @@ prep_tests:
     expire_in: 6 weeks
   script:
     - test -n "${ESP_COMPILER_TESTS_BRANCH:-}" || exit 1
-    - git clone -q -b ${ESP_COMPILER_TESTS_BRANCH} "${GIT_SERVER}/idf/esp-compiler-tests.git"
+    - rm -rf "esp-compiler-tests" && git clone -q -b ${ESP_COMPILER_TESTS_BRANCH} "${GIT_SERVER}/idf/esp-compiler-tests.git"
     - cd esp-compiler-tests
     - git log -n10 --oneline
 
@@ -512,7 +512,7 @@ prep_tests:
     - export PATH="${CI_PROJECT_DIR}/${CONF_TARGET}/bin:${PATH}"
 
     - test -n "${ESP_COMPILER_TESTS_BRANCH:-}" || exit 1
-    - git clone -q --depth 1 -b ${ESP_COMPILER_TESTS_BRANCH} ${GITLAB_SSH_SERVER}/idf/esp-compiler-tests.git
+    - rm -rf "esp-compiler-tests" && git clone -q --depth 1 -b ${ESP_COMPILER_TESTS_BRANCH} ${GITLAB_SSH_SERVER}/idf/esp-compiler-tests.git
     - cd esp-compiler-tests
     - source ${CONF_TARGET}-profile
     - ./run-all.sh
