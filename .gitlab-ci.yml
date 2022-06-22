@@ -11,7 +11,7 @@ variables:
   # GIT_STRATEGY - use option from "CI / CD Settings" - "General pipelines"
   GIT_SUBMODULE_STRATEGY: normal
 
-  ESP_COMPILER_TESTS_BRANCH: "esp-2022r1-branch"
+  ESP_COMPILER_TESTS_BRANCH: "esp-2022r1-2-branch"
 
   ARCHIVE_TOOL: "tar -cJvf" # 'v' we need to check the contents of the archive by log
   UNARCHIVE_TOOL: "tar -xf"
@@ -497,8 +497,8 @@ prep_tests:
   artifacts:
     when: always
     paths:
-      - esp-compiler-tests/*/*.log
-      - esp-compiler-tests/*/*.elf
+      - esp-compiler-tests/**/*.log
+      - esp-compiler-tests/**/*.elf
   variables:
     GIT_STRATEGY: none
     PLATFORM_NAME: "linux-amd64"
@@ -510,38 +510,47 @@ prep_tests:
     - ${UNARCHIVE_TOOL} dist/${ARCHIVE_NAME}
     - ./${CONF_TARGET}/bin/${CONF_TARGET}-gcc -v
     - export PATH="${CI_PROJECT_DIR}/${CONF_TARGET}/bin:${PATH}"
-
-    - test -n "${ESP_COMPILER_TESTS_BRANCH:-}" || exit 1
-    - rm -rf "esp-compiler-tests" && git clone -q --depth 1 -b ${ESP_COMPILER_TESTS_BRANCH} ${GITLAB_SSH_SERVER}/idf/esp-compiler-tests.git
-    - cd esp-compiler-tests
-    - source ${CONF_TARGET}-profile
+    - cd esp-compiler-tests/build-only
+    - source profile-${CONF_TARGET}
     - ./run-all.sh
 
 esp32-compiler-tests:
   extends: .template_compiler_tests
-  dependencies:
-    - esp32_lin_amd64
+  needs:
+    - job: prep_tests
+      artifacts: true
+    - job: esp32_lin_amd64
+      artifacts: true
   variables:
     CONF_TARGET: "xtensa-esp32-elf"
 
 esp32s2-compiler-tests:
   extends: .template_compiler_tests
-  dependencies:
-    - esp32s2_lin_amd64
+  needs:
+    - job: prep_tests
+      artifacts: true
+    - job: esp32s2_lin_amd64
+      artifacts: true
   variables:
     CONF_TARGET: "xtensa-esp32s2-elf"
 
 esp32s3-compiler-tests:
   extends: .template_compiler_tests
-  dependencies:
-    - esp32s3_lin_amd64
+  needs:
+    - job: prep_tests
+      artifacts: true
+    - job: esp32s3_lin_amd64
+      artifacts: true
   variables:
     CONF_TARGET: "xtensa-esp32s3-elf"
 
 riscv32-compiler-tests:
   extends: .template_compiler_tests
-  dependencies:
-    - riscv32_esp_lin_amd64
+  needs:
+    - job: prep_tests
+      artifacts: true
+    - job: riscv32_esp_lin_amd64
+      artifacts: true
   variables:
     CONF_TARGET: "riscv32-esp-elf"
 
@@ -558,7 +567,7 @@ riscv32-compiler-tests:
     - $ARCHIVE_NAME=$(cat "dist\file_${PLATFORM_NAME}_${CONF_TARGET}")
     - Expand-Archive -DestinationPATH . "dist\$ARCHIVE_NAME"
     - $env:PATH = "${CI_PROJECT_DIR}\${CONF_TARGET}\bin;" + $env:PATH
-    - Push-Location esp-compiler-tests\tools
+    - Push-Location esp-compiler-tests\just-run-tools
     - .\run.ps1
     - Pop-Location
 
