@@ -496,7 +496,7 @@ riscv32_esp_lin_arm64:
 prep_tests:
   stage: pre_test
   tags: [ "build", "amd64" ]
-  image: $CI_DOCKER_REGISTRY/compiler-testsuite:1
+  image: $CI_DOCKER_REGISTRY/compiler-testsuite:2
   needs: []
   variables:
     GIT_STRATEGY: none
@@ -556,10 +556,12 @@ prep_tests:
     CONF_TARGET: "xtensa-esp32s2-elf"
     IDF_TARGET: "esp32s2beta"
 
+#
+# Compiler tests: build-only and just-run-tools
+#
+
 .template_compiler_tests:
   stage: test
-  tags: [ "build", "amd64" ]
-  image: $CI_DOCKER_REGISTRY/compiler-testsuite:1
   artifacts:
     when: always
     paths:
@@ -567,58 +569,133 @@ prep_tests:
       - esp-compiler-tests/**/*.elf
   variables:
     GIT_STRATEGY: none
-    PLATFORM_NAME: "linux-amd64"
   after_script:
     - source citools/import_functions
     - cit_rm ${CONF_TARGET}
   script:
     - ARCHIVE_NAME=$(cat dist/file_${PLATFORM_NAME}_${CONF_TARGET})
     - ${UNARCHIVE_TOOL} dist/${ARCHIVE_NAME}
-    - ./${CONF_TARGET}/bin/${CONF_TARGET}-gcc -v
     - export PATH="${CI_PROJECT_DIR}/${CONF_TARGET}/bin:${PATH}"
-    - cd esp-compiler-tests/build-only
-    - source profile-${CONF_TARGET}
-    - ./run-all.sh
 
-esp32-compiler-tests:
+    - echo ""
+    - echo "*** Build-only tests ****"
+    - echo ""
+    - |
+      (
+        cd esp-compiler-tests/build-only
+        source profile-${CONF_TARGET}
+        ./run-all.sh
+      )
+    - echo ""
+    - echo "*** Just-run-tools tests ****"
+    - echo ""
+    - |
+      (
+        cd esp-compiler-tests/just-run-tools
+        ./run.sh
+      )
+
+# Linux amd64
+
+.template_lin_amd64_compiler_tests:
   extends: .template_compiler_tests
-  needs:
-    - job: prep_tests
-      artifacts: true
-    - job: esp32_lin_amd64
-      artifacts: true
+  tags: [ "build", "amd64" ]
+  image: $CI_DOCKER_REGISTRY/compiler-testsuite:2
+  variables:
+    PLATFORM_NAME: "linux-amd64"
+
+esp32_lin_amd64_compiler_tests:
+  extends: .template_lin_amd64_compiler_tests
+  needs: [ esp32_lin_amd64, prep_tests ]
   variables:
     CONF_TARGET: "xtensa-esp32-elf"
 
-esp32s2-compiler-tests:
-  extends: .template_compiler_tests
-  needs:
-    - job: prep_tests
-      artifacts: true
-    - job: esp32s2_lin_amd64
-      artifacts: true
+esp32s2_lin_amd64_compiler_tests:
+  extends: .template_lin_amd64_compiler_tests
+  needs: [ esp32s2_lin_amd64, prep_tests ]
   variables:
     CONF_TARGET: "xtensa-esp32s2-elf"
 
-esp32s3-compiler-tests:
-  extends: .template_compiler_tests
-  needs:
-    - job: prep_tests
-      artifacts: true
-    - job: esp32s3_lin_amd64
-      artifacts: true
+esp32s3_lin_amd64_compiler_tests:
+  extends: .template_lin_amd64_compiler_tests
+  needs: [ esp32s3_lin_amd64, prep_tests ]
   variables:
     CONF_TARGET: "xtensa-esp32s3-elf"
 
-riscv32-compiler-tests:
-  extends: .template_compiler_tests
-  needs:
-    - job: prep_tests
-      artifacts: true
-    - job: riscv32_esp_lin_amd64
-      artifacts: true
+riscv32_lin_amd64_compiler_tests:
+  extends: .template_lin_amd64_compiler_tests
+  needs: [ riscv32_esp_lin_amd64, prep_tests ]
   variables:
     CONF_TARGET: "riscv32-esp-elf"
+
+# macOS amd64
+
+.template_macos_amd64_compiler_tests:
+  extends: .template_compiler_tests
+  tags: [ "darwin", "amd64" ]
+  variables:
+    PLATFORM_NAME: "macos"
+
+esp32_macos_amd64_compiler_tests:
+  extends: .template_macos_amd64_compiler_tests
+  needs: [ esp32_macos, prep_tests ]
+  variables:
+    CONF_TARGET: "xtensa-esp32-elf"
+
+esp32s2_macos_amd64_compiler_tests:
+  extends: .template_macos_amd64_compiler_tests
+  needs: [ esp32s2_macos, prep_tests ]
+  variables:
+    CONF_TARGET: "xtensa-esp32s2-elf"
+
+esp32s3_macos_amd64_compiler_tests:
+  extends: .template_macos_amd64_compiler_tests
+  needs: [ esp32s3_macos, prep_tests ]
+  variables:
+    CONF_TARGET: "xtensa-esp32s3-elf"
+
+riscv32_macos_amd64_compiler_tests:
+  extends: .template_macos_amd64_compiler_tests
+  needs: [ riscv32_esp_macos, prep_tests ]
+  variables:
+    CONF_TARGET: "riscv32-esp-elf"
+
+# macos arm64
+
+.template_macos_aarch64_compiler_tests:
+  extends: .template_compiler_tests
+  tags: [ "darwin", "aarch64" ]
+  variables:
+    PLATFORM_NAME: "macos-arm64"
+
+esp32_macos_aarch64_compiler_tests:
+  extends: .template_macos_aarch64_compiler_tests
+  needs: [ esp32_macos_arm64, prep_tests ]
+  variables:
+    CONF_TARGET: "xtensa-esp32-elf"
+
+esp32s2_macos_aarch64_compiler_tests:
+  extends: .template_macos_aarch64_compiler_tests
+  needs: [ esp32s2_macos_arm64, prep_tests ]
+  variables:
+    CONF_TARGET: "xtensa-esp32s2-elf"
+
+esp32s3_macos_aarch64_compiler_tests:
+  extends: .template_macos_aarch64_compiler_tests
+  needs: [ esp32s3_macos_arm64, prep_tests ]
+  variables:
+    CONF_TARGET: "xtensa-esp32s3-elf"
+
+riscv32_macos_aarch64_compiler_tests:
+  extends: .template_macos_aarch64_compiler_tests
+  needs: [ riscv32_esp_macos_arm64, prep_tests ]
+  variables:
+    CONF_TARGET: "riscv32-esp-elf"
+
+
+#
+# "Just-run-tools" on Windows
+#
 
 .native_win64_tools_test_template:
   stage: test
@@ -637,93 +714,62 @@ riscv32-compiler-tests:
     - .\run.ps1
     - Pop-Location
 
-# tools test win64
+# win64
 
 native_win64_tools_test_esp32:
   extends: .native_win64_tools_test_template
-  needs:
-    - job: prep_tests
-      artifacts: true
-    - job: esp32_win64
-      artifacts: true
+  needs: [ esp32_win64, prep_tests ]
   variables:
     CONF_TARGET: "xtensa-esp32-elf"
 
 native_win64_tools_test_esp32s2:
   extends: .native_win64_tools_test_template
-  needs:
-    - job: prep_tests
-      artifacts: true
-    - job: esp32s2_win64
-      artifacts: true
+  needs: [ esp32s2_win64, prep_tests ]
   variables:
     CONF_TARGET: "xtensa-esp32s2-elf"
 
 native_win64_tools_test_esp32s3:
   extends: .native_win64_tools_test_template
-  needs:
-    - job: prep_tests
-      artifacts: true
-    - job: esp32s3_win64
-      artifacts: true
+  needs: [ esp32s3_win64, prep_tests ]
   variables:
     CONF_TARGET: "xtensa-esp32s3-elf"
 
 native_win64_tools_test_riscv32:
   extends: .native_win64_tools_test_template
-  needs:
-    - job: prep_tests
-      artifacts: true
-    - job: riscv32_esp_win64
-      artifacts: true
+  needs: [ riscv32_esp_win64, prep_tests ]
   variables:
     CONF_TARGET: "riscv32-esp-elf"
 
-# tools test win32
+# win32
 
 native_win32_tools_test_esp32:
   extends: .native_win64_tools_test_template
-  needs:
-    - job: prep_tests
-      artifacts: true
-    - job: esp32_win
-      artifacts: true
+  needs: [ esp32_win, prep_tests ]
   variables:
     CONF_TARGET: "xtensa-esp32-elf"
     PLATFORM_NAME: "win32"
 
 native_win32_tools_test_esp32s2:
   extends: .native_win64_tools_test_template
-  needs:
-    - job: prep_tests
-      artifacts: true
-    - job: esp32s2_win
-      artifacts: true
+  needs: [ esp32s2_win, prep_tests ]
   variables:
     CONF_TARGET: "xtensa-esp32s2-elf"
     PLATFORM_NAME: "win32"
 
 native_win32_tools_test_esp32s3:
   extends: .native_win64_tools_test_template
-  needs:
-    - job: prep_tests
-      artifacts: true
-    - job: esp32s3_win
-      artifacts: true
+  needs: [ esp32s3_win, prep_tests ]
   variables:
     CONF_TARGET: "xtensa-esp32s3-elf"
     PLATFORM_NAME: "win32"
 
 native_win32_tools_test_riscv32:
   extends: .native_win64_tools_test_template
-  needs:
-    - job: prep_tests
-      artifacts: true
-    - job: riscv32_esp_win
-      artifacts: true
+  needs: [ riscv32_esp_win, prep_tests ]
   variables:
     CONF_TARGET: "riscv32-esp-elf"
     PLATFORM_NAME: "win32"
+
 
 upload_to_http:
   stage: private_deploy
