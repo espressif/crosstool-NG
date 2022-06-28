@@ -804,6 +804,8 @@ upload_to_http:
 
 include: '.gitlab/ci/dejagnu-test.yml'
 
+# Linux amd64
+
 # esp32 tests
 
 test_ld_esp32_lin_amd64:
@@ -875,6 +877,8 @@ test_gcc_riscv32_esp_lin_amd64:
 test_gxx_riscv32_esp_lin_amd64:
   extends: .dejagnu-test-gxx-template
   needs: [ riscv32_esp_lin_amd64, prep_tests ]
+
+# macOS amd64
 
 # esp32 tests
 
@@ -964,3 +968,92 @@ test_gxx_riscv32_esp_macos:
   needs: [ riscv32_esp_macos, prep_tests ]
   tags: [ "darwin", "amd64" ]
 
+# macOS arm64
+
+# esp32 tests
+
+test_ld_esp32_macos_aarch64:
+  extends: .dejagnu-test-ld-template
+  needs: [ esp32_macos, prep_tests ]
+  tags: [ "darwin", "aarch64" ]
+
+test_gas_esp32_macos_aarch64:
+  extends: .dejagnu-test-gas-template
+  needs: [ esp32_macos, prep_tests ]
+  tags: [ "darwin", "aarch64" ]
+
+test_gcc_esp32_macos_aarch64:
+  extends: .dejagnu-test-gcc-template
+  needs: [ esp32_macos, prep_tests ]
+  tags: [ "darwin", "aarch64" ]
+
+test_gxx_esp32_macos_aarch64:
+  extends: .dejagnu-test-gxx-template
+  needs: [ esp32_macos, prep_tests ]
+  tags: [ "darwin", "aarch64" ]
+
+#esp32s2 tests
+
+test_ld_esp32s2_macos_aarch64:
+  extends: .dejagnu-test-ld-template
+  needs: [ esp32s2_macos, prep_tests ]
+  tags: [ "darwin", "aarch64" ]
+
+test_gas_esp32s2_macos_aarch64:
+  extends: .dejagnu-test-gas-template
+  needs: [ esp32s2_macos, prep_tests ]
+  tags: [ "darwin", "aarch64" ]
+
+test_gcc_esp32s2_macos_aarch64:
+  extends: .dejagnu-test-gcc-template
+  needs: [ esp32s2_macos, prep_tests ]
+  tags: [ "darwin", "aarch64" ]
+
+test_gxx_esp32s2_macos_aarch64:
+  extends: .dejagnu-test-gxx-template
+  needs: [ esp32s2_macos, prep_tests ]
+  tags: [ "darwin", "aarch64" ]
+
+#esp32s3 tests
+
+test_ld_esp32s3_macos_aarch64:
+  extends: .dejagnu-test-ld-template
+  needs: [ esp32s3_macos, prep_tests ]
+  tags: [ "darwin", "aarch64" ]
+
+test_gas_esp32s3_macos_aarch64:
+  extends: .dejagnu-test-gas-template
+  needs: [ esp32s3_macos, prep_tests ]
+  tags: [ "darwin", "aarch64" ]
+
+test_gcc_esp32s3_macos_aarch64:
+  extends: .dejagnu-test-gcc-template
+  needs: [ esp32s3_macos, prep_tests ]
+  tags: [ "darwin", "aarch64" ]
+
+test_gxx_esp32s3_macos_aarch64:
+  extends: .dejagnu-test-gxx-template
+  needs: [ esp32s3_macos, prep_tests ]
+  tags: [ "darwin", "aarch64" ]
+
+# riscv32 tests
+
+test_ld_riscv32_esp_macos_aarch64:
+  extends: .dejagnu-test-ld-template
+  needs: [ riscv32_esp_macos, prep_tests ]
+  tags: [ "darwin", "aarch64" ]
+
+test_gas_riscv32_esp_macos_aarch64:
+  extends: .dejagnu-test-gas-template
+  needs: [ riscv32_esp_macos, prep_tests ]
+  tags: [ "darwin", "aarch64" ]
+
+test_gcc_riscv32_esp_macos_aarch64:
+  extends: .dejagnu-test-gcc-template
+  needs: [ riscv32_esp_macos, prep_tests ]
+  tags: [ "darwin", "aarch64" ]
+
+test_gxx_riscv32_esp_macos_aarch64:
+  extends: .dejagnu-test-gxx-template
+  needs: [ riscv32_esp_macos, prep_tests ]
+  tags: [ "darwin", "aarch64" ]
