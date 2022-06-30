@@ -1,9 +1,13 @@
+include:
+  - template: 'Workflows/Branch-Pipelines.gitlab-ci.yml'
+
 stages:
   - build
-  - private_deploy
+  - internal_deploy
   - pre_test
   - test
   - dejagnu-test
+  - github_deploy
 
 image: ${CI_DOCKER_REGISTRY}/esp32-ci-env
 
@@ -11,7 +15,15 @@ variables:
   # GIT_STRATEGY - use option from "CI / CD Settings" - "General pipelines"
   GIT_SUBMODULE_STRATEGY: normal
 
+  # show artifact downloading progress
+  TRANSFER_METER_FREQUENCY: 5s
+
+  # let's do not compress artifacts because we already use compressed archives
+  ARTIFACT_COMPRESSION_LEVEL: "fastest"
+
   ESP_COMPILER_TESTS_BRANCH: "esp-2022r1-2-branch"
+
+  GCC_VER: "11.2.0"
 
   ARCHIVE_TOOL: "tar -cJvf" # 'v' we need to check the contents of the archive by log
   UNARCHIVE_TOOL: "tar -xf"
@@ -41,7 +53,7 @@ before_script:
 .get_release_name: &get_release_name |
   # using annotated tags
   REL_NUM=$(git describe --abbrev=7)
-  REL_SFX="gcc11_2_0"
+  REL_SFX="gcc${GCC_VER//./_}"
   REL_NAME=${CONF_TARGET}-${REL_SFX}-${REL_NUM}-${PLATFORM_NAME}
   ARCHIVE_NAME=${REL_NAME}.${ARCHIVE_EXT}
   echo "PLATFORM_NAME: $PLATFORM_NAME"
@@ -491,6 +503,139 @@ riscv32_esp_lin_arm64:
     CONF_TARGET: "riscv32-esp-elf"
     CONF_HOST: "aarch64-linux-gnu"
 
+upload_to_internal:
+  stage: internal_deploy
+  image: $CI_DOCKER_REGISTRY/compiler-testsuite:2
+  when: manual
+  allow_failure: true
+  tags: [ "build", "amd64", "shiny" ]
+  variables:
+    # don't use "GIT_STRATEGY: none", because we need cleaning old artifacts in 'dist/' that came from previous pipelines
+    GIT_SUBMODULE_STRATEGY: none
+    CTNG_ESP_HELPERS_BRANCH: "-b master"
+    TARGETS: "xtensa-esp32-elf xtensa-esp32s2-elf xtensa-esp32s3-elf riscv32-esp-elf"
+    HOSTS: "linux-amd64 linux-arm64 linux-armel linux-armhf linux-i686 macos macos-arm64 win32 win64"
+  artifacts:
+    paths:
+      # a list just for check files, debug
+      - dist/src-tar-list.txt
+    reports:
+      dotenv: dist/dist.env
+  before_script:
+    - *use_ci_tools
+  script:
+    - cd dist
+    - DIST_VERSION=$(git describe --abbrev=7)
+    - echo "DIST_VERSION=$DIST_VERSION" >> dist.env
+    - RELEASE_CHECKSUM_FILE="${CI_PROJECT_NAME}-${DIST_VERSION}-checksum.sha256"
+    - RELEASE_SRC_NAME="${CI_PROJECT_NAME}-${DIST_VERSION}-src"
+    - RELEASE_SRC_FILE="${CI_PROJECT_NAME}-${DIST_VERSION}-src.${ARCHIVE_EXT}"
+    # Create a source archive
+    - rm -rf -- "${RELEASE_SRC_NAME}" "${RELEASE_SRC_FILE}"
+    - git clone --quiet --depth 1 --recurse-submodules --shallow-submodules ${CI_REPOSITORY_URL} "${RELEASE_SRC_NAME}"
+    - find "${RELEASE_SRC_NAME}" -name ".git" -type d -exec rm -rf -- "{}" +
+    - find "${RELEASE_SRC_NAME}" -name .git\* -exec rm -rf -- {} +
+    - ${ARCHIVE_TOOL} "${RELEASE_SRC_FILE}" "${RELEASE_SRC_NAME}" > src-tar-list.txt 2>&1
+    - rm -rf -- "${RELEASE_SRC_NAME}"
+    - ls -l
+    # Create a checksum file
+    - DIST_FILE_LIST=$(find . -name file_\* -exec cat {} \+)
+    - DIST_FILE_LIST="${DIST_FILE_LIST} ${RELEASE_SRC_FILE}"
+    - |
+      for n in $DIST_FILE_LIST; do
+        sz=$(stat -c%s "${n}") >> ${RELEASE_CHECKSUM_FILE};
+        printf "# %s: %s bytes\n" "${n}" "${sz}" >> ${RELEASE_CHECKSUM_FILE};
+        sha256sum -b "${n}" >> ${RELEASE_CHECKSUM_FILE};
+      done
+    - DIST_FILE_LIST="${DIST_FILE_LIST} ${RELEASE_CHECKSUM_FILE}"
+    # remove new lines from file list
+    - DIST_FILE_LIST="${DIST_FILE_LIST//$'\n'/ }"
+    - echo "DIST_FILE_LIST=$DIST_FILE_LIST" >> dist.env
+    # Upload all needed files
+    - HTTP_UPLOAD_DIR=${HTTP_UPLOAD_DIR}/${DIST_VERSION}
+    - HTTP_PUBLIC_DIR=${HTTP_PUBLIC_DIR}/${DIST_VERSION}
+    - cit_add_ssh_key "${HTTP_UPLOAD_KEY}"
+    - ssh ${HTTP_UPLOAD_DIR%:*} "mkdir -p ${HTTP_UPLOAD_DIR#*:}"
+    - scp ${DIST_FILE_LIST} ${HTTP_UPLOAD_DIR}
+    # Show download links
+    - DIST_URL_LIST=""
+    - for n in ${DIST_FILE_LIST}; do DIST_URL_LIST="${DIST_URL_LIST} ${HTTP_PUBLIC_DIR}/${n}"; done
+    - echo "DIST_URL_LIST=$DIST_URL_LIST" >> dist.env
+    - echo -e "\nArchives were published there:\n\n$(for n in ${DIST_FILE_LIST}; do echo "${HTTP_PUBLIC_DIR}/${n}"; done)\n"
+    # Show JSON snipppet
+    - cit_add_ssh_key "${GITLAB_KEY}"
+    - git clone -q --depth 1 ${CTNG_ESP_HELPERS_BRANCH} ${GITLAB_SSH_SERVER}/idf/ctng-esp-helpers.git
+    - ./ctng-esp-helpers/print_all_checksum_json.sh "${HTTP_PUBLIC_DIR}" "${TARGETS}" "${HOSTS}" 2>err.log
+    - echo ""
+    - cat err.log
+    # remove empty lines
+    - sed -i '/^[[:space:]]*$/d' dist.env
+    - cat dist.env
+
+upload_to_github:
+  stage: github_deploy
+  image: espressif/github-hub:2
+  needs: [ upload_to_internal ]
+  tags: [ "build", "amd64", "brew" ]
+  allow_failure: true
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: manual
+  variables:
+    GIT_SUBMODULE_STRATEGY: none
+    DIST_URL_LIST: ${DIST_URL_LIST}
+    DIST_FILE_LIST: ${DIST_FILE_LIST}
+    GITHUB_USER: "${GH_USER}"
+    GITHUB_TOKEN: "${GH_TOKEN}"
+    TAG: ${CI_COMMIT_TAG}
+    REPO_URL: ${GH_REPO_URL}
+  before_script: []
+  script:
+    - echo hello
+    - echo $DIST_URL_LIST
+    # TMP dir
+    - rm -rf TMP && mkdir TMP && cd TMP
+    # download urls
+    - for u in ${DIST_URL_LIST}; do curl -O -sSL --connect-timeout 10 --retry 10 "${u}"; done
+    - ls -l
+    # hub release upload
+    - git remote remove github || true
+    - echo "${REPO_URL}"
+    - git remote add github ${REPO_URL}
+    - hub release
+    - hub release show ${TAG} || { echo "Please create a release on GitHub with ${TAG} tag at first"; exit 1; }
+    - for n in ${DIST_FILE_LIST}; do hub release edit -m "" -a "${n}" "${TAG}"; done
+    - cd -
+    - rm -rf TMP
+
+.update_idf_tools:
+  allow_failure: true
+  variables:
+    TOOL_NAME: "toolchain"
+    TOOL_MEMBERS: "xtensa-esp32-elf xtensa-esp32s2-elf xtensa-esp32s3-elf riscv32-esp-elf"
+    TOOL_VERSION: ${DIST_VERSION}-${GCC_VER}
+  trigger:
+    project: idf/idf-tools-updater
+    strategy: depend
+
+internal_update_idf_tools:
+  extends: .update_idf_tools
+  stage: internal_deploy
+  needs: [ upload_to_internal ]
+  when: manual
+  variables:
+    TOOL_SHA256_URL: ${HTTP_PUBLIC_DIR}/${DIST_VERSION}/crosstool-NG-${DIST_VERSION}-checksum.sha256
+
+github_update_idf_tools:
+  extends: .update_idf_tools
+  stage: github_deploy
+  needs: [ upload_to_github ]
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: manual
+  variables:
+    TOOL_SHA256_URL: ${GH_REPO_URL}/releases/download/${CI_COMMIT_TAG}/crosstool-NG-${CI_COMMIT_TAG}-checksum.sha256
+
 # We use prep_tests job to collect all test data and scripts in artifacts,
 # to avoid dependencies for git, because we run some tests on original images.
 prep_tests:
@@ -511,50 +656,6 @@ prep_tests:
     - rm -rf "esp-compiler-tests" && git clone -q -b ${ESP_COMPILER_TESTS_BRANCH} "${GIT_SERVER}/idf/esp-compiler-tests.git"
     - cd esp-compiler-tests
     - git log -n10 --oneline
-
-.test_arm_rpi:
-  stage: test
-  image: $CI_DOCKER_REGISTRY/rpi-esp-idf-env:1
-  tags: [ "arm" ]
-  variables:
-    GIT_STRATEGY: none
-    PLATFORM_NAME: "linux-armel"
-    IDF_PATH: "${CI_PROJECT_DIR}/esp-idf"
-    ESP_IDF_BRANCH: "-b master"
-  after_script:
-    - rm -rf ${CI_PROJECT_DIR}/*
-  script:
-    - pwd; id; uname -a
-    - ARCHIVE_NAME=$(cat dist/file_${PLATFORM_NAME}_${CONF_TARGET})
-    - ${UNARCHIVE_TOOL} dist/${ARCHIVE_NAME}
-    - export PATH="${CI_PROJECT_DIR}/${CONF_TARGET}/bin:${PATH}"
-
-    - file ./${CONF_TARGET}/bin/${CONF_TARGET}-gcc
-    - ./${CONF_TARGET}/bin/${CONF_TARGET}-gcc -v
-
-    - rm -rf ${IDF_PATH}
-    - git clone -q --depth 1 ${ESP_IDF_BRANCH} ${GITLAB_SSH_SERVER}/idf/esp-idf ${IDF_PATH}
-    - cd ${IDF_PATH}
-    - git submodule update --init
-    - source add_path.sh
-    - cd ${IDF_PATH}/examples/get-started/hello_world
-    - idf.py build
-
-.esp32-rpi-test:
-  extends: .test_arm_rpi
-  dependencies:
-    - esp32_lin_armel
-  variables:
-    CONF_TARGET: "xtensa-esp32-elf"
-    IDF_TARGET: "esp32"
-
-.esp32s2-rpi-test:
-  extends: .test_arm_rpi
-  dependencies:
-    - esp32s2_lin_armel
-  variables:
-    CONF_TARGET: "xtensa-esp32s2-elf"
-    IDF_TARGET: "esp32s2beta"
 
 #
 # Compiler tests: build-only and just-run-tools
@@ -770,37 +871,6 @@ native_win32_tools_test_riscv32:
     CONF_TARGET: "riscv32-esp-elf"
     PLATFORM_NAME: "win32"
 
-
-upload_to_http:
-  stage: private_deploy
-  when: manual
-  allow_failure: true
-  tags: [ "deploy", "shiny" ]
-  variables:
-    # force the fetch strategy to clean a working dir
-    GIT_STRATEGY: fetch
-    CTNG_ESP_HELPERS_BRANCH: "-b master"
-    TARGETS: "xtensa-esp32-elf xtensa-esp32s2-elf xtensa-esp32s3-elf riscv32-esp-elf"
-    HOSTS: "linux-amd64 linux-arm64 linux-armel linux-armhf linux-i686 macos macos-arm64 win32 win64"
-  before_script:
-    - *use_ci_tools
-  script:
-    - cit_add_ssh_key "${HTTP_UPLOAD_KEY}"
-    # List of archives in dist/
-    - FILES=$(find dist -name file_\* -exec cat {} \+)
-    - pushd dist
-    - scp ${FILES} ${HTTP_UPLOAD_DIR}
-    # Show download links
-    - echo -e "\nArchives were published there:\n\n$(for n in ${FILES}; do echo "${HTTP_PUBLIC_DIR}/${n}"; done)\n"
-    - popd
-    # Show checksums
-    - cit_add_ssh_key "${GITLAB_KEY}"
-    - git clone -q --depth 1 ${CTNG_ESP_HELPERS_BRANCH} ${GITLAB_SSH_SERVER}/idf/ctng-esp-helpers.git
-    - pushd dist
-    - ../ctng-esp-helpers/print_all_checksum_json.sh "${HTTP_PUBLIC_DIR}" "${TARGETS}" "${HOSTS}" 2>err.log
-    - echo ""
-    - cat err.log
-    - popd
 
 include: '.gitlab/ci/dejagnu-test.yml'
 
