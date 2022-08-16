@@ -629,7 +629,8 @@ internal_update_idf_tools:
 github_update_idf_tools:
   extends: .update_idf_tools
   stage: github_deploy
-  needs: [ upload_to_github ]
+  # upload_to_internal - because this job depends (via .update_idf_tools) on DIST_VERSION from dist/dist.env
+  needs: [ upload_to_internal, upload_to_github ]
   rules:
     - if: $CI_COMMIT_TAG
       when: manual
