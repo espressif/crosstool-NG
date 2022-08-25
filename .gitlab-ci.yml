@@ -78,7 +78,9 @@ before_script:
     PATH="${HOMEBREW_PREFIX}/opt/ncurses/bin:${PATH:-}";
     export PATH;
     export LDFLAGS="-L${HOMEBREW_PREFIX}/opt/ncurses/lib ${LDFLAGS:-}";
+    export LDFLAGS="-L${HOMEBREW_PREFIX}/opt/gettext/lib ${LDFLAGS:-}";
     export CPPFLAGS="-I${HOMEBREW_PREFIX}/opt/ncurses/include ${CPPFLAGS:-}";
+    export CPPFLAGS="-I${HOMEBREW_PREFIX}/opt/gettext/include ${CPPFLAGS:-}";
 
     ./bootstrap;
     ./configure --enable-local;
