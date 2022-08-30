@@ -94,6 +94,8 @@ before_script:
   echo "# CT_PREFIX_DIR_RO is not set" >> .config
   echo "CT_LOG_EXTRA=y" >> .config
   echo "CT_LOG_LEVEL_MAX=\"EXTRA\"" >> .config
+  echo "CT_LOG_TO_FILE=y" >> .config
+  echo "# CT_LOG_FILE_COMPRESS is not set" >> .config
   echo "CT_USE_MIRROR=y" >> .config
   echo "CT_FORCE_MIRROR=y" >> .config
   echo "CT_MIRROR_BASE_URL=\"${MIRROR_BASE}\"" >> .config
@@ -153,15 +155,14 @@ before_script:
 # Package the toolchain
 .package_toolchain: &package_toolchain |
   mkdir -p dist
-  pushd builds
-  rm -f ../build.log
-  mv ${CONF_TARGET}/build.log.bz2 ..
+  cd builds
+  rm -fv ${CONF_TARGET}/build.log*
   ${ARCHIVE_TOOL} ${ARCHIVE_NAME} ${CONF_TARGET}/ > tar-list.txt 2>&1
   mv tar-list.txt ..
   mv ${ARCHIVE_NAME} ../dist/
   echo "${ARCHIVE_NAME}" > ../dist/file_${PLATFORM_NAME}_${CONF_TARGET}
   ls -l ../dist/
-  popd
+  cd -
 
 # Common template for all builds
 .build_template:
@@ -178,8 +179,12 @@ before_script:
     expire_in: 6 weeks
   after_script:
     # save artifacts in any case (both failure or success)
-    - git add -f dist tar-list.txt build.log.bz2 .config
-    - git clean -d -x -f -f
+    - test -f .config && git add -f .config
+    - test -f build.log && bzip2 build.log
+    - test -f build.log.bz2 && git add -f build.log.bz2
+    - test -f tar-list.txt && git add -f tar-list.txt
+    - test -d dist && git add -f dist
+    - git clean -dxff >/dev/null
 
 .build_template_linux:
   extends: .build_template
