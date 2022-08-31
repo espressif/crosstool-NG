@@ -16,7 +16,7 @@
     set -a
     . "${CI_PROJECT_DIR}/samples/${CONF_TARGET}/crosstool.config"
     set +a
-    git clone --depth 1 --branch "${!REPO_BRANCH}" "${!REPO_URL}"
+    git clone --depth 1 --branch "${!REPO_BRANCH}" "${REPO_URL}"
 
 .dejagnu-test-template:
   stage: dejagnu-test
@@ -33,28 +33,28 @@
 .dejagnu-test-ld-template:
   extends: .dejagnu-test-template
   variables:
-    REPO_URL: "CT_BINUTILS_DEVEL_URL"
+    REPO_URL: "${GITLAB_SSH_SERVER}/idf/binutils-gdb.git"
     REPO_BRANCH: "CT_BINUTILS_DEVEL_BRANCH"
     TEST_TOOL: "ld"
 
 .dejagnu-test-gas-template:
   extends: .dejagnu-test-template
   variables:
-    REPO_URL: "CT_BINUTILS_DEVEL_URL"
+    REPO_URL: "${GITLAB_SSH_SERVER}/idf/binutils-gdb.git"
     REPO_BRANCH: "CT_BINUTILS_DEVEL_BRANCH"
     TEST_TOOL: "gas"
 
 .dejagnu-test-gcc-template:
   extends: .dejagnu-test-template
   variables:
-    REPO_URL: "CT_GCC_DEVEL_URL"
+    REPO_URL: "${GITLAB_SSH_SERVER}/idf/gcc.git"
     REPO_BRANCH: "CT_GCC_DEVEL_BRANCH"
     TEST_TOOL: "gcc"
 
 .dejagnu-test-gxx-template:
   extends: .dejagnu-test-template
   variables:
-    REPO_URL: "CT_GCC_DEVEL_URL"
+    REPO_URL: "${GITLAB_SSH_SERVER}/idf/gcc.git"
     REPO_BRANCH: "CT_GCC_DEVEL_BRANCH"
     TEST_TOOL: "g++"
 
