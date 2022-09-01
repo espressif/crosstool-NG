@@ -687,7 +687,8 @@ prep_tests:
   script:
     - ARCHIVE_NAME=$(cat dist/file_${PLATFORM_NAME}_${CONF_TARGET})
     - ${UNARCHIVE_TOOL} dist/${ARCHIVE_NAME}
-    - export PATH="${CI_PROJECT_DIR}/${CONF_TARGET}/bin:${PATH}"
+    - export TOOL_DIR="${CI_PROJECT_DIR}/${CONF_TARGET}/bin"
+    - export PATH="${TOOL_DIR}:${PATH}"
 
     - echo ""
     - echo "*** Build-only tests ****"
@@ -704,6 +705,17 @@ prep_tests:
     - |
       (
         cd esp-compiler-tests/just-run-tools
+        export CONF_TARGET
+        ./run.sh
+      )
+    - echo ""
+    - echo "*** Binary analysis ****"
+    - echo ""
+    - |
+      (
+        cd esp-compiler-tests/bin-analysis
+        export CONF_TARGET
+        export TOOL_DIR
         ./run.sh
       )
 
@@ -747,6 +759,8 @@ riscv32_lin_amd64_compiler_tests:
   tags: [ "darwin", "amd64" ]
   variables:
     PLATFORM_NAME: "macos"
+    # 'legacy' means checking in different way
+    BIN_ANALYSIS_MIN_MACOS_VERSION_LEGACY: "10.8"
 
 esp32_macos_amd64_compiler_tests:
   extends: .template_macos_amd64_compiler_tests
@@ -779,6 +793,7 @@ riscv32_macos_amd64_compiler_tests:
   tags: [ "darwin", "aarch64" ]
   variables:
     PLATFORM_NAME: "macos-arm64"
+    BIN_ANALYSIS_MIN_MACOS_VERSION: "11.0"
 
 esp32_macos_aarch64_compiler_tests:
   extends: .template_macos_aarch64_compiler_tests
