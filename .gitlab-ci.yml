@@ -296,6 +296,9 @@ riscv32_esp_macos:
   variables:
     PLATFORM_NAME: "macos-arm64"
     CONF_TARGET: "xtensa-esp32-elf"
+    # Although version >= 11 is required, there is some compile-time problem with such value
+    # so 10.8 value is used, it works correctly and creates binaries for minimal os version == 11.0
+    MACOSX_DEPLOYMENT_TARGET: "10.8"
   script:
     - *get_release_name
     - *build_ctng_macos_native
