@@ -21,7 +21,7 @@ variables:
   # let's do not compress artifacts because we already use compressed archives
   ARTIFACT_COMPRESSION_LEVEL: "fastest"
 
-  ESP_COMPILER_TESTS_BRANCH: "esp-2021r2-patch4-branch"
+  ESP_COMPILER_TESTS_BRANCH: "feature/dejgnu-verbose"
 
   GCC_VER: "8.4.0"
 
