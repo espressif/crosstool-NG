@@ -21,7 +21,7 @@ variables:
   # let's do not compress artifacts because we already use compressed archives
   ARTIFACT_COMPRESSION_LEVEL: "fastest"
 
-  ESP_COMPILER_TESTS_BRANCH: "esp-2022r1-2-branch"
+  ESP_COMPILER_TESTS_BRANCH: "fix/dejagnu-pipeline-for-gcc-11"
 
   GCC_VER: "11.2.0"
 
