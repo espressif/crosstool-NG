@@ -21,6 +21,14 @@
 .dejagnu-test-template:
   stage: dejagnu-test
   allow_failure: true
+  artifacts:
+    when: always
+    expire_in: 6 weeks
+    paths:
+      - report*.xml
+      - dbg.log
+    reports:
+      junit: report*.xml
   image: $CI_DOCKER_REGISTRY/esp32-dejagnu:$DEJAGNU_IMAGE_TAG
   tags: [ "build", "amd64" ]
   script:
