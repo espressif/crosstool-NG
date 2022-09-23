@@ -977,11 +977,13 @@ test_gcc_esp32_macos:
   extends: .dejagnu-test-gcc-template
   needs: [ esp32_macos, prep_tests ]
   tags: [ "darwin", "amd64" ]
+  resource_group: dejagnu_macos_amd64
 
 test_gxx_esp32_macos:
   extends: .dejagnu-test-gxx-template
   needs: [ esp32_macos, prep_tests ]
   tags: [ "darwin", "amd64" ]
+  resource_group: dejagnu_macos_amd64
 
 #esp32s2 tests
 
@@ -999,11 +1001,13 @@ test_gcc_esp32s2_macos:
   extends: .dejagnu-test-gcc-template
   needs: [ esp32s2_macos, prep_tests ]
   tags: [ "darwin", "amd64" ]
+  resource_group: dejagnu_macos_amd64
 
 test_gxx_esp32s2_macos:
   extends: .dejagnu-test-gxx-template
   needs: [ esp32s2_macos, prep_tests ]
   tags: [ "darwin", "amd64" ]
+  resource_group: dejagnu_macos_amd64
 
 #esp32s3 tests
 
@@ -1021,11 +1025,13 @@ test_gcc_esp32s3_macos:
   extends: .dejagnu-test-gcc-template
   needs: [ esp32s3_macos, prep_tests ]
   tags: [ "darwin", "amd64" ]
+  resource_group: dejagnu_macos_amd64
 
 test_gxx_esp32s3_macos:
   extends: .dejagnu-test-gxx-template
   needs: [ esp32s3_macos, prep_tests ]
   tags: [ "darwin", "amd64" ]
+  resource_group: dejagnu_macos_amd64
 
 # riscv32 tests
 
@@ -1043,11 +1049,13 @@ test_gcc_riscv32_esp_macos:
   extends: .dejagnu-test-gcc-template
   needs: [ riscv32_esp_macos, prep_tests ]
   tags: [ "darwin", "amd64" ]
+  resource_group: dejagnu_macos_amd64
 
 test_gxx_riscv32_esp_macos:
   extends: .dejagnu-test-gxx-template
   needs: [ riscv32_esp_macos, prep_tests ]
   tags: [ "darwin", "amd64" ]
+  resource_group: dejagnu_macos_amd64
 
 # macOS arm64
 
@@ -1067,11 +1075,13 @@ test_gcc_esp32_macos_aarch64:
   extends: .dejagnu-test-gcc-template
   needs: [ esp32_macos, prep_tests ]
   tags: [ "darwin", "aarch64" ]
+  resource_group: dejagnu_macos_aarch64
 
 test_gxx_esp32_macos_aarch64:
   extends: .dejagnu-test-gxx-template
   needs: [ esp32_macos, prep_tests ]
   tags: [ "darwin", "aarch64" ]
+  resource_group: dejagnu_macos_aarch64
 
 #esp32s2 tests
 
@@ -1089,11 +1099,13 @@ test_gcc_esp32s2_macos_aarch64:
   extends: .dejagnu-test-gcc-template
   needs: [ esp32s2_macos, prep_tests ]
   tags: [ "darwin", "aarch64" ]
+  resource_group: dejagnu_macos_aarch64
 
 test_gxx_esp32s2_macos_aarch64:
   extends: .dejagnu-test-gxx-template
   needs: [ esp32s2_macos, prep_tests ]
   tags: [ "darwin", "aarch64" ]
+  resource_group: dejagnu_macos_aarch64
 
 #esp32s3 tests
 
@@ -1111,11 +1123,13 @@ test_gcc_esp32s3_macos_aarch64:
   extends: .dejagnu-test-gcc-template
   needs: [ esp32s3_macos, prep_tests ]
   tags: [ "darwin", "aarch64" ]
+  resource_group: dejagnu_macos_aarch64
 
 test_gxx_esp32s3_macos_aarch64:
   extends: .dejagnu-test-gxx-template
   needs: [ esp32s3_macos, prep_tests ]
   tags: [ "darwin", "aarch64" ]
+  resource_group: dejagnu_macos_aarch64
 
 # riscv32 tests
 
@@ -1133,8 +1147,10 @@ test_gcc_riscv32_esp_macos_aarch64:
   extends: .dejagnu-test-gcc-template
   needs: [ riscv32_esp_macos, prep_tests ]
   tags: [ "darwin", "aarch64" ]
+  resource_group: dejagnu_macos_aarch64
 
 test_gxx_riscv32_esp_macos_aarch64:
   extends: .dejagnu-test-gxx-template
   needs: [ riscv32_esp_macos, prep_tests ]
   tags: [ "darwin", "aarch64" ]
+  resource_group: dejagnu_macos_aarch64
