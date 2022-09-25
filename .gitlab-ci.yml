@@ -156,6 +156,23 @@ before_script:
 .package_toolchain: &package_toolchain |
   mkdir -p dist
   cd builds
+  if [[ $CONF_TARGET =~ "xtensa" ]]; then
+    tmp=${CONF_TARGET#*-}
+    CHIP_NAME=${tmp%-*}
+    mv ${CONF_TARGET}/bin/${CONF_TARGET}-ld ${CONF_TARGET}/bin/xtensa-esp-elf-ld
+    mv ${CONF_TARGET}/bin/${CONF_TARGET}-as ${CONF_TARGET}/bin/xtensa-esp-elf-as
+    AS_OPTIONS=""
+    if [ $CHIP_NAME = "esp32s2" ]; then
+      AS_OPTIONS+="--no-loops --no-booleans"
+    else
+      AS_OPTIONS+="--loops --booleans"
+    fi
+    set +H
+    echo  -e "#!/usr/bin/env bash\nxtensa-esp-elf-ld --abi-le \"\$@\"" > ${CONF_TARGET}/bin/${CONF_TARGET}-ld
+    echo  -e "#!/usr/bin/env bash\nxtensa-esp-elf-as --abi-le $AS_OPTIONS --mcpu=$CHIP_NAME \"\$@\"" > ${CONF_TARGET}/bin/${CONF_TARGET}-as
+    set -H
+    chmod +x ${CONF_TARGET}/bin/${CONF_TARGET}-ld ${CONF_TARGET}/bin/${CONF_TARGET}-as
+  fi
   rm -fv ${CONF_TARGET}/build.log*
   ${ARCHIVE_TOOL} ${ARCHIVE_NAME} ${CONF_TARGET}/ > tar-list.txt 2>&1
   mv tar-list.txt ..
