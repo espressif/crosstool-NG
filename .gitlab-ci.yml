@@ -21,8 +21,6 @@ variables:
   # let's do not compress artifacts because we already use compressed archives
   ARTIFACT_COMPRESSION_LEVEL: "fastest"
 
-  ESP_COMPILER_TESTS_BRANCH: "esp-2022r1-2-branch"
-
   GCC_VER: "11.2.0"
 
   ARCHIVE_TOOL: "tar -cJvf" # 'v' we need to check the contents of the archive by log
@@ -663,10 +661,18 @@ prep_tests:
       - esp-compiler-tests
     expire_in: 6 weeks
   script:
-    - test -n "${ESP_COMPILER_TESTS_BRANCH:-}" || exit 1
-    - rm -rf "esp-compiler-tests" && git clone -q -b ${ESP_COMPILER_TESTS_BRANCH} "${GIT_SERVER}/idf/esp-compiler-tests.git"
+    - rm -rf "esp-compiler-tests"
+    - |
+      if [ -n "${ESP_COMPILER_TESTS_BRANCH}" ]; then
+        # Checkout a branch specified with gitlab environment variable "ESP_COMPILER_TESTS_BRANCH"
+        git clone -q --depth=1 "${GIT_SERVER}/idf/esp-compiler-tests.git" -b ${ESP_COMPILER_TESTS_BRANCH}
+      else
+        # Try to checkout the same branch with the same branch/tag name. Otherwise checkout default branch
+        git clone -q --depth=1 "${GIT_SERVER}/idf/esp-compiler-tests.git" -b ${CI_COMMIT_REF_NAME} || \
+        git clone -q --depth=1 "${GIT_SERVER}/idf/esp-compiler-tests.git"
+      fi
     - cd esp-compiler-tests
-    - git log -n10 --oneline
+    - git log --oneline
 
 #
 # Compiler tests: build-only and just-run-tools
