@@ -173,6 +173,7 @@ before_script:
       - build.log.bz2
       - tar-list.txt
       - dist
+      - "**/*.log"
     when: always
     expire_in: 6 weeks
   after_script:
