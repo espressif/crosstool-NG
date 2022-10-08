@@ -533,7 +533,7 @@ upload_to_internal:
     - *use_ci_tools
   script:
     - cd dist
-    - DIST_VERSION=$(git describe --abbrev=7)
+    - DIST_VERSION=$(${CI_PROJECT_DIR}/maintainer/git-version-gen .)
     - echo "DIST_VERSION=$DIST_VERSION" >> dist.env
     - RELEASE_CHECKSUM_FILE="${CI_PROJECT_NAME}-${DIST_VERSION}-checksum.sha256"
     - RELEASE_SRC_NAME="${CI_PROJECT_NAME}-${DIST_VERSION}-src"
