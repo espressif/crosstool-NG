@@ -534,6 +534,7 @@ upload_to_internal:
   script:
     - cd dist
     - DIST_VERSION=$(git describe --abbrev=7)
+    - DIST_VERSION=${DIST_VERSION/crosstool-ng-}
     - echo "DIST_VERSION=$DIST_VERSION" >> dist.env
     - RELEASE_CHECKSUM_FILE="${CI_PROJECT_NAME}-${DIST_VERSION}-checksum.sha256"
     - RELEASE_SRC_NAME="${CI_PROJECT_NAME}-${DIST_VERSION}-src"
