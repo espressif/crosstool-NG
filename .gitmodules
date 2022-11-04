@@ -1,0 +1,3 @@
+[submodule "xtensaconfig"]
+	path = xtensaconfig
+	url = ../esp-xtensaconfig-lib.git
