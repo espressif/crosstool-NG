@@ -59,7 +59,7 @@ before_script:
 # Configure crosstool-NG
 .build_ctng: &build_ctng |
   pushd xtensaconfig
-  test $CONF_HOST && CC=$CONF_HOST-gcc
+  test ${CONF_HOST:-} && CC=$CONF_HOST-gcc
   make install DESTDIR=$CI_PROJECT_DIR/dist/
   export XTENSA_GNU_CONFIG=$CI_PROJECT_DIR/dist/lib/${CONF_TARGET%-*}.so
   popd
