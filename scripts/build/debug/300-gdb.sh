@@ -20,21 +20,7 @@ do_debug_gdb_build()
         CT_mkdir_pushd "${CT_BUILD_DIR}/build-gdb-cross"
 
         cross_extra_config=( "${CT_GDB_CROSS_EXTRA_CONFIG_ARRAY[@]}" )
-        if [ "${CT_GDB_CROSS_PYTHON}" = "y" ]; then
-            if [ -z "${CT_GDB_CROSS_PYTHON_BINARY}" ]; then
-                if [ "${CT_CANADIAN}" = "y" -o "${CT_CROSS_NATIVE}" = "y" ]; then
-                    CT_Abort "For canadian build, Python wrapper runnable on the build machine must be provided. Set CT_GDB_CROSS_PYTHON_BINARY."
-                elif [ "${CT_CONFIGURE_has_python}" = "y" ]; then
-                    cross_extra_config+=("--with-python=${python}")
-                else
-                    CT_Abort "Python support requested in GDB, but Python not found. Set CT_GDB_CROSS_PYTHON_BINARY."
-                fi
-            else
-                cross_extra_config+=("--with-python=${CT_GDB_CROSS_PYTHON_BINARY}")
-            fi
-        else
-            cross_extra_config+=("--with-python=no")
-        fi
+        cross_extra_config+=("--with-python=no")
 
         if [ "${CT_GDB_CROSS_SIM}" = "y" ]; then
             cross_extra_config+=("--enable-sim")
