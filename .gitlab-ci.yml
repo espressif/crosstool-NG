@@ -13,7 +13,7 @@ image: ${CI_DOCKER_REGISTRY}/esp32-ci-env
 
 variables:
   # GIT_STRATEGY - use option from "CI / CD Settings" - "General pipelines"
-  GIT_SUBMODULE_STRATEGY: normal
+  GIT_SUBMODULE_STRATEGY: recursive
 
   # show artifact downloading progress
   TRANSFER_METER_FREQUENCY: 5s
@@ -58,6 +58,11 @@ before_script:
 
 # Configure crosstool-NG
 .build_ctng: &build_ctng |
+  pushd xtensaconfig
+  test $CONF_HOST && CC=$CONF_HOST-gcc
+  make install DESTDIR=$CI_PROJECT_DIR/dist/
+  export XTENSA_GNU_CONFIG=$CI_PROJECT_DIR/dist/lib/${CONF_TARGET%-*}.so
+  popd
   ./bootstrap
   ./configure --enable-local
   make
@@ -691,6 +696,7 @@ prep_tests:
     - source citools/import_functions
     - cit_rm ${CONF_TARGET}
   script:
+    - export XTENSA_GNU_CONFIG=$CI_PROJECT_DIR/dist/lib/${CONF_TARGET%-*}.so
     - ARCHIVE_NAME=$(cat dist/file_${PLATFORM_NAME}_${CONF_TARGET})
     - ${UNARCHIVE_TOOL} dist/${ARCHIVE_NAME}
     - export PATH="${CI_PROJECT_DIR}/${CONF_TARGET}/bin:${PATH}"
@@ -825,6 +831,8 @@ riscv32_macos_aarch64_compiler_tests:
   after_script:
     - Remove-Item -Recurse -Force ${CI_PROJECT_DIR}\*
   script:
+    - echo $env:XTENSA_GNU_CONFIG = $env:CI_PROJECT_DIR/dist/lib/$env:CONF_TARGET.replace('-elf', '').so
+    - $env:XTENSA_GNU_CONFIG = $env:CI_PROJECT_DIR/dist/lib/$env:CONF_TARGET.replace('-elf', '').so
     - $ARCHIVE_NAME=$(cat "dist\file_${PLATFORM_NAME}_${CONF_TARGET}")
     - Expand-Archive -DestinationPATH . "dist\$ARCHIVE_NAME"
     - $env:PATH = "${CI_PROJECT_DIR}\${CONF_TARGET}\bin;" + $env:PATH
