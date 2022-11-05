@@ -82,7 +82,12 @@ before_script:
     export LDFLAGS="-L${HOMEBREW_PREFIX}/opt/gettext/lib ${LDFLAGS:-}";
     export CPPFLAGS="-I${HOMEBREW_PREFIX}/opt/ncurses/include ${CPPFLAGS:-}";
     export CPPFLAGS="-I${HOMEBREW_PREFIX}/opt/gettext/include ${CPPFLAGS:-}";
-
+    set -x;
+    pushd xtensaconfig;
+    make install DESTDIR=$CI_PROJECT_DIR/dist/;
+    export XTENSA_GNU_CONFIG=$CI_PROJECT_DIR/dist/lib/${CONF_TARGET%-*}.so;
+    popd;
+    set +x;
     ./bootstrap;
     ./configure --enable-local;
     make;
