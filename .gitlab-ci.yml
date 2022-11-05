@@ -832,8 +832,9 @@ riscv32_macos_aarch64_compiler_tests:
   after_script:
     - Remove-Item -Recurse -Force ${CI_PROJECT_DIR}\*
   script:
-    - echo $env:XTENSA_GNU_CONFIG = $env:CI_PROJECT_DIR/dist/lib/$env:CONF_TARGET.replace('-elf', '').so
-    - $env:XTENSA_GNU_CONFIG = $env:CI_PROJECT_DIR/dist/lib/$env:CONF_TARGET.replace('-elf', '').so
+    - $XTENSA_CONF_LIB_NAME=${CONF_TARGET}.replace('-elf', '').so
+    - echo $env:XTENSA_GNU_CONFIG = ${CI_PROJECT_DIR}\dist\lib\${XTENSA_CONF_LIB_NAME}.so
+    - $env:XTENSA_GNU_CONFIG = ${CI_PROJECT_DIR}\dist\lib\${XTENSA_CONF_LIB_NAME}.so
     - $ARCHIVE_NAME=$(cat "dist\file_${PLATFORM_NAME}_${CONF_TARGET}")
     - Expand-Archive -DestinationPATH . "dist\$ARCHIVE_NAME"
     - $env:PATH = "${CI_PROJECT_DIR}\${CONF_TARGET}\bin;" + $env:PATH
