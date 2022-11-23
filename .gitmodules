@@ -1,3 +1,6 @@
+[submodule "xtensa-overlays"]
+	path = overlays
+	url = ../xtensa-overlays.git
 [submodule "xtensaconfig"]
 	path = xtensaconfig
 	url = ../esp-xtensaconfig-lib.git
