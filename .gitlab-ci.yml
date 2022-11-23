@@ -13,12 +13,10 @@ image: ${CI_DOCKER_REGISTRY}/esp32-ci-env
 
 variables:
   # GIT_STRATEGY - use option from "CI / CD Settings" - "General pipelines"
-  GIT_SUBMODULE_STRATEGY: normal
+  GIT_SUBMODULE_STRATEGY: recursive
 
   # show artifact downloading progress
   TRANSFER_METER_FREQUENCY: 5s
-
-  ESP_COMPILER_TESTS_BRANCH: "esp-2022r1-2-branch"
 
   GCC_VER: "11.2.0"
 
@@ -60,6 +58,12 @@ before_script:
 
 # Configure crosstool-NG
 .build_ctng: &build_ctng |
+  set -x
+  pushd xtensaconfig
+  make install DESTDIR=$CI_PROJECT_DIR/dist/
+  export XTENSA_GNU_CONFIG=$CI_PROJECT_DIR/dist/lib/${CONF_TARGET%-*}.so
+  popd
+  set +x
   ./bootstrap
   ./configure --enable-local
   make
@@ -78,7 +82,12 @@ before_script:
     export LDFLAGS="-L${HOMEBREW_PREFIX}/opt/gettext/lib ${LDFLAGS:-}";
     export CPPFLAGS="-I${HOMEBREW_PREFIX}/opt/ncurses/include ${CPPFLAGS:-}";
     export CPPFLAGS="-I${HOMEBREW_PREFIX}/opt/gettext/include ${CPPFLAGS:-}";
-
+    set -x;
+    pushd xtensaconfig;
+    make install DESTDIR=$CI_PROJECT_DIR/dist/;
+    export XTENSA_GNU_CONFIG=$CI_PROJECT_DIR/dist/lib/${CONF_TARGET%-*}.so;
+    popd;
+    set +x;
     ./bootstrap;
     ./configure --enable-local;
     make;
@@ -535,7 +544,7 @@ upload_to_internal:
     - *use_ci_tools
   script:
     - cd dist
-    - DIST_VERSION=$(git describe --abbrev=7)
+    - DIST_VERSION=$(${CI_PROJECT_DIR}/maintainer/git-version-gen .)
     - echo "DIST_VERSION=$DIST_VERSION" >> dist.env
     - RELEASE_CHECKSUM_FILE="${CI_PROJECT_NAME}-${DIST_VERSION}-checksum.sha256"
     - RELEASE_SRC_NAME="${CI_PROJECT_NAME}-${DIST_VERSION}-src"
@@ -663,10 +672,18 @@ prep_tests:
       - esp-compiler-tests
     expire_in: 6 weeks
   script:
-    - test -n "${ESP_COMPILER_TESTS_BRANCH:-}" || exit 1
-    - rm -rf "esp-compiler-tests" && git clone -q -b ${ESP_COMPILER_TESTS_BRANCH} "${GIT_SERVER}/idf/esp-compiler-tests.git"
+    - rm -rf "esp-compiler-tests"
+    - |
+      if [ -n "${ESP_COMPILER_TESTS_BRANCH}" ]; then
+        # Checkout a branch specified with gitlab environment variable "ESP_COMPILER_TESTS_BRANCH"
+        git clone -q --depth=1 "${GIT_SERVER}/idf/esp-compiler-tests.git" -b ${ESP_COMPILER_TESTS_BRANCH}
+      else
+        # Try to checkout the same branch with the same branch/tag name. Otherwise checkout default branch
+        git clone -q --depth=1 "${GIT_SERVER}/idf/esp-compiler-tests.git" -b ${CI_COMMIT_REF_NAME} || \
+        git clone -q --depth=1 "${GIT_SERVER}/idf/esp-compiler-tests.git"
+      fi
     - cd esp-compiler-tests
-    - git log -n10 --oneline
+    - git log --oneline
 
 #
 # Compiler tests: build-only and just-run-tools
@@ -685,6 +702,7 @@ prep_tests:
     - source citools/import_functions
     - cit_rm ${CONF_TARGET}
   script:
+    - export XTENSA_GNU_CONFIG=$CI_PROJECT_DIR/dist/lib/${CONF_TARGET%-*}.so
     - ARCHIVE_NAME=$(cat dist/file_${PLATFORM_NAME}_${CONF_TARGET})
     - ${UNARCHIVE_TOOL} dist/${ARCHIVE_NAME}
     - export PATH="${CI_PROJECT_DIR}/${CONF_TARGET}/bin:${PATH}"
@@ -819,6 +837,9 @@ riscv32_macos_aarch64_compiler_tests:
   after_script:
     - Remove-Item -Recurse -Force ${CI_PROJECT_DIR}\*
   script:
+    - $XTENSA_CONF_LIB_NAME=${CONF_TARGET}.replace('-elf', '').so
+    - echo $env:XTENSA_GNU_CONFIG = ${CI_PROJECT_DIR}\dist\lib\${XTENSA_CONF_LIB_NAME}.so
+    - $env:XTENSA_GNU_CONFIG = ${CI_PROJECT_DIR}\dist\lib\${XTENSA_CONF_LIB_NAME}.so
     - $ARCHIVE_NAME=$(cat "dist\file_${PLATFORM_NAME}_${CONF_TARGET}")
     - Expand-Archive -DestinationPATH . "dist\$ARCHIVE_NAME"
     - $env:PATH = "${CI_PROJECT_DIR}\${CONF_TARGET}\bin;" + $env:PATH
