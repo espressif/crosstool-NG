@@ -162,8 +162,7 @@ before_script:
 .package_toolchain: &package_toolchain |
   set -x
   pushd xtensaconfig
-  echo $CONF_HOST
-  if [[ -n "$CONF_HOST" ]]; then
+  if [[ -n "${CONF_HOST:-}" ]]; then
     CC=$CONF_HOST-gcc make install DESTDIR=${CONF_TARGET}/dist/
   else
     make install DESTDIR=${CONF_TARGET}/dist/
