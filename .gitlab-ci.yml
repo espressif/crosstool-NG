@@ -160,6 +160,16 @@ before_script:
 
 # Package the toolchain
 .package_toolchain: &package_toolchain |
+  set -x
+  pushd xtensaconfig
+  echo $CONF_HOST
+  if [[ -n "$CONF_HOST" ]]; then
+    CC=$CONF_HOST-gcc make install DESTDIR=${CONF_TARGET}/dist/
+  else
+    make install DESTDIR=${CONF_TARGET}/dist/
+  fi
+  popd
+  set +x
   mkdir -p dist
   cd builds
   rm -fv ${CONF_TARGET}/build.log*
@@ -296,44 +306,6 @@ esp32s3_macos:
 
 riscv32_esp_macos:
   extends: .template_macos_cross
-  variables:
-    CONF_TARGET: "riscv32-esp-elf"
-
-.template_macos_arm64_native:
-  extends: .build_template
-  tags: [ "darwin", "aarch64" ]
-  variables:
-    PLATFORM_NAME: "macos-arm64"
-    CONF_TARGET: "xtensa-esp32-elf"
-    # Although version >= 11 is required, there is some compile-time problem with such value
-    # so 10.8 value is used, it works correctly and creates binaries for minimal os version == 11.0
-    MACOSX_DEPLOYMENT_TARGET: "10.8"
-  script:
-    - *get_release_name
-    - *build_ctng_macos_native
-    - *configure_common
-    - *configure_macos_native
-    - *configure_docker
-    - *build_toolchain
-    - *package_toolchain
-
-esp32_macos_arm64:
-  extends: .template_macos_arm64_native
-  variables:
-    CONF_TARGET: "xtensa-esp32-elf"
-
-esp32s2_macos_arm64:
-  extends: .template_macos_arm64_native
-  variables:
-    CONF_TARGET: "xtensa-esp32s2-elf"
-
-esp32s3_macos_arm64:
-  extends: .template_macos_arm64_native
-  variables:
-    CONF_TARGET: "xtensa-esp32s3-elf"
-
-riscv32_esp_macos_arm64:
-  extends: .template_macos_arm64_native
   variables:
     CONF_TARGET: "riscv32-esp-elf"
 
@@ -790,39 +762,6 @@ riscv32_macos_amd64_compiler_tests:
   variables:
     CONF_TARGET: "riscv32-esp-elf"
 
-# macos arm64
-
-.template_macos_aarch64_compiler_tests:
-  extends: .template_compiler_tests
-  tags: [ "darwin", "aarch64" ]
-  variables:
-    PLATFORM_NAME: "macos-arm64"
-
-esp32_macos_aarch64_compiler_tests:
-  extends: .template_macos_aarch64_compiler_tests
-  needs: [ esp32_macos_arm64, prep_tests ]
-  variables:
-    CONF_TARGET: "xtensa-esp32-elf"
-
-esp32s2_macos_aarch64_compiler_tests:
-  extends: .template_macos_aarch64_compiler_tests
-  needs: [ esp32s2_macos_arm64, prep_tests ]
-  variables:
-    CONF_TARGET: "xtensa-esp32s2-elf"
-
-esp32s3_macos_aarch64_compiler_tests:
-  extends: .template_macos_aarch64_compiler_tests
-  needs: [ esp32s3_macos_arm64, prep_tests ]
-  variables:
-    CONF_TARGET: "xtensa-esp32s3-elf"
-
-riscv32_macos_aarch64_compiler_tests:
-  extends: .template_macos_aarch64_compiler_tests
-  needs: [ riscv32_esp_macos_arm64, prep_tests ]
-  variables:
-    CONF_TARGET: "riscv32-esp-elf"
-
-
 #
 # "Just-run-tools" on Windows
 #
@@ -1077,101 +1016,3 @@ test_gxx_riscv32_esp_macos:
   needs: [ riscv32_esp_macos, prep_tests ]
   tags: [ "darwin", "amd64" ]
   resource_group: dejagnu_macos_amd64
-
-# macOS arm64
-
-# esp32 tests
-
-test_ld_esp32_macos_aarch64:
-  extends: .dejagnu-test-ld-template
-  needs: [ esp32_macos, prep_tests ]
-  tags: [ "darwin", "aarch64" ]
-
-test_gas_esp32_macos_aarch64:
-  extends: .dejagnu-test-gas-template
-  needs: [ esp32_macos, prep_tests ]
-  tags: [ "darwin", "aarch64" ]
-
-test_gcc_esp32_macos_aarch64:
-  extends: .dejagnu-test-gcc-template
-  needs: [ esp32_macos, prep_tests ]
-  tags: [ "darwin", "aarch64" ]
-  resource_group: dejagnu_macos_aarch64
-
-test_gxx_esp32_macos_aarch64:
-  extends: .dejagnu-test-gxx-template
-  needs: [ esp32_macos, prep_tests ]
-  tags: [ "darwin", "aarch64" ]
-  resource_group: dejagnu_macos_aarch64
-
-#esp32s2 tests
-
-test_ld_esp32s2_macos_aarch64:
-  extends: .dejagnu-test-ld-template
-  needs: [ esp32s2_macos, prep_tests ]
-  tags: [ "darwin", "aarch64" ]
-
-test_gas_esp32s2_macos_aarch64:
-  extends: .dejagnu-test-gas-template
-  needs: [ esp32s2_macos, prep_tests ]
-  tags: [ "darwin", "aarch64" ]
-
-test_gcc_esp32s2_macos_aarch64:
-  extends: .dejagnu-test-gcc-template
-  needs: [ esp32s2_macos, prep_tests ]
-  tags: [ "darwin", "aarch64" ]
-  resource_group: dejagnu_macos_aarch64
-
-test_gxx_esp32s2_macos_aarch64:
-  extends: .dejagnu-test-gxx-template
-  needs: [ esp32s2_macos, prep_tests ]
-  tags: [ "darwin", "aarch64" ]
-  resource_group: dejagnu_macos_aarch64
-
-#esp32s3 tests
-
-test_ld_esp32s3_macos_aarch64:
-  extends: .dejagnu-test-ld-template
-  needs: [ esp32s3_macos, prep_tests ]
-  tags: [ "darwin", "aarch64" ]
-
-test_gas_esp32s3_macos_aarch64:
-  extends: .dejagnu-test-gas-template
-  needs: [ esp32s3_macos, prep_tests ]
-  tags: [ "darwin", "aarch64" ]
-
-test_gcc_esp32s3_macos_aarch64:
-  extends: .dejagnu-test-gcc-template
-  needs: [ esp32s3_macos, prep_tests ]
-  tags: [ "darwin", "aarch64" ]
-  resource_group: dejagnu_macos_aarch64
-
-test_gxx_esp32s3_macos_aarch64:
-  extends: .dejagnu-test-gxx-template
-  needs: [ esp32s3_macos, prep_tests ]
-  tags: [ "darwin", "aarch64" ]
-  resource_group: dejagnu_macos_aarch64
-
-# riscv32 tests
-
-test_ld_riscv32_esp_macos_aarch64:
-  extends: .dejagnu-test-ld-template
-  needs: [ riscv32_esp_macos, prep_tests ]
-  tags: [ "darwin", "aarch64" ]
-
-test_gas_riscv32_esp_macos_aarch64:
-  extends: .dejagnu-test-gas-template
-  needs: [ riscv32_esp_macos, prep_tests ]
-  tags: [ "darwin", "aarch64" ]
-
-test_gcc_riscv32_esp_macos_aarch64:
-  extends: .dejagnu-test-gcc-template
-  needs: [ riscv32_esp_macos, prep_tests ]
-  tags: [ "darwin", "aarch64" ]
-  resource_group: dejagnu_macos_aarch64
-
-test_gxx_riscv32_esp_macos_aarch64:
-  extends: .dejagnu-test-gxx-template
-  needs: [ riscv32_esp_macos, prep_tests ]
-  tags: [ "darwin", "aarch64" ]
-  resource_group: dejagnu_macos_aarch64
