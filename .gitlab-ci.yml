@@ -163,9 +163,9 @@ before_script:
   set -x
   pushd xtensaconfig
   if [[ -n "${CONF_HOST:-}" ]]; then
-    CC=$CONF_HOST-gcc make install DESTDIR=${CONF_TARGET}/dist/
+    CC=$CONF_HOST-gcc make install DESTDIR=${CONF_TARGET}/
   else
-    make install DESTDIR=${CONF_TARGET}/dist/
+    make install DESTDIR=${CONF_TARGET}/
   fi
   popd
   set +x
