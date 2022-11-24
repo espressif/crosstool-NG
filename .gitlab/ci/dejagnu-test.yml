@@ -8,6 +8,7 @@
 .unarchive_and_set_path: &unarchive_and_set_path |
     ${UNARCHIVE_TOOL} "dist/${ARCHIVE_NAME}"
     export PATH="${CI_PROJECT_DIR}/${CONF_TARGET}/bin:${PATH}"
+    export XTENSA_GNU_CONFIG=${CI_PROJECT_DIR}/${CONF_TARGET}/lib/${CONF_TARGET%-*}.so
 
 .clone_testuite_repo: &clone_testuite_repo |
     # make bash happy (unbound variable error)

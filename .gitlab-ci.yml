@@ -678,6 +678,7 @@ prep_tests:
     - ARCHIVE_NAME=$(cat dist/file_${PLATFORM_NAME}_${CONF_TARGET})
     - ${UNARCHIVE_TOOL} dist/${ARCHIVE_NAME}
     - export PATH="${CI_PROJECT_DIR}/${CONF_TARGET}/bin:${PATH}"
+    - export XTENSA_GNU_CONFIG=${CI_PROJECT_DIR}/${CONF_TARGET}/lib/${CONF_TARGET%-*}.so
 
     - echo ""
     - echo "*** Build-only tests ****"
