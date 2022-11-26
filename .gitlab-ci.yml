@@ -524,6 +524,7 @@ upload_to_internal:
   before_script:
     - *use_ci_tools
   script:
+    - git fetch --tags || true
     - cd dist
     - DIST_VERSION=$(${CI_PROJECT_DIR}/maintainer/git-version-gen .)
     - echo "DIST_VERSION=$DIST_VERSION" >> dist.env
