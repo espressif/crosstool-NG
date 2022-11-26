@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+this_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+tool_name_full=`basename "$0"`
+tool_name=${tool_name_full#*-elf-}
+xtensa_config_lib="${tool_name_full%-elf-*}.so"
+export XTENSA_GNU_CONFIG="$( dirname "${this_dir}" )/lib/${xtensa_config_lib}"
+${this_dir}/xtensa-esp-elf-${tool_name} "$@"

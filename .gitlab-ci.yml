@@ -82,6 +82,7 @@ before_script:
     export LDFLAGS="-L${HOMEBREW_PREFIX}/opt/gettext/lib ${LDFLAGS:-}";
     export CPPFLAGS="-I${HOMEBREW_PREFIX}/opt/ncurses/include ${CPPFLAGS:-}";
     export CPPFLAGS="-I${HOMEBREW_PREFIX}/opt/gettext/include ${CPPFLAGS:-}";
+
     set -x;
     pushd xtensaconfig;
     make install DESTDIR=$CI_PROJECT_DIR/dist/;
@@ -172,6 +173,15 @@ before_script:
   mkdir -p dist
   cd builds
   rm -fv ${CONF_TARGET}/build.log*
+  pushd ${CONF_TARGET}/bin
+  CHIP=${CONF_TARGET#*-}
+  CHIP=${CHIP%%-*}
+  if [[ "${CONF_TARGET}" =~ "xtensa" ]];then
+    for file in ${CONF_TARGET}*; do mv $file ${file/$CHIP/esp}; cp $CI_PROJECT_DIR/bin_wrapper $file; done
+    rm xtensa-esp-elf-cc
+    ln -s  xtensa-esp-elf-gcc xtensa-esp-elf-cc
+  fi
+  popd
   ${ARCHIVE_TOOL} ${ARCHIVE_NAME} ${CONF_TARGET}/ > tar-list.txt 2>&1
   mv tar-list.txt ..
   mv ${ARCHIVE_NAME} ../dist/
@@ -673,11 +683,9 @@ prep_tests:
     - source citools/import_functions
     - cit_rm ${CONF_TARGET}
   script:
-    - export XTENSA_GNU_CONFIG=$CI_PROJECT_DIR/dist/lib/${CONF_TARGET%-*}.so
     - ARCHIVE_NAME=$(cat dist/file_${PLATFORM_NAME}_${CONF_TARGET})
     - ${UNARCHIVE_TOOL} dist/${ARCHIVE_NAME}
     - export PATH="${CI_PROJECT_DIR}/${CONF_TARGET}/bin:${PATH}"
-    - export XTENSA_GNU_CONFIG=${CI_PROJECT_DIR}/${CONF_TARGET}/lib/${CONF_TARGET%-*}.so
 
     - echo ""
     - echo "*** Build-only tests ****"
