@@ -142,13 +142,6 @@ before_script:
   # Espressif provides GDB 11+ with Python 3 support separately
   echo "# CT_GDB_CROSS_PYTHON is not set" >> .config
 
-.configure_win_crossbuild: &configure_win_crossbuild |
-  # Append option
-  ( \
-    KV=$(grep "CT_CC_GCC_EXTRA_CONFIG_ARRAY" .config) \
-    && echo "${KV%\"} --with-gnu-ld\"" >> .config; \
-  )
-
 # Actual build
 .build_toolchain: &build_toolchain |
   ./ct-ng oldconfig
@@ -318,88 +311,6 @@ riscv32_esp_macos:
   variables:
     CONF_TARGET: "riscv32-esp-elf"
 
-.template_win_cross:
-  extends: .build_template
-  image: $CI_DOCKER_REGISTRY/esp32-toolchain-win-cross
-  variables:
-    PLATFORM_NAME: "win32"
-    CONF_BUILD: "x86_64-linux-gnu"
-    CONF_HOST: "i686-w64-mingw32"
-    ARCHIVE_TOOL: "zip -9 -r"
-    ARCHIVE_EXT: "zip"
-    EXTRA_BINS: "/usr/lib/gcc/i686-w64-mingw32/6.3-win32/libgcc_s_sjlj-1.dll /usr/lib/gcc/i686-w64-mingw32/6.3-win32/libstdc++-6.dll"
-  script:
-    - *get_release_name
-    - *build_ctng
-    - *configure_common
-    - *configure_docker
-    - *configure_crossbuild
-    - *configure_win_crossbuild
-    - *build_toolchain
-    - *add_extra_files
-    - *package_toolchain
-
-esp32_win:
-  extends: .template_win_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32-elf"
-
-esp32s2_win:
-  extends: .template_win_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32s2-elf"
-
-esp32s3_win:
-  extends: .template_win_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32s3-elf"
-
-riscv32_esp_win:
-  extends: .template_win_cross
-  variables:
-    CONF_TARGET: "riscv32-esp-elf"
-
-.template_win64_cross:
-  extends: .build_template
-  image: $CI_DOCKER_REGISTRY/esp32-toolchain-win64-cross
-  variables:
-    PLATFORM_NAME: "win64"
-    CONF_BUILD: "x86_64-linux-gnu"
-    CONF_HOST: "x86_64-w64-mingw32"
-    ARCHIVE_TOOL: "zip -9 -r"
-    ARCHIVE_EXT: "zip"
-    EXTRA_BINS: "/usr/lib/gcc/x86_64-w64-mingw32/6.3-win32/libgcc_s_seh-1.dll /usr/lib/gcc/x86_64-w64-mingw32/6.3-win32/libstdc++-6.dll"
-  script:
-    - *get_release_name
-    - *build_ctng
-    - *configure_common
-    - *configure_docker
-    - *configure_crossbuild
-    - *configure_win_crossbuild
-    - *build_toolchain
-    - *add_extra_files
-    - *package_toolchain
-
-esp32_win64:
-  extends: .template_win64_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32-elf"
-
-esp32s2_win64:
-  extends: .template_win64_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32s2-elf"
-
-esp32s3_win64:
-  extends: .template_win64_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32s3-elf"
-
-riscv32_esp_win64:
-  extends: .template_win64_cross
-  variables:
-    CONF_TARGET: "riscv32-esp-elf"
-
 .template_lin_arm_cross:
   extends: .build_template
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-arm-cross
@@ -514,7 +425,7 @@ upload_to_internal:
     GIT_SUBMODULE_STRATEGY: none
     CTNG_ESP_HELPERS_BRANCH: "-b master"
     TARGETS: "xtensa-esp32-elf xtensa-esp32s2-elf xtensa-esp32s3-elf riscv32-esp-elf"
-    HOSTS: "linux-amd64 linux-arm64 linux-armel linux-armhf linux-i686 macos macos-arm64 win32 win64"
+    HOSTS: "linux-amd64 linux-arm64 linux-armel linux-armhf linux-i686 macos macos-arm64"
   artifacts:
     paths:
       # a list just for check files, debug
@@ -770,87 +681,6 @@ riscv32_macos_amd64_compiler_tests:
   needs: [ riscv32_esp_macos, prep_tests ]
   variables:
     CONF_TARGET: "riscv32-esp-elf"
-
-#
-# "Just-run-tools" on Windows
-#
-
-.native_win64_tools_test_template:
-  stage: test
-  tags: [ "windows", "powershell" ]
-  variables:
-    GIT_STRATEGY: none
-    PLATFORM_NAME: "win64"
-  before_script: []
-  after_script:
-    - Remove-Item -Recurse -Force ${CI_PROJECT_DIR}\*
-  script:
-    - $XTENSA_CONF_LIB_NAME=${CONF_TARGET}.replace('-elf', '').so
-    - echo $env:XTENSA_GNU_CONFIG = ${CI_PROJECT_DIR}\dist\lib\${XTENSA_CONF_LIB_NAME}.so
-    - $env:XTENSA_GNU_CONFIG = ${CI_PROJECT_DIR}\dist\lib\${XTENSA_CONF_LIB_NAME}.so
-    - $ARCHIVE_NAME=$(cat "dist\file_${PLATFORM_NAME}_${CONF_TARGET}")
-    - Expand-Archive -DestinationPATH . "dist\$ARCHIVE_NAME"
-    - $env:PATH = "${CI_PROJECT_DIR}\${CONF_TARGET}\bin;" + $env:PATH
-    - Push-Location esp-compiler-tests\just-run-tools
-    - .\run.ps1
-    - Pop-Location
-
-# win64
-
-native_win64_tools_test_esp32:
-  extends: .native_win64_tools_test_template
-  needs: [ esp32_win64, prep_tests ]
-  variables:
-    CONF_TARGET: "xtensa-esp32-elf"
-
-native_win64_tools_test_esp32s2:
-  extends: .native_win64_tools_test_template
-  needs: [ esp32s2_win64, prep_tests ]
-  variables:
-    CONF_TARGET: "xtensa-esp32s2-elf"
-
-native_win64_tools_test_esp32s3:
-  extends: .native_win64_tools_test_template
-  needs: [ esp32s3_win64, prep_tests ]
-  variables:
-    CONF_TARGET: "xtensa-esp32s3-elf"
-
-native_win64_tools_test_riscv32:
-  extends: .native_win64_tools_test_template
-  needs: [ riscv32_esp_win64, prep_tests ]
-  variables:
-    CONF_TARGET: "riscv32-esp-elf"
-
-# win32
-
-native_win32_tools_test_esp32:
-  extends: .native_win64_tools_test_template
-  needs: [ esp32_win, prep_tests ]
-  variables:
-    CONF_TARGET: "xtensa-esp32-elf"
-    PLATFORM_NAME: "win32"
-
-native_win32_tools_test_esp32s2:
-  extends: .native_win64_tools_test_template
-  needs: [ esp32s2_win, prep_tests ]
-  variables:
-    CONF_TARGET: "xtensa-esp32s2-elf"
-    PLATFORM_NAME: "win32"
-
-native_win32_tools_test_esp32s3:
-  extends: .native_win64_tools_test_template
-  needs: [ esp32s3_win, prep_tests ]
-  variables:
-    CONF_TARGET: "xtensa-esp32s3-elf"
-    PLATFORM_NAME: "win32"
-
-native_win32_tools_test_riscv32:
-  extends: .native_win64_tools_test_template
-  needs: [ riscv32_esp_win, prep_tests ]
-  variables:
-    CONF_TARGET: "riscv32-esp-elf"
-    PLATFORM_NAME: "win32"
-
 
 include: '.gitlab/ci/dejagnu-test.yml'
 
