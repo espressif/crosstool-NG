@@ -2,6 +2,7 @@ include:
   - template: 'Workflows/Branch-Pipelines.gitlab-ci.yml'
 
 stages:
+  - generate_version
   - build
   - internal_deploy
   - pre_test
@@ -43,18 +44,6 @@ before_script:
   - *use_ci_tools
   - *add_gitlab_key
   - *check_and_setup_homebrew
-
-# Prepare release name/number
-.get_release_name: &get_release_name |
-  # using annotated tags
-  REL_NUM=$(git describe --abbrev=7)
-  REL_SFX="gcc${GCC_VER//./_}"
-  REL_NAME=${CONF_TARGET}-${REL_SFX}-${REL_NUM}-${PLATFORM_NAME}
-  ARCHIVE_NAME=${REL_NAME}.${ARCHIVE_EXT}
-  echo "PLATFORM_NAME: $PLATFORM_NAME"
-  echo "REL_NUM: $REL_NUM"
-  echo "REL_NAME: $REL_NAME"
-  echo "ARCHIVE_NAME: $ARCHIVE_NAME"
 
 # Configure crosstool-NG
 .build_ctng: &build_ctng |
@@ -166,6 +155,7 @@ before_script:
   variables:
     # Do not compress artifacts because we already use compressed archives
     ARTIFACT_COMPRESSION_LEVEL: "fastest"
+    ARCHIVE_NAME: ${CONF_TARGET}-${GCC_VER_UNDERLINE}-${DIST_VERSION}-${PLATFORM_NAME}.${ARCHIVE_EXT}
   artifacts:
     paths:
       - .config
@@ -187,7 +177,6 @@ before_script:
 .build_template_linux:
   extends: .build_template
   script:
-    - *get_release_name
     - *build_ctng
     - *configure_common
     - *configure_docker
@@ -260,7 +249,6 @@ riscv32_esp_lin_i686:
     CONF_HOST: "x86_64-apple-darwin12"
     MACOSX_DEPLOYMENT_TARGET: "10.8"
   script:
-    - *get_release_name
     - *build_ctng
     - *configure_common
     - *configure_docker
@@ -298,7 +286,6 @@ riscv32_esp_macos:
     # so 10.8 value is used, it works correctly and creates binaries for minimal os version == 11.0
     MACOSX_DEPLOYMENT_TARGET: "10.8"
   script:
-    - *get_release_name
     - *build_ctng_macos_native
     - *configure_common
     - *configure_macos_native
@@ -337,7 +324,6 @@ riscv32_esp_macos_arm64:
     ARCHIVE_EXT: "zip"
     EXTRA_BINS: "/usr/lib/gcc/i686-w64-mingw32/6.3-win32/libgcc_s_sjlj-1.dll /usr/lib/gcc/i686-w64-mingw32/6.3-win32/libstdc++-6.dll"
   script:
-    - *get_release_name
     - *build_ctng
     - *configure_common
     - *configure_docker
@@ -378,7 +364,6 @@ riscv32_esp_win:
     ARCHIVE_EXT: "zip"
     EXTRA_BINS: "/usr/lib/gcc/x86_64-w64-mingw32/6.3-win32/libgcc_s_seh-1.dll /usr/lib/gcc/x86_64-w64-mingw32/6.3-win32/libstdc++-6.dll"
   script:
-    - *get_release_name
     - *build_ctng
     - *configure_common
     - *configure_docker
@@ -414,7 +399,6 @@ riscv32_esp_win64:
   variables:
     CONF_BUILD: "x86_64-linux-gnu"
   script:
-    - *get_release_name
     - *build_ctng
     - *configure_common
     - *configure_docker
@@ -511,6 +495,22 @@ riscv32_esp_lin_arm64:
     CONF_TARGET: "riscv32-esp-elf"
     CONF_HOST: "aarch64-linux-gnu"
 
+generate_version:
+  stage: generate_version
+  tags: [ "build", "amd64" ]
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain
+  variables:
+    GIT_SUBMODULE_STRATEGY: none
+  artifacts:
+    reports:
+      dotenv: version.env
+  script:
+    - DIST_VERSION=$(${CI_PROJECT_DIR}/maintainer/git-version-gen .)
+    - GCC_VER_UNDERLINE="gcc${GCC_VER//./_}"
+    - echo "DIST_VERSION=$DIST_VERSION" > version.env
+    - echo "GCC_VER_UNDERLINE=$GCC_VER_UNDERLINE" >> version.env
+    - cat version.env
+
 upload_to_internal:
   stage: internal_deploy
   image: $CI_DOCKER_REGISTRY/compiler-testsuite:2
@@ -533,8 +533,6 @@ upload_to_internal:
     - *use_ci_tools
   script:
     - cd dist
-    - DIST_VERSION=$(git describe --abbrev=7)
-    - echo "DIST_VERSION=$DIST_VERSION" >> dist.env
     - RELEASE_CHECKSUM_FILE="${CI_PROJECT_NAME}-${DIST_VERSION}-checksum.sha256"
     - RELEASE_SRC_NAME="${CI_PROJECT_NAME}-${DIST_VERSION}-src"
     - RELEASE_SRC_FILE="${CI_PROJECT_NAME}-${DIST_VERSION}-src.${ARCHIVE_EXT}"
@@ -629,7 +627,7 @@ upload_to_github:
 internal_update_idf_tools:
   extends: .update_idf_tools
   stage: internal_deploy
-  needs: [ upload_to_internal ]
+  needs: [ generate_version, upload_to_internal ]
   when: manual
   variables:
     TOOL_SHA256_URL: ${HTTP_PUBLIC_DIR}/${DIST_VERSION}/crosstool-NG-${DIST_VERSION}-checksum.sha256
