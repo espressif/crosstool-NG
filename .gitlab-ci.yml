@@ -19,8 +19,6 @@ variables:
   # show artifact downloading progress
   TRANSFER_METER_FREQUENCY: 5s
 
-  GCC_VER: "11.2.0"
-
   ARCHIVE_TOOL: "tar -cJvf" # 'v' we need to check the contents of the archive by log
   UNARCHIVE_TOOL: "tar -xf"
   ARCHIVE_EXT: "tar.xz"
@@ -144,7 +142,7 @@ before_script:
   variables:
     # Do not compress artifacts because we already use compressed archives
     ARTIFACT_COMPRESSION_LEVEL: "fastest"
-    ARCHIVE_NAME: ${CONF_TARGET}-${GCC_VER_UNDERLINE}-${DIST_VERSION}-${PLATFORM_NAME}.${ARCHIVE_EXT}
+    ARCHIVE_NAME: ${CONF_TARGET}-${DIST_VERSION_SHORT}-${PLATFORM_NAME}.${ARCHIVE_EXT}
   artifacts:
     paths:
       - .config
@@ -177,63 +175,63 @@ esp32_lin_amd64:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain
   variables:
-    PLATFORM_NAME: "linux-amd64"
+    PLATFORM_NAME: "x86_64-linux-gnu"
     CONF_TARGET: "xtensa-esp32-elf"
 
 esp32s2_lin_amd64:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain
   variables:
-    PLATFORM_NAME: "linux-amd64"
+    PLATFORM_NAME: "x86_64-linux-gnu"
     CONF_TARGET: "xtensa-esp32s2-elf"
 
 esp32s3_lin_amd64:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain
   variables:
-    PLATFORM_NAME: "linux-amd64"
+    PLATFORM_NAME: "x86_64-linux-gnu"
     CONF_TARGET: "xtensa-esp32s3-elf"
 
 riscv32_esp_lin_amd64:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain
   variables:
-    PLATFORM_NAME: "linux-amd64"
+    PLATFORM_NAME: "x86_64-linux-gnu"
     CONF_TARGET: "riscv32-esp-elf"
 
 esp32_lin_i686:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
   variables:
-    PLATFORM_NAME: "linux-i686"
+    PLATFORM_NAME: "i686-linux-gnu"
     CONF_TARGET: "xtensa-esp32-elf"
 
 esp32s2_lin_i686:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
   variables:
-    PLATFORM_NAME: "linux-i686"
+    PLATFORM_NAME: "i686-linux-gnu"
     CONF_TARGET: "xtensa-esp32s2-elf"
 
 esp32s3_lin_i686:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
   variables:
-    PLATFORM_NAME: "linux-i686"
+    PLATFORM_NAME: "i686-linux-gnu"
     CONF_TARGET: "xtensa-esp32s3-elf"
 
 riscv32_esp_lin_i686:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
   variables:
-    PLATFORM_NAME: "linux-i686"
+    PLATFORM_NAME: "i686-linux-gnu"
     CONF_TARGET: "riscv32-esp-elf"
 
 .template_macos_cross:
   extends: .build_template
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-macos-cross
   variables:
-    PLATFORM_NAME: "macos"
+    PLATFORM_NAME: "x86_64-apple-darwin"
     CONF_BUILD: "x86_64-linux-gnu"
     CONF_HOST: "x86_64-apple-darwin12"
     MACOSX_DEPLOYMENT_TARGET: "10.8"
@@ -269,7 +267,7 @@ riscv32_esp_macos:
   extends: .build_template
   tags: [ "darwin", "aarch64" ]
   variables:
-    PLATFORM_NAME: "macos-arm64"
+    PLATFORM_NAME: "aarch64-apple-darwin"
     CONF_TARGET: "xtensa-esp32-elf"
     # Although version >= 11 is required, there is some compile-time problem with such value
     # so 10.8 value is used, it works correctly and creates binaries for minimal os version == 11.0
@@ -305,7 +303,7 @@ riscv32_esp_macos_arm64:
   extends: .build_template
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-win-cross
   variables:
-    PLATFORM_NAME: "win32"
+    PLATFORM_NAME: "i686-w64-mingw32"
     CONF_BUILD: "x86_64-linux-gnu"
     CONF_HOST: "i686-w64-mingw32"
     ARCHIVE_TOOL: "zip -9 -r"
@@ -345,7 +343,7 @@ riscv32_esp_win:
   extends: .build_template
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-win64-cross
   variables:
-    PLATFORM_NAME: "win64"
+    PLATFORM_NAME: "x86_64-w64-mingw32"
     CONF_BUILD: "x86_64-linux-gnu"
     CONF_HOST: "x86_64-w64-mingw32"
     ARCHIVE_TOOL: "zip -9 -r"
@@ -398,28 +396,28 @@ riscv32_esp_win64:
 esp32_lin_armel:
   extends: .template_lin_arm_cross
   variables:
-    PLATFORM_NAME: "linux-armel"
+    PLATFORM_NAME: "arm-linux-gnueabi"
     CONF_TARGET: "xtensa-esp32-elf"
     CONF_HOST: "arm-linux-gnueabi"
 
 esp32s2_lin_armel:
   extends: .template_lin_arm_cross
   variables:
-    PLATFORM_NAME: "linux-armel"
+    PLATFORM_NAME: "arm-linux-gnueabi"
     CONF_TARGET: "xtensa-esp32s2-elf"
     CONF_HOST: "arm-linux-gnueabi"
 
 esp32s3_lin_armel:
   extends: .template_lin_arm_cross
   variables:
-    PLATFORM_NAME: "linux-armel"
+    PLATFORM_NAME: "arm-linux-gnueabi"
     CONF_TARGET: "xtensa-esp32s3-elf"
     CONF_HOST: "arm-linux-gnueabi"
 
 riscv32_esp_lin_armel:
   extends: .template_lin_arm_cross
   variables:
-    PLATFORM_NAME: "linux-armel"
+    PLATFORM_NAME: "arm-linux-gnueabi"
     CONF_TARGET: "riscv32-esp-elf"
     CONF_HOST: "arm-linux-gnueabi"
 
@@ -428,28 +426,28 @@ riscv32_esp_lin_armel:
 esp32_lin_armhf:
   extends: .template_lin_arm_cross
   variables:
-    PLATFORM_NAME: "linux-armhf"
+    PLATFORM_NAME: "arm-linux-gnueabihf"
     CONF_TARGET: "xtensa-esp32-elf"
     CONF_HOST: "arm-linux-gnueabihf"
 
 esp32s2_lin_armhf:
   extends: .template_lin_arm_cross
   variables:
-    PLATFORM_NAME: "linux-armhf"
+    PLATFORM_NAME: "arm-linux-gnueabihf"
     CONF_TARGET: "xtensa-esp32s2-elf"
     CONF_HOST: "arm-linux-gnueabihf"
 
 esp32s3_lin_armhf:
   extends: .template_lin_arm_cross
   variables:
-    PLATFORM_NAME: "linux-armhf"
+    PLATFORM_NAME: "arm-linux-gnueabihf"
     CONF_TARGET: "xtensa-esp32s3-elf"
     CONF_HOST: "arm-linux-gnueabihf"
 
 riscv32_esp_lin_armhf:
   extends: .template_lin_arm_cross
   variables:
-    PLATFORM_NAME: "linux-armhf"
+    PLATFORM_NAME: "arm-linux-gnueabihf"
     CONF_TARGET: "riscv32-esp-elf"
     CONF_HOST: "arm-linux-gnueabihf"
 
@@ -458,28 +456,28 @@ riscv32_esp_lin_armhf:
 esp32_lin_arm64:
   extends: .template_lin_arm_cross
   variables:
-    PLATFORM_NAME: "linux-arm64"
+    PLATFORM_NAME: "aarch64-linux-gnu"
     CONF_TARGET: "xtensa-esp32-elf"
     CONF_HOST: "aarch64-linux-gnu"
 
 esp32s2_lin_arm64:
   extends: .template_lin_arm_cross
   variables:
-    PLATFORM_NAME: "linux-arm64"
+    PLATFORM_NAME: "aarch64-linux-gnu"
     CONF_TARGET: "xtensa-esp32s2-elf"
     CONF_HOST: "aarch64-linux-gnu"
 
 esp32s3_lin_arm64:
   extends: .template_lin_arm_cross
   variables:
-    PLATFORM_NAME: "linux-arm64"
+    PLATFORM_NAME: "aarch64-linux-gnu"
     CONF_TARGET: "xtensa-esp32s3-elf"
     CONF_HOST: "aarch64-linux-gnu"
 
 riscv32_esp_lin_arm64:
   extends: .template_lin_arm_cross
   variables:
-    PLATFORM_NAME: "linux-arm64"
+    PLATFORM_NAME: "aarch64-linux-gnu"
     CONF_TARGET: "riscv32-esp-elf"
     CONF_HOST: "aarch64-linux-gnu"
 
@@ -493,10 +491,10 @@ generate_version:
     reports:
       dotenv: version.env
   script:
-    - DIST_VERSION=$(${CI_PROJECT_DIR}/maintainer/git-version-gen .)
-    - GCC_VER_UNDERLINE="gcc${GCC_VER//./_}"
-    - echo "DIST_VERSION=$DIST_VERSION" > version.env
-    - echo "GCC_VER_UNDERLINE=$GCC_VER_UNDERLINE" >> version.env
+    - DIST_VERSION_FULL=$(${CI_PROJECT_DIR}/maintainer/git-version-gen .)
+    - DIST_VERSION_SHORT=${DIST_VERSION_FULL#"esp-"}
+    - echo "DIST_VERSION_FULL=$DIST_VERSION_FULL" > version.env
+    - echo "DIST_VERSION_SHORT=$DIST_VERSION_SHORT" >> version.env
     - cat version.env
 
 upload_to_internal:
@@ -510,7 +508,7 @@ upload_to_internal:
     GIT_SUBMODULE_STRATEGY: none
     CTNG_ESP_HELPERS_BRANCH: "-b master"
     TARGETS: "xtensa-esp32-elf xtensa-esp32s2-elf xtensa-esp32s3-elf riscv32-esp-elf"
-    HOSTS: "linux-amd64 linux-arm64 linux-armel linux-armhf linux-i686 macos macos-arm64 win32 win64"
+    HOSTS: "x86_64-linux-gnu aarch64-linux-gnu arm-linux-gnueabi arm-linux-gnueabihf i686-linux-gnu x86_64-apple-darwin aarch64-apple-darwin i686-w64-mingw32 x86_64-w64-mingw32"
   artifacts:
     paths:
       # a list just for check files, debug
@@ -521,9 +519,9 @@ upload_to_internal:
     - *use_ci_tools
   script:
     - cd dist
-    - RELEASE_CHECKSUM_FILE="${CI_PROJECT_NAME}-${DIST_VERSION}-checksum.sha256"
-    - RELEASE_SRC_NAME="${CI_PROJECT_NAME}-${DIST_VERSION}-src"
-    - RELEASE_SRC_FILE="${CI_PROJECT_NAME}-${DIST_VERSION}-src.${ARCHIVE_EXT}"
+    - RELEASE_CHECKSUM_FILE="${CI_PROJECT_NAME}-${DIST_VERSION_FULL}-checksum.sha256"
+    - RELEASE_SRC_NAME="${CI_PROJECT_NAME}-${DIST_VERSION_FULL}-src"
+    - RELEASE_SRC_FILE="${RELEASE_SRC_NAME}.${ARCHIVE_EXT}"
     # Create a source archive
     - rm -rf -- "${RELEASE_SRC_NAME}" "${RELEASE_SRC_FILE}"
     - git clone --quiet --depth 1 --recurse-submodules --shallow-submodules ${CI_REPOSITORY_URL} "${RELEASE_SRC_NAME}"
@@ -546,8 +544,8 @@ upload_to_internal:
     - DIST_FILE_LIST="${DIST_FILE_LIST//$'\n'/ }"
     - echo "DIST_FILE_LIST=$DIST_FILE_LIST" >> dist.env
     # Upload all needed files
-    - HTTP_UPLOAD_DIR=${HTTP_UPLOAD_DIR}/${DIST_VERSION}
-    - HTTP_PUBLIC_DIR=${HTTP_PUBLIC_DIR}/${DIST_VERSION}
+    - HTTP_UPLOAD_DIR=${HTTP_UPLOAD_DIR}/${DIST_VERSION_FULL}
+    - HTTP_PUBLIC_DIR=${HTTP_PUBLIC_DIR}/${DIST_VERSION_FULL}
     - cit_add_ssh_key "${HTTP_UPLOAD_KEY}"
     - ssh ${HTTP_UPLOAD_DIR%:*} "mkdir -p ${HTTP_UPLOAD_DIR#*:}"
     - scp ${DIST_FILE_LIST} ${HTTP_UPLOAD_DIR}
@@ -607,7 +605,7 @@ upload_to_github:
   variables:
     TOOL_NAME: "toolchain"
     TOOL_MEMBERS: "xtensa-esp32-elf xtensa-esp32s2-elf xtensa-esp32s3-elf riscv32-esp-elf"
-    TOOL_VERSION: ${DIST_VERSION}-${GCC_VER}
+    TOOL_VERSION: ${DIST_VERSION_FULL}
   trigger:
     project: idf/idf-tools-updater
     strategy: depend
@@ -618,7 +616,7 @@ internal_update_idf_tools:
   needs: [ generate_version, upload_to_internal ]
   when: manual
   variables:
-    TOOL_SHA256_URL: ${HTTP_PUBLIC_DIR}/${DIST_VERSION}/crosstool-NG-${DIST_VERSION}-checksum.sha256
+    TOOL_SHA256_URL: ${HTTP_PUBLIC_DIR}/${DIST_VERSION_FULL}/crosstool-NG-${DIST_VERSION_FULL}-checksum.sha256
 
 github_update_idf_tools:
   extends: .update_idf_tools
@@ -628,7 +626,7 @@ github_update_idf_tools:
     - if: $CI_COMMIT_TAG
       when: manual
   variables:
-    TOOL_SHA256_URL: ${GH_REPO_URL}/releases/download/${CI_COMMIT_TAG}/crosstool-NG-${DIST_VERSION}-checksum.sha256
+    TOOL_SHA256_URL: ${GH_REPO_URL}/releases/download/${CI_COMMIT_TAG}/crosstool-NG-${DIST_VERSION_FULL}-checksum.sha256
 
 # We use prep_tests job to collect all test data and scripts in artifacts,
 # to avoid dependencies for git, because we run some tests on original images.
@@ -705,7 +703,7 @@ prep_tests:
   tags: [ "build", "amd64" ]
   image: $CI_DOCKER_REGISTRY/compiler-testsuite:2
   variables:
-    PLATFORM_NAME: "linux-amd64"
+    PLATFORM_NAME: "x86_64-linux-gnu"
 
 esp32_lin_amd64_compiler_tests:
   extends: .template_lin_amd64_compiler_tests
@@ -737,7 +735,7 @@ riscv32_lin_amd64_compiler_tests:
   extends: .template_compiler_tests
   tags: [ "darwin", "amd64" ]
   variables:
-    PLATFORM_NAME: "macos"
+    PLATFORM_NAME: "x86_64-apple-darwin"
 
 esp32_macos_amd64_compiler_tests:
   extends: .template_macos_amd64_compiler_tests
@@ -769,7 +767,7 @@ riscv32_macos_amd64_compiler_tests:
   extends: .template_compiler_tests
   tags: [ "darwin", "aarch64" ]
   variables:
-    PLATFORM_NAME: "macos-arm64"
+    PLATFORM_NAME: "aarch64-apple-darwin"
 
 esp32_macos_aarch64_compiler_tests:
   extends: .template_macos_aarch64_compiler_tests
@@ -805,7 +803,7 @@ riscv32_macos_aarch64_compiler_tests:
   tags: [ "windows", "powershell" ]
   variables:
     GIT_STRATEGY: none
-    PLATFORM_NAME: "win64"
+    PLATFORM_NAME: "x86_64-w64-mingw32"
   before_script: []
   after_script:
     - Remove-Item -Recurse -Force ${CI_PROJECT_DIR}\*
@@ -850,28 +848,28 @@ native_win32_tools_test_esp32:
   needs: [ esp32_win, prep_tests ]
   variables:
     CONF_TARGET: "xtensa-esp32-elf"
-    PLATFORM_NAME: "win32"
+    PLATFORM_NAME: "i686-w64-mingw32"
 
 native_win32_tools_test_esp32s2:
   extends: .native_win64_tools_test_template
   needs: [ esp32s2_win, prep_tests ]
   variables:
     CONF_TARGET: "xtensa-esp32s2-elf"
-    PLATFORM_NAME: "win32"
+    PLATFORM_NAME: "i686-w64-mingw32"
 
 native_win32_tools_test_esp32s3:
   extends: .native_win64_tools_test_template
   needs: [ esp32s3_win, prep_tests ]
   variables:
     CONF_TARGET: "xtensa-esp32s3-elf"
-    PLATFORM_NAME: "win32"
+    PLATFORM_NAME: "i686-w64-mingw32"
 
 native_win32_tools_test_riscv32:
   extends: .native_win64_tools_test_template
   needs: [ riscv32_esp_win, prep_tests ]
   variables:
     CONF_TARGET: "riscv32-esp-elf"
-    PLATFORM_NAME: "win32"
+    PLATFORM_NAME: "i686-w64-mingw32"
 
 
 include: '.gitlab/ci/dejagnu-test.yml'
