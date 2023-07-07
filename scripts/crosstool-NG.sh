@@ -280,6 +280,10 @@ CT_TOOLCHAIN_ID="crosstool-${CT_VERSION} build ${CT_STAR_DATE_HUMAN} by ${CT_SYS
 # Adjust the list of multilibs, if needed
 CT_DoArchMultilibList
 
+if [ "${CT_XTENSA_DYNCONFIG}" = "y" ]; then
+    export XTENSA_GNU_CONFIG="${CT_BUILDTOOLS_PREFIX_DIR}/xtensa-dynconfig/lib/"
+fi
+
 CT_DoLog EXTRA "Preparing working directories"
 
 # Ah! The build directory shall be eradicated, even if we restart!

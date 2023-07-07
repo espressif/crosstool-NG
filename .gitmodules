@@ -1,3 +1,6 @@
 [submodule "xtensa-overlays"]
 	path = overlays
 	url = ../xtensa-overlays.git
+[submodule "xtensa-dynconfig"]
+	path = xtensa-dynconfig
+	url = ../xtensa-dynconfig
