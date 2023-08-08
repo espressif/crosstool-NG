@@ -1,3 +1,9 @@
 [submodule "xtensa-overlays"]
 	path = overlays
 	url = ../xtensa-overlays.git
+[submodule "xtensa-dynconfig"]
+	path = xtensa-dynconfig
+	url = ../xtensa-dynconfig
+[submodule "esp-toolchain-bin-wrappers"]
+	path = esp-toolchain-bin-wrappers
+	url = ../esp-toolchain-bin-wrappers
