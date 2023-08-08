@@ -36,7 +36,7 @@
     - *set_target_from_archive_name
     - *unarchive_and_set_path
     - *clone_testuite_repo
-    - esp-compiler-tests/dejagnu/run.sh "$CONF_TARGET" "$TEST_TOOL"
+    - esp-compiler-tests/dejagnu/run.sh "$CONF_TARGET_WRAPPER" "$TEST_TOOL"
 
 .dejagnu-test-ld-template:
   extends: .dejagnu-test-template
