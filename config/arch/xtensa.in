@@ -34,4 +34,13 @@ config XTENSA_CUSTOM
 config ARCH_xtensa_fsf
     bool "fsf - Default configuration"
 
+config XTENSA_DYNCONFIG
+    bool "Use Xtensa processor dynamic configuration"
+
+config XTENSA_DYNCONFIG_LOCATION
+    string "Full path to xtensa-dynconfig sources"
+
+config XTENSA_DYNCONFIG_CONF_DIR
+    string "Full path to xtensa configs sources"
+
 endchoice

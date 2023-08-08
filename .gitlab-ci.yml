@@ -22,6 +22,8 @@ variables:
   ARCHIVE_TOOL: "tar -cJvf" # 'v' we need to check the contents of the archive by log
   UNARCHIVE_TOOL: "tar -xf"
   ARCHIVE_EXT: "tar.xz"
+  BINARY_EXT: ""
+  XTENSA_CHIPS: "esp32 esp32s2 esp32s3"
 
   DEJAGNU_IMAGE_TAG: 20210826-3
 
@@ -123,6 +125,44 @@ before_script:
     cp -v ${EXTRA_BINS} builds/${CONF_TARGET}/bin/
   fi
 
+
+# build/add toolchain wrappers
+.add_wrappers: &add_wrappers |
+  if [ $CONF_TARGET == "xtensa-esp-elf" ]; then
+    pushd esp-toolchain-bin-wrappers/gnu-xtensa-toolchian
+    if [ "${INSTALL_LIBC_DEV:-}" ]; then
+      sed -i s/deb.debian.org/archive.debian.org/g /etc/apt/sources.list
+      sed -i s/security.debian.org/archive.debian.org/g /etc/apt/sources.list
+      apt-get -o Acquire::Check-Valid-Until=false update || true
+      apt install -y libc6-dev
+    fi
+    # Can not use rust version > 1.69.0 because of https://github.com/rust-lang/rust/issues/112368
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh  -s -- -y --default-toolchain 1.69.0
+    source "$HOME/.cargo/env"
+    rustup target add $RUST_TARGET_TRIPLET
+    if [ "${CONF_HOST:-}" ]; then
+      cargo build --release --target=$RUST_TARGET_TRIPLET --config target.$RUST_TARGET_TRIPLET.linker=\"$CONF_HOST-gcc\"
+    else
+      cargo build --release --target=$RUST_TARGET_TRIPLET
+    fi
+
+    rm $PWD/../../builds/$CONF_TARGET/bin/*ct-ng.config
+
+    BIN_WRAPPER=target/$RUST_TARGET_TRIPLET/release/xtensa-toolchian-wrapper${BINARY_EXT}
+    for FILE in $PWD/../../builds/$CONF_TARGET/bin/*
+    do
+      FILENAME=$(basename $FILE)
+      DIRNAME=$(dirname $FILE)
+      for CHIP in $XTENSA_CHIPS
+      do
+        DST_FILE=$DIRNAME/${FILENAME//esp/$CHIP}
+        echo "Add wrapper \"$DST_FILE\""
+        cp $BIN_WRAPPER $DST_FILE
+      done
+    done
+    popd
+  fi
+
 # Package the toolchain
 .package_toolchain: &package_toolchain |
   mkdir -p dist
@@ -143,6 +183,7 @@ before_script:
     # Do not compress artifacts because we already use compressed archives
     ARTIFACT_COMPRESSION_LEVEL: "fastest"
     ARCHIVE_NAME: ${CONF_TARGET}-${DIST_VERSION_SHORT}-${PLATFORM_NAME}.${ARCHIVE_EXT}
+    CONF_BUILD: "x86_64-linux-gnu"
   artifacts:
     paths:
       - .config
@@ -169,94 +210,85 @@ before_script:
     - *configure_docker
     - *configure_linux_no_pie
     - *build_toolchain
+    - *add_wrappers
     - *package_toolchain
 
-esp32_lin_amd64:
+xtensa_esp_lin_amd64:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain
   variables:
     PLATFORM_NAME: "x86_64-linux-gnu"
-    CONF_TARGET: "xtensa-esp32-elf"
-
-esp32s2_lin_amd64:
-  extends: .build_template_linux
-  image: $CI_DOCKER_REGISTRY/esp32-toolchain
-  variables:
-    PLATFORM_NAME: "x86_64-linux-gnu"
-    CONF_TARGET: "xtensa-esp32s2-elf"
-
-esp32s3_lin_amd64:
-  extends: .build_template_linux
-  image: $CI_DOCKER_REGISTRY/esp32-toolchain
-  variables:
-    PLATFORM_NAME: "x86_64-linux-gnu"
-    CONF_TARGET: "xtensa-esp32s3-elf"
+    CONF_HOST: "x86_64-linux-gnu"
+    CONF_TARGET: "xtensa-esp-elf"
+    RUST_TARGET_TRIPLET: "x86_64-unknown-linux-gnu"
 
 riscv32_esp_lin_amd64:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain
   variables:
     PLATFORM_NAME: "x86_64-linux-gnu"
+    CONF_HOST: "x86_64-linux-gnu"
     CONF_TARGET: "riscv32-esp-elf"
 
-esp32_lin_i686:
+xtensa_esp_lin_i586:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
   variables:
-    PLATFORM_NAME: "i686-linux-gnu"
-    CONF_TARGET: "xtensa-esp32-elf"
+    PLATFORM_NAME: "i586-linux-gnu"
+    CONF_HOST: "i586-linux-gnu"
+    CONF_TARGET: "xtensa-esp-elf"
+    RUST_TARGET_TRIPLET: "i586-unknown-linux-gnu"
 
-esp32s2_lin_i686:
+riscv32_esp_lin_i586:
   extends: .build_template_linux
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
   variables:
-    PLATFORM_NAME: "i686-linux-gnu"
-    CONF_TARGET: "xtensa-esp32s2-elf"
-
-esp32s3_lin_i686:
-  extends: .build_template_linux
-  image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
-  variables:
-    PLATFORM_NAME: "i686-linux-gnu"
-    CONF_TARGET: "xtensa-esp32s3-elf"
-
-riscv32_esp_lin_i686:
-  extends: .build_template_linux
-  image: $CI_DOCKER_REGISTRY/esp32-toolchain-x86
-  variables:
-    PLATFORM_NAME: "i686-linux-gnu"
+    PLATFORM_NAME: "i586-linux-gnu"
+    CONF_HOST: "i586-linux-gnu"
     CONF_TARGET: "riscv32-esp-elf"
+
+# Fix osxcross library paths in built binaries
+.fix_macos_library_paths: &fix_macos_library_paths |
+  pushd builds
+  MACH_O_FILES=$(for file in $(find ${CONF_TARGET} -type f) ; do file $file; done | grep 'Mach-O' | awk '{print $1}' | sed 's/://g')
+  for file in $MACH_O_FILES; do
+    LIB_LIST=$(${CONF_HOST}-otool -L $file | awk '{print $1}' | grep osxcross || true);
+    if [ "${LIB_LIST:-}" = "" ]; then
+      continue;
+    fi
+    for lib in $LIB_LIST; do
+      if [ $(basename $lib) != "libstdc++.6.dylib" ]; then
+        echo "Unexpected library: $lib";
+        exit 1;
+      fi
+      echo "Fixing library path $lib for file $file"
+      ${CONF_HOST}-install_name_tool -change $lib "/usr/lib/$(basename $lib)" $file || ( echo "install_name_tool error... exiting" && exit 1 )
+    done
+  done
+  popd
 
 .template_macos_cross:
   extends: .build_template
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-macos-cross
   variables:
     PLATFORM_NAME: "x86_64-apple-darwin"
-    CONF_BUILD: "x86_64-linux-gnu"
     CONF_HOST: "x86_64-apple-darwin12"
     MACOSX_DEPLOYMENT_TARGET: "10.8"
+    RUST_TARGET_TRIPLET: "x86_64-apple-darwin"
   script:
     - *build_ctng
     - *configure_common
     - *configure_docker
     - *configure_crossbuild
     - *build_toolchain
+    - *add_wrappers
+    - *fix_macos_library_paths
     - *package_toolchain
 
-esp32_macos:
+xtensa_esp_macos:
   extends: .template_macos_cross
   variables:
-    CONF_TARGET: "xtensa-esp32-elf"
-
-esp32s2_macos:
-  extends: .template_macos_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32s2-elf"
-
-esp32s3_macos:
-  extends: .template_macos_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32s3-elf"
+    CONF_TARGET: "xtensa-esp-elf"
 
 riscv32_esp_macos:
   extends: .template_macos_cross
@@ -268,31 +300,22 @@ riscv32_esp_macos:
   tags: [ "darwin", "aarch64" ]
   variables:
     PLATFORM_NAME: "aarch64-apple-darwin"
-    CONF_TARGET: "xtensa-esp32-elf"
     # Although version >= 11 is required, there is some compile-time problem with such value
     # so 10.8 value is used, it works correctly and creates binaries for minimal os version == 11.0
     MACOSX_DEPLOYMENT_TARGET: "10.8"
+    RUST_TARGET_TRIPLET: "aarch64-apple-darwin"
   script:
     - *build_ctng_macos_native
     - *configure_common
     - *configure_docker
     - *build_toolchain
+    - *add_wrappers
     - *package_toolchain
 
-esp32_macos_arm64:
+xtensa_esp_macos_arm64:
   extends: .template_macos_arm64_native
   variables:
-    CONF_TARGET: "xtensa-esp32-elf"
-
-esp32s2_macos_arm64:
-  extends: .template_macos_arm64_native
-  variables:
-    CONF_TARGET: "xtensa-esp32s2-elf"
-
-esp32s3_macos_arm64:
-  extends: .template_macos_arm64_native
-  variables:
-    CONF_TARGET: "xtensa-esp32s3-elf"
+    CONF_TARGET: "xtensa-esp-elf"
 
 riscv32_esp_macos_arm64:
   extends: .template_macos_arm64_native
@@ -304,11 +327,12 @@ riscv32_esp_macos_arm64:
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-win-cross
   variables:
     PLATFORM_NAME: "i686-w64-mingw32"
-    CONF_BUILD: "x86_64-linux-gnu"
     CONF_HOST: "i686-w64-mingw32"
     ARCHIVE_TOOL: "zip -9 -r"
     ARCHIVE_EXT: "zip"
     EXTRA_BINS: "/usr/lib/gcc/i686-w64-mingw32/6.3-win32/libgcc_s_sjlj-1.dll /usr/lib/gcc/i686-w64-mingw32/6.3-win32/libstdc++-6.dll"
+    RUST_TARGET_TRIPLET: "i686-pc-windows-gnu"
+    BINARY_EXT: ".exe"
   script:
     - *build_ctng
     - *configure_common
@@ -317,22 +341,13 @@ riscv32_esp_macos_arm64:
     - *configure_win_crossbuild
     - *build_toolchain
     - *add_extra_files
+    - *add_wrappers
     - *package_toolchain
 
-esp32_win:
+xtensa_esp_win:
   extends: .template_win_cross
   variables:
-    CONF_TARGET: "xtensa-esp32-elf"
-
-esp32s2_win:
-  extends: .template_win_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32s2-elf"
-
-esp32s3_win:
-  extends: .template_win_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32s3-elf"
+    CONF_TARGET: "xtensa-esp-elf"
 
 riscv32_esp_win:
   extends: .template_win_cross
@@ -344,11 +359,12 @@ riscv32_esp_win:
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-win64-cross
   variables:
     PLATFORM_NAME: "x86_64-w64-mingw32"
-    CONF_BUILD: "x86_64-linux-gnu"
     CONF_HOST: "x86_64-w64-mingw32"
     ARCHIVE_TOOL: "zip -9 -r"
     ARCHIVE_EXT: "zip"
     EXTRA_BINS: "/usr/lib/gcc/x86_64-w64-mingw32/6.3-win32/libgcc_s_seh-1.dll /usr/lib/gcc/x86_64-w64-mingw32/6.3-win32/libstdc++-6.dll"
+    RUST_TARGET_TRIPLET: "x86_64-pc-windows-gnu"
+    BINARY_EXT: ".exe"
   script:
     - *build_ctng
     - *configure_common
@@ -357,22 +373,13 @@ riscv32_esp_win:
     - *configure_win_crossbuild
     - *build_toolchain
     - *add_extra_files
+    - *add_wrappers
     - *package_toolchain
 
-esp32_win64:
+xtensa_esp_win64:
   extends: .template_win64_cross
   variables:
-    CONF_TARGET: "xtensa-esp32-elf"
-
-esp32s2_win64:
-  extends: .template_win64_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32s2-elf"
-
-esp32s3_win64:
-  extends: .template_win64_cross
-  variables:
-    CONF_TARGET: "xtensa-esp32s3-elf"
+    CONF_TARGET: "xtensa-esp-elf"
 
 riscv32_esp_win64:
   extends: .template_win64_cross
@@ -383,7 +390,7 @@ riscv32_esp_win64:
   extends: .build_template
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-arm-cross
   variables:
-    CONF_BUILD: "x86_64-linux-gnu"
+    INSTALL_LIBC_DEV: "y"
   script:
     - *build_ctng
     - *configure_common
@@ -391,28 +398,16 @@ riscv32_esp_win64:
     - *configure_linux_no_pie
     - *configure_crossbuild
     - *build_toolchain
+    - *add_wrappers
     - *package_toolchain
 
-esp32_lin_armel:
+xtensa_esp_lin_armel:
   extends: .template_lin_arm_cross
   variables:
     PLATFORM_NAME: "arm-linux-gnueabi"
-    CONF_TARGET: "xtensa-esp32-elf"
+    CONF_TARGET: "xtensa-esp-elf"
     CONF_HOST: "arm-linux-gnueabi"
-
-esp32s2_lin_armel:
-  extends: .template_lin_arm_cross
-  variables:
-    PLATFORM_NAME: "arm-linux-gnueabi"
-    CONF_TARGET: "xtensa-esp32s2-elf"
-    CONF_HOST: "arm-linux-gnueabi"
-
-esp32s3_lin_armel:
-  extends: .template_lin_arm_cross
-  variables:
-    PLATFORM_NAME: "arm-linux-gnueabi"
-    CONF_TARGET: "xtensa-esp32s3-elf"
-    CONF_HOST: "arm-linux-gnueabi"
+    RUST_TARGET_TRIPLET: "arm-unknown-linux-gnueabi"
 
 riscv32_esp_lin_armel:
   extends: .template_lin_arm_cross
@@ -423,26 +418,13 @@ riscv32_esp_lin_armel:
 
 # ARMHF
 
-esp32_lin_armhf:
+xtensa_esp_lin_armhf:
   extends: .template_lin_arm_cross
   variables:
     PLATFORM_NAME: "arm-linux-gnueabihf"
-    CONF_TARGET: "xtensa-esp32-elf"
+    CONF_TARGET: "xtensa-esp-elf"
     CONF_HOST: "arm-linux-gnueabihf"
-
-esp32s2_lin_armhf:
-  extends: .template_lin_arm_cross
-  variables:
-    PLATFORM_NAME: "arm-linux-gnueabihf"
-    CONF_TARGET: "xtensa-esp32s2-elf"
-    CONF_HOST: "arm-linux-gnueabihf"
-
-esp32s3_lin_armhf:
-  extends: .template_lin_arm_cross
-  variables:
-    PLATFORM_NAME: "arm-linux-gnueabihf"
-    CONF_TARGET: "xtensa-esp32s3-elf"
-    CONF_HOST: "arm-linux-gnueabihf"
+    RUST_TARGET_TRIPLET: "arm-unknown-linux-gnueabihf"
 
 riscv32_esp_lin_armhf:
   extends: .template_lin_arm_cross
@@ -453,26 +435,13 @@ riscv32_esp_lin_armhf:
 
 # ARM64
 
-esp32_lin_arm64:
+xtensa_esp_lin_arm64:
   extends: .template_lin_arm_cross
   variables:
     PLATFORM_NAME: "aarch64-linux-gnu"
-    CONF_TARGET: "xtensa-esp32-elf"
+    CONF_TARGET: "xtensa-esp-elf"
     CONF_HOST: "aarch64-linux-gnu"
-
-esp32s2_lin_arm64:
-  extends: .template_lin_arm_cross
-  variables:
-    PLATFORM_NAME: "aarch64-linux-gnu"
-    CONF_TARGET: "xtensa-esp32s2-elf"
-    CONF_HOST: "aarch64-linux-gnu"
-
-esp32s3_lin_arm64:
-  extends: .template_lin_arm_cross
-  variables:
-    PLATFORM_NAME: "aarch64-linux-gnu"
-    CONF_TARGET: "xtensa-esp32s3-elf"
-    CONF_HOST: "aarch64-linux-gnu"
+    RUST_TARGET_TRIPLET: "aarch64-unknown-linux-gnu"
 
 riscv32_esp_lin_arm64:
   extends: .template_lin_arm_cross
@@ -507,8 +476,8 @@ upload_to_internal:
     # don't use "GIT_STRATEGY: none", because we need cleaning old artifacts in 'dist/' that came from previous pipelines
     GIT_SUBMODULE_STRATEGY: none
     CTNG_ESP_HELPERS_BRANCH: "-b master"
-    TARGETS: "xtensa-esp32-elf xtensa-esp32s2-elf xtensa-esp32s3-elf riscv32-esp-elf"
-    HOSTS: "x86_64-linux-gnu aarch64-linux-gnu arm-linux-gnueabi arm-linux-gnueabihf i686-linux-gnu x86_64-apple-darwin aarch64-apple-darwin i686-w64-mingw32 x86_64-w64-mingw32"
+    TARGETS: "xtensa-esp-elf riscv32-esp-elf"
+    HOSTS: "x86_64-linux-gnu aarch64-linux-gnu arm-linux-gnueabi arm-linux-gnueabihf i586-linux-gnu x86_64-apple-darwin aarch64-apple-darwin i686-w64-mingw32 x86_64-w64-mingw32"
   artifacts:
     paths:
       # a list just for check files, debug
@@ -604,7 +573,7 @@ upload_to_github:
   allow_failure: true
   variables:
     TOOL_NAME: "toolchain"
-    TOOL_MEMBERS: "xtensa-esp32-elf xtensa-esp32s2-elf xtensa-esp32s3-elf riscv32-esp-elf"
+    TOOL_MEMBERS: "xtensa-esp-elf riscv32-esp-elf"
     TOOL_VERSION: ${DIST_VERSION_FULL}
   trigger:
     project: idf/idf-tools-updater
@@ -677,6 +646,7 @@ prep_tests:
     - ARCHIVE_NAME=$(cat dist/file_${PLATFORM_NAME}_${CONF_TARGET})
     - ${UNARCHIVE_TOOL} dist/${ARCHIVE_NAME}
     - export PATH="${CI_PROJECT_DIR}/${CONF_TARGET}/bin:${PATH}"
+    - export CONF_TARGET="${CONF_TARGET_WRAPPER:-$CONF_TARGET}"
 
     - echo ""
     - echo "*** Build-only tests ****"
@@ -707,21 +677,24 @@ prep_tests:
 
 esp32_lin_amd64_compiler_tests:
   extends: .template_lin_amd64_compiler_tests
-  needs: [ esp32_lin_amd64, prep_tests ]
+  needs: [ xtensa_esp_lin_amd64, prep_tests ]
   variables:
-    CONF_TARGET: "xtensa-esp32-elf"
+    CONF_TARGET: "xtensa-esp-elf"
+    CONF_TARGET_WRAPPER: "xtensa-esp32-elf"
 
 esp32s2_lin_amd64_compiler_tests:
   extends: .template_lin_amd64_compiler_tests
-  needs: [ esp32s2_lin_amd64, prep_tests ]
+  needs: [ xtensa_esp_lin_amd64, prep_tests ]
   variables:
-    CONF_TARGET: "xtensa-esp32s2-elf"
+    CONF_TARGET: "xtensa-esp-elf"
+    CONF_TARGET_WRAPPER: "xtensa-esp32s2-elf"
 
 esp32s3_lin_amd64_compiler_tests:
   extends: .template_lin_amd64_compiler_tests
-  needs: [ esp32s3_lin_amd64, prep_tests ]
+  needs: [ xtensa_esp_lin_amd64, prep_tests ]
   variables:
-    CONF_TARGET: "xtensa-esp32s3-elf"
+    CONF_TARGET: "xtensa-esp-elf"
+    CONF_TARGET_WRAPPER: "xtensa-esp32s3-elf"
 
 riscv32_lin_amd64_compiler_tests:
   extends: .template_lin_amd64_compiler_tests
@@ -739,21 +712,24 @@ riscv32_lin_amd64_compiler_tests:
 
 esp32_macos_amd64_compiler_tests:
   extends: .template_macos_amd64_compiler_tests
-  needs: [ esp32_macos, prep_tests ]
+  needs: [ xtensa_esp_macos, prep_tests ]
   variables:
-    CONF_TARGET: "xtensa-esp32-elf"
+    CONF_TARGET: "xtensa-esp-elf"
+    CONF_TARGET_WRAPPER: "xtensa-esp32-elf"
 
 esp32s2_macos_amd64_compiler_tests:
   extends: .template_macos_amd64_compiler_tests
-  needs: [ esp32s2_macos, prep_tests ]
+  needs: [ xtensa_esp_macos, prep_tests ]
   variables:
-    CONF_TARGET: "xtensa-esp32s2-elf"
+    CONF_TARGET: "xtensa-esp-elf"
+    CONF_TARGET_WRAPPER: "xtensa-esp32s2-elf"
 
 esp32s3_macos_amd64_compiler_tests:
   extends: .template_macos_amd64_compiler_tests
-  needs: [ esp32s3_macos, prep_tests ]
+  needs: [ xtensa_esp_macos, prep_tests ]
   variables:
-    CONF_TARGET: "xtensa-esp32s3-elf"
+    CONF_TARGET: "xtensa-esp-elf"
+    CONF_TARGET_WRAPPER: "xtensa-esp32s3-elf"
 
 riscv32_macos_amd64_compiler_tests:
   extends: .template_macos_amd64_compiler_tests
@@ -771,21 +747,24 @@ riscv32_macos_amd64_compiler_tests:
 
 esp32_macos_aarch64_compiler_tests:
   extends: .template_macos_aarch64_compiler_tests
-  needs: [ esp32_macos_arm64, prep_tests ]
+  needs: [ xtensa_esp_macos_arm64, prep_tests ]
   variables:
-    CONF_TARGET: "xtensa-esp32-elf"
+    CONF_TARGET: "xtensa-esp-elf"
+    CONF_TARGET_WRAPPER: "xtensa-esp32-elf"
 
 esp32s2_macos_aarch64_compiler_tests:
   extends: .template_macos_aarch64_compiler_tests
-  needs: [ esp32s2_macos_arm64, prep_tests ]
+  needs: [ xtensa_esp_macos_arm64, prep_tests ]
   variables:
-    CONF_TARGET: "xtensa-esp32s2-elf"
+    CONF_TARGET: "xtensa-esp-elf"
+    CONF_TARGET_WRAPPER: "xtensa-esp32s2-elf"
 
 esp32s3_macos_aarch64_compiler_tests:
   extends: .template_macos_aarch64_compiler_tests
-  needs: [ esp32s3_macos_arm64, prep_tests ]
+  needs: [ xtensa_esp_macos_arm64, prep_tests ]
   variables:
-    CONF_TARGET: "xtensa-esp32s3-elf"
+    CONF_TARGET: "xtensa-esp-elf"
+    CONF_TARGET_WRAPPER: "xtensa-esp32s3-elf"
 
 riscv32_macos_aarch64_compiler_tests:
   extends: .template_macos_aarch64_compiler_tests
@@ -811,6 +790,7 @@ riscv32_macos_aarch64_compiler_tests:
     - $ARCHIVE_NAME=$(cat "dist\file_${PLATFORM_NAME}_${CONF_TARGET}")
     - Expand-Archive -DestinationPATH . "dist\$ARCHIVE_NAME"
     - $env:PATH = "${CI_PROJECT_DIR}\${CONF_TARGET}\bin;" + $env:PATH
+    - $env:CONF_TARGET = "${CONF_TARGET_WRAPPER}"
     - Push-Location esp-compiler-tests\just-run-tools
     - .\run.ps1
     - Pop-Location
@@ -819,49 +799,56 @@ riscv32_macos_aarch64_compiler_tests:
 
 native_win64_tools_test_esp32:
   extends: .native_win64_tools_test_template
-  needs: [ esp32_win64, prep_tests ]
+  needs: [ xtensa_esp_win64, prep_tests ]
   variables:
-    CONF_TARGET: "xtensa-esp32-elf"
+    CONF_TARGET: "xtensa-esp-elf"
+    CONF_TARGET_WRAPPER: "xtensa-esp32-elf"
 
 native_win64_tools_test_esp32s2:
   extends: .native_win64_tools_test_template
-  needs: [ esp32s2_win64, prep_tests ]
+  needs: [ xtensa_esp_win64, prep_tests ]
   variables:
-    CONF_TARGET: "xtensa-esp32s2-elf"
+    CONF_TARGET: "xtensa-esp-elf"
+    CONF_TARGET_WRAPPER: "xtensa-esp32s2-elf"
 
 native_win64_tools_test_esp32s3:
   extends: .native_win64_tools_test_template
-  needs: [ esp32s3_win64, prep_tests ]
+  needs: [ xtensa_esp_win64, prep_tests ]
   variables:
-    CONF_TARGET: "xtensa-esp32s3-elf"
+    CONF_TARGET: "xtensa-esp-elf"
+    CONF_TARGET_WRAPPER: "xtensa-esp32s3-elf"
 
 native_win64_tools_test_riscv32:
   extends: .native_win64_tools_test_template
   needs: [ riscv32_esp_win64, prep_tests ]
   variables:
     CONF_TARGET: "riscv32-esp-elf"
+    CONF_TARGET_WRAPPER: "riscv32-esp-elf"
 
 # win32
 
 native_win32_tools_test_esp32:
   extends: .native_win64_tools_test_template
-  needs: [ esp32_win, prep_tests ]
+  needs: [ xtensa_esp_win, prep_tests ]
   variables:
-    CONF_TARGET: "xtensa-esp32-elf"
+    CONF_TARGET: "xtensa-esp-elf"
+    CONF_TARGET_WRAPPER: "xtensa-esp32-elf"
     PLATFORM_NAME: "i686-w64-mingw32"
 
 native_win32_tools_test_esp32s2:
   extends: .native_win64_tools_test_template
-  needs: [ esp32s2_win, prep_tests ]
+  needs: [ xtensa_esp_win, prep_tests ]
   variables:
-    CONF_TARGET: "xtensa-esp32s2-elf"
+    CONF_TARGET: "xtensa-esp-elf"
+    CONF_TARGET_WRAPPER: "xtensa-esp32s2-elf"
     PLATFORM_NAME: "i686-w64-mingw32"
 
 native_win32_tools_test_esp32s3:
   extends: .native_win64_tools_test_template
-  needs: [ esp32s3_win, prep_tests ]
+  needs: [ xtensa_esp_win, prep_tests ]
   variables:
-    CONF_TARGET: "xtensa-esp32s3-elf"
+    CONF_TARGET: "xtensa-esp-elf"
+    CONF_TARGET_WRAPPER: "xtensa-esp32s3-elf"
     PLATFORM_NAME: "i686-w64-mingw32"
 
 native_win32_tools_test_riscv32:
@@ -869,6 +856,7 @@ native_win32_tools_test_riscv32:
   needs: [ riscv32_esp_win, prep_tests ]
   variables:
     CONF_TARGET: "riscv32-esp-elf"
+    CONF_TARGET_WRAPPER: "riscv32-esp-elf"
     PLATFORM_NAME: "i686-w64-mingw32"
 
 
@@ -880,73 +868,53 @@ include: '.gitlab/ci/dejagnu-test.yml'
 
 test_ld_esp32_lin_amd64:
   extends: .dejagnu-test-ld-template
-  needs: [ esp32_lin_amd64, prep_tests ]
+  needs: [ xtensa_esp_lin_amd64, prep_tests ]
+  variables:
+    CONF_TARGET_WRAPPER: "xtensa-esp32-elf"
 
 test_gas_esp32_lin_amd64:
   extends: .dejagnu-test-gas-template
-  needs: [ esp32_lin_amd64, prep_tests ]
+  needs: [ xtensa_esp_lin_amd64, prep_tests ]
+  variables:
+    CONF_TARGET_WRAPPER: "xtensa-esp32-elf"
 
 test_gcc_esp32_lin_amd64:
   extends: .dejagnu-test-gcc-template
-  needs: [ esp32_lin_amd64, prep_tests ]
+  needs: [ xtensa_esp_lin_amd64, prep_tests ]
+  variables:
+    CONF_TARGET_WRAPPER: "xtensa-esp32-elf"
 
 test_gxx_esp32_lin_amd64:
   extends: .dejagnu-test-gxx-template
-  needs: [ esp32_lin_amd64, prep_tests ]
-
-#esp32s2 tests
-
-test_ld_esp32s2_lin_amd64:
-  extends: .dejagnu-test-ld-template
-  needs: [ esp32s2_lin_amd64, prep_tests ]
-
-test_gas_esp32s2_lin_amd64:
-  extends: .dejagnu-test-gas-template
-  needs: [ esp32s2_lin_amd64, prep_tests ]
-
-test_gcc_esp32s2_lin_amd64:
-  extends: .dejagnu-test-gcc-template
-  needs: [ esp32s2_lin_amd64, prep_tests ]
-
-test_gxx_esp32s2_lin_amd64:
-  extends: .dejagnu-test-gxx-template
-  needs: [ esp32s2_lin_amd64, prep_tests ]
-
-#esp32s3 tests
-
-test_ld_esp32s3_lin_amd64:
-  extends: .dejagnu-test-ld-template
-  needs: [ esp32s3_lin_amd64, prep_tests ]
-
-test_gas_esp32s3_lin_amd64:
-  extends: .dejagnu-test-gas-template
-  needs: [ esp32s3_lin_amd64, prep_tests ]
-
-test_gcc_esp32s3_lin_amd64:
-  extends: .dejagnu-test-gcc-template
-  needs: [ esp32s3_lin_amd64, prep_tests ]
-
-test_gxx_esp32s3_lin_amd64:
-  extends: .dejagnu-test-gxx-template
-  needs: [ esp32s3_lin_amd64, prep_tests ]
+  needs: [ xtensa_esp_lin_amd64, prep_tests ]
+  variables:
+    CONF_TARGET_WRAPPER: "xtensa-esp32-elf"
 
 # riscv32 tests
 
 test_ld_riscv32_esp_lin_amd64:
   extends: .dejagnu-test-ld-template
   needs: [ riscv32_esp_lin_amd64, prep_tests ]
+  variables:
+    CONF_TARGET_WRAPPER: "riscv32-esp-elf"
 
 test_gas_riscv32_esp_lin_amd64:
   extends: .dejagnu-test-gas-template
   needs: [ riscv32_esp_lin_amd64, prep_tests ]
+  variables:
+    CONF_TARGET_WRAPPER: "riscv32-esp-elf"
 
 test_gcc_riscv32_esp_lin_amd64:
   extends: .dejagnu-test-gcc-template
   needs: [ riscv32_esp_lin_amd64, prep_tests ]
+  variables:
+    CONF_TARGET_WRAPPER: "riscv32-esp-elf"
 
 test_gxx_riscv32_esp_lin_amd64:
   extends: .dejagnu-test-gxx-template
   needs: [ riscv32_esp_lin_amd64, prep_tests ]
+  variables:
+    CONF_TARGET_WRAPPER: "riscv32-esp-elf"
 
 # macOS amd64
 
@@ -954,73 +922,33 @@ test_gxx_riscv32_esp_lin_amd64:
 
 test_ld_esp32_macos:
   extends: .dejagnu-test-ld-template
-  needs: [ esp32_macos, prep_tests ]
+  needs: [ xtensa_esp_macos, prep_tests ]
   tags: [ "darwin", "amd64" ]
+  variables:
+    CONF_TARGET_WRAPPER: "xtensa-esp32-elf"
 
 test_gas_esp32_macos:
   extends: .dejagnu-test-gas-template
-  needs: [ esp32_macos, prep_tests ]
+  needs: [ xtensa_esp_macos, prep_tests ]
   tags: [ "darwin", "amd64" ]
+  variables:
+    CONF_TARGET_WRAPPER: "xtensa-esp32-elf"
 
 test_gcc_esp32_macos:
   extends: .dejagnu-test-gcc-template
-  needs: [ esp32_macos, prep_tests ]
+  needs: [ xtensa_esp_macos, prep_tests ]
   tags: [ "darwin", "amd64" ]
   resource_group: dejagnu_macos_amd64
+  variables:
+    CONF_TARGET_WRAPPER: "xtensa-esp32-elf"
 
 test_gxx_esp32_macos:
   extends: .dejagnu-test-gxx-template
-  needs: [ esp32_macos, prep_tests ]
+  needs: [ xtensa_esp_macos, prep_tests ]
   tags: [ "darwin", "amd64" ]
   resource_group: dejagnu_macos_amd64
-
-#esp32s2 tests
-
-test_ld_esp32s2_macos:
-  extends: .dejagnu-test-ld-template
-  needs: [ esp32s2_macos, prep_tests ]
-  tags: [ "darwin", "amd64" ]
-
-test_gas_esp32s2_macos:
-  extends: .dejagnu-test-gas-template
-  needs: [ esp32s2_macos, prep_tests ]
-  tags: [ "darwin", "amd64" ]
-
-test_gcc_esp32s2_macos:
-  extends: .dejagnu-test-gcc-template
-  needs: [ esp32s2_macos, prep_tests ]
-  tags: [ "darwin", "amd64" ]
-  resource_group: dejagnu_macos_amd64
-
-test_gxx_esp32s2_macos:
-  extends: .dejagnu-test-gxx-template
-  needs: [ esp32s2_macos, prep_tests ]
-  tags: [ "darwin", "amd64" ]
-  resource_group: dejagnu_macos_amd64
-
-#esp32s3 tests
-
-test_ld_esp32s3_macos:
-  extends: .dejagnu-test-ld-template
-  needs: [ esp32s3_macos, prep_tests ]
-  tags: [ "darwin", "amd64" ]
-
-test_gas_esp32s3_macos:
-  extends: .dejagnu-test-gas-template
-  needs: [ esp32s3_macos, prep_tests ]
-  tags: [ "darwin", "amd64" ]
-
-test_gcc_esp32s3_macos:
-  extends: .dejagnu-test-gcc-template
-  needs: [ esp32s3_macos, prep_tests ]
-  tags: [ "darwin", "amd64" ]
-  resource_group: dejagnu_macos_amd64
-
-test_gxx_esp32s3_macos:
-  extends: .dejagnu-test-gxx-template
-  needs: [ esp32s3_macos, prep_tests ]
-  tags: [ "darwin", "amd64" ]
-  resource_group: dejagnu_macos_amd64
+  variables:
+    CONF_TARGET_WRAPPER: "xtensa-esp32-elf"
 
 # riscv32 tests
 
@@ -1028,118 +956,94 @@ test_ld_riscv32_esp_macos:
   extends: .dejagnu-test-ld-template
   needs: [ riscv32_esp_macos, prep_tests ]
   tags: [ "darwin", "amd64" ]
+  variables:
+    CONF_TARGET_WRAPPER: "riscv32-esp-elf"
 
 test_gas_riscv32_esp_macos:
   extends: .dejagnu-test-gas-template
   needs: [ riscv32_esp_macos, prep_tests ]
   tags: [ "darwin", "amd64" ]
+  variables:
+    CONF_TARGET_WRAPPER: "riscv32-esp-elf"
 
 test_gcc_riscv32_esp_macos:
   extends: .dejagnu-test-gcc-template
   needs: [ riscv32_esp_macos, prep_tests ]
   tags: [ "darwin", "amd64" ]
   resource_group: dejagnu_macos_amd64
+  variables:
+    CONF_TARGET_WRAPPER: "riscv32-esp-elf"
 
 test_gxx_riscv32_esp_macos:
   extends: .dejagnu-test-gxx-template
   needs: [ riscv32_esp_macos, prep_tests ]
   tags: [ "darwin", "amd64" ]
   resource_group: dejagnu_macos_amd64
+  variables:
+    CONF_TARGET_WRAPPER: "riscv32-esp-elf"
 
 # macOS arm64
 
 # esp32 tests
 
-test_ld_esp32_macos_aarch64:
+test_ld_esp32_macos_arm64:
   extends: .dejagnu-test-ld-template
-  needs: [ esp32_macos, prep_tests ]
+  needs: [ xtensa_esp_macos_arm64, prep_tests ]
   tags: [ "darwin", "aarch64" ]
+  variables:
+    CONF_TARGET_WRAPPER: "xtensa-esp32-elf"
 
-test_gas_esp32_macos_aarch64:
+test_gas_esp32_macos_arm64:
   extends: .dejagnu-test-gas-template
-  needs: [ esp32_macos, prep_tests ]
+  needs: [ xtensa_esp_macos_arm64, prep_tests ]
   tags: [ "darwin", "aarch64" ]
+  variables:
+    CONF_TARGET_WRAPPER: "xtensa-esp32-elf"
 
-test_gcc_esp32_macos_aarch64:
+test_gcc_esp32_macos_arm64:
   extends: .dejagnu-test-gcc-template
-  needs: [ esp32_macos, prep_tests ]
+  needs: [ xtensa_esp_macos_arm64, prep_tests ]
   tags: [ "darwin", "aarch64" ]
   resource_group: dejagnu_macos_aarch64
+  variables:
+    CONF_TARGET_WRAPPER: "xtensa-esp32-elf"
 
-test_gxx_esp32_macos_aarch64:
+test_gxx_esp32_macos_arm64:
   extends: .dejagnu-test-gxx-template
-  needs: [ esp32_macos, prep_tests ]
+  needs: [ xtensa_esp_macos_arm64, prep_tests ]
   tags: [ "darwin", "aarch64" ]
   resource_group: dejagnu_macos_aarch64
-
-#esp32s2 tests
-
-test_ld_esp32s2_macos_aarch64:
-  extends: .dejagnu-test-ld-template
-  needs: [ esp32s2_macos, prep_tests ]
-  tags: [ "darwin", "aarch64" ]
-
-test_gas_esp32s2_macos_aarch64:
-  extends: .dejagnu-test-gas-template
-  needs: [ esp32s2_macos, prep_tests ]
-  tags: [ "darwin", "aarch64" ]
-
-test_gcc_esp32s2_macos_aarch64:
-  extends: .dejagnu-test-gcc-template
-  needs: [ esp32s2_macos, prep_tests ]
-  tags: [ "darwin", "aarch64" ]
-  resource_group: dejagnu_macos_aarch64
-
-test_gxx_esp32s2_macos_aarch64:
-  extends: .dejagnu-test-gxx-template
-  needs: [ esp32s2_macos, prep_tests ]
-  tags: [ "darwin", "aarch64" ]
-  resource_group: dejagnu_macos_aarch64
-
-#esp32s3 tests
-
-test_ld_esp32s3_macos_aarch64:
-  extends: .dejagnu-test-ld-template
-  needs: [ esp32s3_macos, prep_tests ]
-  tags: [ "darwin", "aarch64" ]
-
-test_gas_esp32s3_macos_aarch64:
-  extends: .dejagnu-test-gas-template
-  needs: [ esp32s3_macos, prep_tests ]
-  tags: [ "darwin", "aarch64" ]
-
-test_gcc_esp32s3_macos_aarch64:
-  extends: .dejagnu-test-gcc-template
-  needs: [ esp32s3_macos, prep_tests ]
-  tags: [ "darwin", "aarch64" ]
-  resource_group: dejagnu_macos_aarch64
-
-test_gxx_esp32s3_macos_aarch64:
-  extends: .dejagnu-test-gxx-template
-  needs: [ esp32s3_macos, prep_tests ]
-  tags: [ "darwin", "aarch64" ]
-  resource_group: dejagnu_macos_aarch64
+  variables:
+    CONF_TARGET_WRAPPER: "xtensa-esp32-elf"
 
 # riscv32 tests
 
-test_ld_riscv32_esp_macos_aarch64:
+test_ld_riscv32_esp_macos_arm64:
   extends: .dejagnu-test-ld-template
-  needs: [ riscv32_esp_macos, prep_tests ]
+  needs: [ riscv32_esp_macos_arm64, prep_tests ]
   tags: [ "darwin", "aarch64" ]
+  variables:
+    CONF_TARGET_WRAPPER: "riscv32-esp-elf"
 
-test_gas_riscv32_esp_macos_aarch64:
+test_gas_riscv32_esp_macos_arm64:
   extends: .dejagnu-test-gas-template
-  needs: [ riscv32_esp_macos, prep_tests ]
+  needs: [ riscv32_esp_macos_arm64, prep_tests ]
   tags: [ "darwin", "aarch64" ]
+  variables:
+    CONF_TARGET_WRAPPER: "riscv32-esp-elf"
 
-test_gcc_riscv32_esp_macos_aarch64:
+test_gcc_riscv32_esp_macos_arm64:
   extends: .dejagnu-test-gcc-template
-  needs: [ riscv32_esp_macos, prep_tests ]
+  needs: [ riscv32_esp_macos_arm64, prep_tests ]
   tags: [ "darwin", "aarch64" ]
   resource_group: dejagnu_macos_aarch64
+  variables:
+    CONF_TARGET_WRAPPER: "riscv32-esp-elf"
 
-test_gxx_riscv32_esp_macos_aarch64:
+test_gxx_riscv32_esp_macos_arm64:
   extends: .dejagnu-test-gxx-template
-  needs: [ riscv32_esp_macos, prep_tests ]
+  needs: [ riscv32_esp_macos_arm64, prep_tests ]
   tags: [ "darwin", "aarch64" ]
   resource_group: dejagnu_macos_aarch64
+  variables:
+    CONF_TARGET_WRAPPER: "riscv32-esp-elf"
