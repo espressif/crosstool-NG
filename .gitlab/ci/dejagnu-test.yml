@@ -1,5 +1,5 @@
 .set_archive_name: &set_archive_name |
-    FILE=$(find dist -type f -name "file_*")
+    FILE=$(find dist -type f -name "dist_name_*")
     ARCHIVE_NAME=$(cat "$FILE")
 
 .set_target_from_archive_name: &set_target_from_archive_name |
