@@ -4,6 +4,7 @@ include:
 stages:
   - generate_version
   - build
+  - macos_codesign
   - internal_deploy
   - pre_test
   - test
@@ -171,7 +172,7 @@ before_script:
   ${ARCHIVE_TOOL} ${ARCHIVE_NAME} ${CONF_TARGET}/ > tar-list.txt 2>&1
   mv tar-list.txt ..
   mv ${ARCHIVE_NAME} ../dist/
-  echo "${ARCHIVE_NAME}" > ../dist/file_${PLATFORM_NAME}_${CONF_TARGET}
+  echo "${ARCHIVE_NAME}" > ../dist/dist_name_${PLATFORM_NAME}_${CONF_TARGET}
   ls -l ../dist/
   cd -
 
@@ -269,10 +270,10 @@ riscv32_esp_lin_i586:
 
 .template_macos_cross:
   extends: .build_template
-  image: $CI_DOCKER_REGISTRY/esp32-toolchain-macos-cross
+  image: $CI_DOCKER_REGISTRY/esp32-toolchain-macos-cross:5
   variables:
     PLATFORM_NAME: "x86_64-apple-darwin"
-    CONF_HOST: "x86_64-apple-darwin12"
+    CONF_HOST: "x86_64-apple-darwin21.1"
     MACOSX_DEPLOYMENT_TARGET: "10.8"
     RUST_TARGET_TRIPLET: "x86_64-apple-darwin"
   script:
@@ -321,6 +322,26 @@ riscv32_esp_macos_arm64:
   extends: .template_macos_arm64_native
   variables:
     CONF_TARGET: "riscv32-esp-elf"
+
+macos_codesign:
+  stage: macos_codesign
+  when: manual
+  resource_group: macos_codesign
+  tags: [ "darwin", "codesign" ]
+  # list all jobs that produces macos distros
+  needs: [ xtensa_esp_macos_arm64, riscv32_esp_macos_arm64, xtensa_esp_macos, riscv32_esp_macos ]
+  artifacts:
+    paths:
+      - ${DIST_ART_DIR}
+  variables:
+    # directory with distro archives
+    DIST_ART_DIR: dist
+    # URL to macos codesign repo
+    NOTARIZATION_SCRIPTS_GIT: "${CI_SERVER_PROTOCOL}://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}:${CI_SERVER_PORT}/espressif/macos_codesign_notarization.git"
+  script:
+    - git clone -q --depth=1 ${NOTARIZATION_SCRIPTS_GIT} -b ${CI_COMMIT_REF_NAME} ||
+      git clone -q --depth=1 ${NOTARIZATION_SCRIPTS_GIT}
+    - ./macos_codesign_notarization/run.sh
 
 .template_win_cross:
   extends: .build_template
@@ -500,7 +521,7 @@ upload_to_internal:
     - rm -rf -- "${RELEASE_SRC_NAME}"
     - ls -l
     # Create a checksum file
-    - DIST_FILE_LIST=$(find . -name file_\* -exec cat {} \+)
+    - DIST_FILE_LIST=$(find . -name dist_name_\* -exec cat {} \+)
     - DIST_FILE_LIST="${DIST_FILE_LIST} ${RELEASE_SRC_FILE}"
     - |
       for n in $DIST_FILE_LIST; do
@@ -643,7 +664,7 @@ prep_tests:
     - source citools/import_functions
     - cit_rm ${CONF_TARGET}
   script:
-    - ARCHIVE_NAME=$(cat dist/file_${PLATFORM_NAME}_${CONF_TARGET})
+    - ARCHIVE_NAME=$(cat dist/dist_name_${PLATFORM_NAME}_${CONF_TARGET})
     - ${UNARCHIVE_TOOL} dist/${ARCHIVE_NAME}
     - export PATH="${CI_PROJECT_DIR}/${CONF_TARGET}/bin:${PATH}"
     - export CONF_TARGET="${CONF_TARGET_WRAPPER:-$CONF_TARGET}"
@@ -787,7 +808,7 @@ riscv32_macos_aarch64_compiler_tests:
   after_script:
     - Remove-Item -Recurse -Force ${CI_PROJECT_DIR}\*
   script:
-    - $ARCHIVE_NAME=$(cat "dist\file_${PLATFORM_NAME}_${CONF_TARGET}")
+    - $ARCHIVE_NAME=$(cat "dist\dist_name_${PLATFORM_NAME}_${CONF_TARGET}")
     - Expand-Archive -DestinationPATH . "dist\$ARCHIVE_NAME"
     - $env:PATH = "${CI_PROJECT_DIR}\${CONF_TARGET}\bin;" + $env:PATH
     - $env:CONF_TARGET = "${CONF_TARGET_WRAPPER}"
