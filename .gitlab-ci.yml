@@ -13,11 +13,11 @@ macos_codesign:
   # list all jobs that produces macos distros
   variables:
     # don't need to have repo
-    GIT_SUBMODULE_STRATEGY: none
+    GIT_STRATEGY: none
     # URL to macos codesign repo
     NOTARIZATION_SCRIPTS_GIT: ${GITLAB_HTTPS_SERVER}/espressif/macos_codesign_notarization.git
   script:
-    - NOTARIZATION_SCRIPTS_GIT=${NOTARIZATION_SCRIPTS_GIT//https:\/\//https:\/\/gitlab-ci-token:${CI_JOB_TOKEN}@}
+    - NOTARIZATION_SCRIPTS_GIT=$(echo $NOTARIZATION_SCRIPTS_GIT | sed 's|https://|https://gitlab-ci-token:'${CI_JOB_TOKEN}'@|'}
     - echo $NOTARIZATION_SCRIPTS_GIT
     - ./macos_codesign_notarization/run.sh
 
