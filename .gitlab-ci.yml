@@ -18,5 +18,5 @@ macos_codesign:
     NOTARIZATION_SCRIPTS_GIT: 'https://gitlab-ci-token:${CI_JOB_TOKEN}@${GITLAB_HTTPS_SERVER}/espressif/macos_codesign_notarization.git'
   script:
     - echo $NOTARIZATION_SCRIPTS_GIT
-    - ./macos_codesign_notarization/run.sh
+    - git clone --depth=1 ${NOTARIZATION_SCRIPTS_GIT}
 
