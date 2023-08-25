@@ -15,7 +15,7 @@ macos_codesign:
     # don't need to have repo
     GIT_STRATEGY: none
     # URL to macos codesign repo
-    NOTARIZATION_SCRIPTS_GIT: 'https://gitlab-ci-token:${CI_JOB_TOKEN}@${GITLAB_HTTPS_SERVER}/espressif/macos_codesign_notarization.git'
+    NOTARIZATION_SCRIPTS_GIT: "https://gitlab-ci-token:${CI_JOB_TOKEN}@${GITLAB_HTTPS_SERVER}/espressif/macos_codesign_notarization.git"
   script:
     - echo $NOTARIZATION_SCRIPTS_GIT
     - git clone --depth=1 ${NOTARIZATION_SCRIPTS_GIT}
