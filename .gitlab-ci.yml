@@ -539,7 +539,7 @@ upload_to_internal:
     - DIST_FILE_LIST="${DIST_FILE_LIST} ${RELEASE_SRC_FILE}"
     - |
       for n in $DIST_FILE_LIST; do
-        sz=$(stat -c%s "${n}") >> ${RELEASE_CHECKSUM_FILE};
+        sz=$(stat -c%s "${n}");
         printf "# %s: %s bytes\n" "${n}" "${sz}" >> ${RELEASE_CHECKSUM_FILE};
         sha256sum -b "${n}" >> ${RELEASE_CHECKSUM_FILE};
       done
