@@ -41,6 +41,39 @@ variables:
     eval "$(${ESPCI_HOMEBREW_PREFIX}/bin/brew shellenv)"
   fi
 
+.install_picolibc_deps: &install_picolibc_deps |
+  apt remove -y python3
+  apt-get -y autoremove
+  git clone https://github.com/BLAKE2/libb2.git -b v0.98.1
+  pushd libb2
+  ./autogen.sh > /dev/null
+  ./configure > /dev/null
+  make -j$(nproc) > /dev/null
+  make install > /dev/null
+  popd
+  wget --no-check-certificate https://www.openssl.org/source/openssl-3.2.0.tar.gz
+  tar xzf openssl-3.2.0.tar.gz
+  pushd openssl-3.2.0
+  ./config > /dev/null
+  make -j$(nproc) > /dev/null
+  make install_sw > /dev/null
+  ln -s /usr/local/lib64/libssl.so.3 /usr/lib
+  ln -s /usr/local/lib64/libssl.a /usr/lib
+  ln -s /usr/local/lib64/libcrypto.so.3 /usr/lib
+  ln -s /usr/local/lib64/libcrypto.a /usr/lib
+  ldconfig
+  popd
+  rm -fr ./openssl-3.2.0*
+  wget --no-check-certificate https://www.python.org/ftp/python/3.11.6/Python-3.11.6.tgz
+  tar xzf Python-3.11.6.tgz
+  pushd Python-3.11.6
+  ./configure LDFLAGS=-L/usr/lib > /dev/null
+  make -j$(nproc) > /dev/null
+  make install > /dev/null
+  popd
+  rm -fr ./Python-3.11.6*
+  pip3.11 install meson ninja
+
 before_script:
   - *use_ci_tools
   - *add_gitlab_key
@@ -87,6 +120,7 @@ before_script:
   echo "CT_NEWLIB_DEVEL_URL=\"${GITLAB_SSH_SERVER}/idf/newlib-cygwin.git\"" >> .config
   echo "CT_GCC_DEVEL_URL=\"${GITLAB_SSH_SERVER}/idf/gcc.git\"" >> .config
   echo "CT_BINUTILS_DEVEL_URL=\"${GITLAB_SSH_SERVER}/idf/binutils-gdb.git\"" >> .config
+  echo "CT_PICOLIBC_DEVEL_URL=\"${GITLAB_SSH_SERVER}/idf/picolibc.git\"" >> .config
 
 # Configuration specific to Docker
 .configure_docker: &configure_docker |
@@ -206,6 +240,7 @@ before_script:
 .build_template_linux:
   extends: .build_template
   script:
+    - *install_picolibc_deps
     - *build_ctng
     - *configure_common
     - *configure_docker
@@ -277,6 +312,7 @@ riscv32_esp_lin_i586:
     MACOSX_DEPLOYMENT_TARGET: "10.8"
     RUST_TARGET_TRIPLET: "x86_64-apple-darwin"
   script:
+    - *install_picolibc_deps
     - *build_ctng
     - *configure_common
     - *configure_docker
@@ -306,6 +342,7 @@ riscv32_esp_macos:
     MACOSX_DEPLOYMENT_TARGET: "10.8"
     RUST_TARGET_TRIPLET: "aarch64-apple-darwin"
   script:
+    - pip3 install meson
     - *build_ctng_macos_native
     - *configure_common
     - *configure_docker
@@ -323,13 +360,11 @@ riscv32_esp_macos_arm64:
   variables:
     CONF_TARGET: "riscv32-esp-elf"
 
-macos_codesign:
+.template_macos_codesign:
   stage: macos_codesign
   when: manual
   resource_group: macos_codesign
   tags: [ "darwin", "codesign" ]
-  # list all jobs that produces macos distros
-  needs: [ xtensa_esp_macos_arm64, riscv32_esp_macos_arm64, xtensa_esp_macos, riscv32_esp_macos ]
   artifacts:
     paths:
       - ${DIST_ART_DIR}
@@ -343,6 +378,22 @@ macos_codesign:
       git clone -q --depth=1 ${NOTARIZATION_SCRIPTS_GIT}
     - ./macos_codesign_notarization/run.sh
 
+macos_codesign_xtensa_esp_macos_arm64:
+  extends: .template_macos_codesign
+  needs: [ xtensa_esp_macos_arm64 ]
+
+macos_codesign_riscv32_esp_macos_arm64:
+  extends: .template_macos_codesign
+  needs: [ riscv32_esp_macos_arm64 ]
+
+macos_codesign_xtensa_esp_macos:
+  extends: .template_macos_codesign
+  needs: [ xtensa_esp_macos ]
+
+macos_codesign_riscv32_esp_macos:
+  extends: .template_macos_codesign
+  needs: [ riscv32_esp_macos ]
+
 .template_win_cross:
   extends: .build_template
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-win-cross
@@ -355,6 +406,7 @@ macos_codesign:
     RUST_TARGET_TRIPLET: "i686-pc-windows-gnu"
     BINARY_EXT: ".exe"
   script:
+    - *install_picolibc_deps
     - *build_ctng
     - *configure_common
     - *configure_docker
@@ -387,6 +439,7 @@ riscv32_esp_win:
     RUST_TARGET_TRIPLET: "x86_64-pc-windows-gnu"
     BINARY_EXT: ".exe"
   script:
+    - *install_picolibc_deps
     - *build_ctng
     - *configure_common
     - *configure_docker
@@ -413,6 +466,7 @@ riscv32_esp_win64:
   variables:
     INSTALL_LIBC_DEV: "y"
   script:
+    - *install_picolibc_deps
     - *build_ctng
     - *configure_common
     - *configure_docker
