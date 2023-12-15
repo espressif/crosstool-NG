@@ -323,13 +323,11 @@ riscv32_esp_macos_arm64:
   variables:
     CONF_TARGET: "riscv32-esp-elf"
 
-macos_codesign:
+.template_macos_codesign:
   stage: macos_codesign
   when: manual
   resource_group: macos_codesign
   tags: [ "darwin", "codesign" ]
-  # list all jobs that produces macos distros
-  needs: [ xtensa_esp_macos_arm64, riscv32_esp_macos_arm64, xtensa_esp_macos, riscv32_esp_macos ]
   artifacts:
     paths:
       - ${DIST_ART_DIR}
@@ -342,6 +340,22 @@ macos_codesign:
     - git clone -q --depth=1 ${NOTARIZATION_SCRIPTS_GIT} -b ${CI_COMMIT_REF_NAME} ||
       git clone -q --depth=1 ${NOTARIZATION_SCRIPTS_GIT}
     - ./macos_codesign_notarization/run.sh
+
+macos_codesign_xtensa_esp_macos_arm64:
+  extends: .template_macos_codesign
+  needs: [ xtensa_esp_macos_arm64 ]
+
+macos_codesign_riscv32_esp_macos_arm64:
+  extends: .template_macos_codesign
+  needs: [ riscv32_esp_macos_arm64 ]
+
+macos_codesign_xtensa_esp_macos:
+  extends: .template_macos_codesign
+  needs: [ xtensa_esp_macos ]
+
+macos_codesign_riscv32_esp_macos:
+  extends: .template_macos_codesign
+  needs: [ riscv32_esp_macos ]
 
 .template_win_cross:
   extends: .build_template
