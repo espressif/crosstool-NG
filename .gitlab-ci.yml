@@ -524,6 +524,7 @@ upload_to_internal:
   script:
     - cd dist
     - RELEASE_CHECKSUM_FILE="${CI_PROJECT_NAME}-${DIST_VERSION_FULL}-checksum.sha256"
+    - echo "RELEASE_CHECKSUM_FILE=$RELEASE_CHECKSUM_FILE" >> dist.env
     - RELEASE_SRC_NAME="${CI_PROJECT_NAME}-${DIST_VERSION_FULL}-src"
     - RELEASE_SRC_FILE="${RELEASE_SRC_NAME}.${ARCHIVE_EXT}"
     # Create a source archive
@@ -593,6 +594,20 @@ upload_to_github:
     - rm -rf TMP && mkdir TMP && cd TMP
     # download urls
     - for u in ${DIST_URL_LIST}; do curl -O -sSL --connect-timeout 10 --retry 10 "${u}"; done
+    - which xz || apt update && apt install -y xz-utils
+    - |
+      for n in $(ls *.tar.xz); do
+        mkdir tmp_;
+        tar -xJf $n -C tmp_;
+        gz_file="${n//tar.xz/tar.gz}";
+        files_to_arch=$(find tmp_ -maxdepth 1 -printf "%P\n" )
+        tar -czf $gz_file -C tmp_ $files_to_arch;
+        sz=$(stat -c%s "${gz_file}");
+        printf "# %s: %s bytes\n" "${gz_file}" "${sz}" >> ${RELEASE_CHECKSUM_FILE};
+        sha256sum -b "${gz_file}" >> ${RELEASE_CHECKSUM_FILE};
+        rm -fr tmp_;
+        DIST_FILE_LIST="${DIST_FILE_LIST} $gz_file";
+      done
     - ls -l
     # hub release upload
     - git remote remove github || true
