@@ -503,7 +503,7 @@ generate_version:
 
 upload_to_internal:
   stage: internal_deploy
-  image: $CI_DOCKER_REGISTRY/compiler-testsuite:2
+  image: $CI_DOCKER_REGISTRY/compiler-testsuite:3
   when: manual
   allow_failure: true
   tags: [ "build", "amd64", "shiny" ]
@@ -652,7 +652,7 @@ github_update_idf_tools:
 prep_tests:
   stage: pre_test
   tags: [ "build", "amd64" ]
-  image: $CI_DOCKER_REGISTRY/compiler-testsuite:2
+  image: $CI_DOCKER_REGISTRY/compiler-testsuite:3
   needs: []
   variables:
     GIT_STRATEGY: none
@@ -721,7 +721,7 @@ prep_tests:
 .template_lin_amd64_compiler_tests:
   extends: .template_compiler_tests
   tags: [ "build", "amd64" ]
-  image: $CI_DOCKER_REGISTRY/compiler-testsuite:2
+  image: $CI_DOCKER_REGISTRY/compiler-testsuite:3
   variables:
     PLATFORM_NAME: "x86_64-linux-gnu"
 
