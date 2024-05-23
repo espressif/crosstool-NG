@@ -4,7 +4,7 @@ include:
 stages:
   - generate_version
   - build
-  - macos_codesign
+  - codesign
   - internal_deploy
   - pre_test
   - test
@@ -324,7 +324,7 @@ riscv32_esp_macos_arm64:
     CONF_TARGET: "riscv32-esp-elf"
 
 .template_macos_codesign:
-  stage: macos_codesign
+  stage: codesign
   when: manual
   resource_group: macos_codesign
   tags: [ "darwin", "codesign" ]
@@ -421,6 +421,51 @@ riscv32_esp_win64:
   variables:
     CONF_TARGET: "riscv32-esp-elf"
 
+.template_win_manifest:
+  stage: codesign
+  tags: [ "windows", "manifest", "powershell" ]
+  artifacts:
+    paths:
+      - ${DIST_ART_DIR}
+  before_script: []
+  variables:
+    # directory with distro archives
+    DIST_ART_DIR: dist
+    # URL to windows manifest repo
+    MANIFEST_SCRIPTS_GIT: "${CI_SERVER_PROTOCOL}://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}:${CI_SERVER_PORT}/espressif/windows_manifest.git"
+  script:
+    - git clone -q --depth=1 ${MANIFEST_SCRIPTS_GIT} -b ${CI_COMMIT_REF_NAME}
+    - if ($LASTEXITCODE -ne 0) { git clone -q --depth=1 ${MANIFEST_SCRIPTS_GIT} }
+    - ./windows_manifest/run.ps1
+
+win_manifest_xtensa_esp_win64:
+  extends: .template_win_manifest
+  needs: [ generate_version, xtensa_esp_win64 ]
+  variables:
+    WIN_MANIFEST_APP_NAME: "xtensa_esp_win64"
+    WIN_MANIFEST_ARCH: "x64"
+
+win_manifest_riscv32_esp_win64:
+  extends: .template_win_manifest
+  needs: [ generate_version, riscv32_esp_win64 ]
+  variables:
+    WIN_MANIFEST_APP_NAME: "riscv32_esp_win64"
+    WIN_MANIFEST_ARCH: "x64"
+
+win_manifest_xtensa_esp_win:
+  extends: .template_win_manifest
+  needs: [ generate_version, xtensa_esp_win ]
+  variables:
+    WIN_MANIFEST_APP_NAME: "xtensa_esp_win"
+    WIN_MANIFEST_ARCH: "x86"
+
+win_manifest_riscv32_esp_win:
+  extends: .template_win_manifest
+  needs: [ generate_version, riscv32_esp_win ]
+  variables:
+    WIN_MANIFEST_APP_NAME: "riscv32_esp_win"
+    WIN_MANIFEST_ARCH: "x86"
+
 .template_lin_arm_cross:
   extends: .build_template
   image: $CI_DOCKER_REGISTRY/esp32-toolchain-arm-cross
@@ -497,8 +542,11 @@ generate_version:
   script:
     - DIST_VERSION_FULL=$(${CI_PROJECT_DIR}/maintainer/git-version-gen .)
     - DIST_VERSION_SHORT=${DIST_VERSION_FULL#"esp-"}
+    - tmp=${DIST_VERSION_SHORT#*_}
+    - WIN_MANIFEST_APP_VERSION="${DIST_VERSION_SHORT%_*}.${tmp:3:5}"
     - echo "DIST_VERSION_FULL=$DIST_VERSION_FULL" > version.env
     - echo "DIST_VERSION_SHORT=$DIST_VERSION_SHORT" >> version.env
+    - echo "WIN_MANIFEST_APP_VERSION=$WIN_MANIFEST_APP_VERSION" >> version.env
     - cat version.env
 
 upload_to_internal:
@@ -859,28 +907,28 @@ riscv32_macos_aarch64_compiler_tests:
 
 native_win64_tools_test_esp32:
   extends: .native_win64_tools_test_template
-  needs: [ xtensa_esp_win64, prep_tests ]
+  needs: [ win_manifest_xtensa_esp_win64, prep_tests ]
   variables:
     CONF_TARGET: "xtensa-esp-elf"
     CONF_TARGET_WRAPPER: "xtensa-esp32-elf"
 
 native_win64_tools_test_esp32s2:
   extends: .native_win64_tools_test_template
-  needs: [ xtensa_esp_win64, prep_tests ]
+  needs: [ win_manifest_xtensa_esp_win64, prep_tests ]
   variables:
     CONF_TARGET: "xtensa-esp-elf"
     CONF_TARGET_WRAPPER: "xtensa-esp32s2-elf"
 
 native_win64_tools_test_esp32s3:
   extends: .native_win64_tools_test_template
-  needs: [ xtensa_esp_win64, prep_tests ]
+  needs: [ win_manifest_xtensa_esp_win64, prep_tests ]
   variables:
     CONF_TARGET: "xtensa-esp-elf"
     CONF_TARGET_WRAPPER: "xtensa-esp32s3-elf"
 
 native_win64_tools_test_riscv32:
   extends: .native_win64_tools_test_template
-  needs: [ riscv32_esp_win64, prep_tests ]
+  needs: [ win_manifest_riscv32_esp_win64, prep_tests ]
   variables:
     CONF_TARGET: "riscv32-esp-elf"
     CONF_TARGET_WRAPPER: "riscv32-esp-elf"
@@ -889,7 +937,7 @@ native_win64_tools_test_riscv32:
 
 native_win32_tools_test_esp32:
   extends: .native_win64_tools_test_template
-  needs: [ xtensa_esp_win, prep_tests ]
+  needs: [ win_manifest_xtensa_esp_win, prep_tests ]
   variables:
     CONF_TARGET: "xtensa-esp-elf"
     CONF_TARGET_WRAPPER: "xtensa-esp32-elf"
@@ -897,7 +945,7 @@ native_win32_tools_test_esp32:
 
 native_win32_tools_test_esp32s2:
   extends: .native_win64_tools_test_template
-  needs: [ xtensa_esp_win, prep_tests ]
+  needs: [ win_manifest_xtensa_esp_win, prep_tests ]
   variables:
     CONF_TARGET: "xtensa-esp-elf"
     CONF_TARGET_WRAPPER: "xtensa-esp32s2-elf"
@@ -905,7 +953,7 @@ native_win32_tools_test_esp32s2:
 
 native_win32_tools_test_esp32s3:
   extends: .native_win64_tools_test_template
-  needs: [ xtensa_esp_win, prep_tests ]
+  needs: [ win_manifest_xtensa_esp_win, prep_tests ]
   variables:
     CONF_TARGET: "xtensa-esp-elf"
     CONF_TARGET_WRAPPER: "xtensa-esp32s3-elf"
@@ -913,7 +961,7 @@ native_win32_tools_test_esp32s3:
 
 native_win32_tools_test_riscv32:
   extends: .native_win64_tools_test_template
-  needs: [ riscv32_esp_win, prep_tests ]
+  needs: [ win_manifest_riscv32_esp_win, prep_tests ]
   variables:
     CONF_TARGET: "riscv32-esp-elf"
     CONF_TARGET_WRAPPER: "riscv32-esp-elf"
