@@ -130,6 +130,7 @@ before_script:
 
 # build/add toolchain wrappers
 .add_wrappers: &add_wrappers |
+  export CARGO_NET_GIT_FETCH_WITH_CLI=true
   if [ $CONF_TARGET == "xtensa-esp-elf" ]; then
     pushd esp-toolchain-bin-wrappers/gnu-xtensa-toolchian
     if [ "${INSTALL_LIBC_DEV:-}" ]; then
