@@ -164,6 +164,25 @@ before_script:
     popd
   fi
 
+.gen_platformio_package_json: &gen_platformio_package_json |
+  cat >builds/${CONF_TARGET}/package.json <<EOL
+  {
+    "name": "${CONF_TARGET}",
+    "version": "${DIST_VERSION_SHORT}",
+    "description": "GNU Toolchain with NewLib for Espressif ${CONF_TARGET%%-*} MCUs",
+    "keywords": [
+      "toolchain",
+      "espressif"
+    ],
+    "license": "GPL-2.0-or-later",
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/espressif/crosstool-NG"
+    },
+    "system": ${PLATFORMIO_SYSTEM}
+  }
+  EOL
+
 # Package the toolchain
 .package_toolchain: &package_toolchain |
   mkdir -p dist
@@ -212,6 +231,7 @@ before_script:
     - *configure_linux_no_pie
     - *build_toolchain
     - *add_wrappers
+    - *gen_platformio_package_json
     - *package_toolchain
 
 xtensa_esp_lin_amd64:
@@ -222,6 +242,7 @@ xtensa_esp_lin_amd64:
     CONF_HOST: "x86_64-linux-gnu"
     CONF_TARGET: "xtensa-esp-elf"
     RUST_TARGET_TRIPLET: "x86_64-unknown-linux-gnu"
+    PLATFORMIO_SYSTEM: "\"linux_x86_64\""
 
 riscv32_esp_lin_amd64:
   extends: .build_template_linux
@@ -230,6 +251,7 @@ riscv32_esp_lin_amd64:
     PLATFORM_NAME: "x86_64-linux-gnu"
     CONF_HOST: "x86_64-linux-gnu"
     CONF_TARGET: "riscv32-esp-elf"
+    PLATFORMIO_SYSTEM: "\"linux_x86_64\""
 
 xtensa_esp_lin_i586:
   extends: .build_template_linux
@@ -239,6 +261,7 @@ xtensa_esp_lin_i586:
     CONF_HOST: "i586-linux-gnu"
     CONF_TARGET: "xtensa-esp-elf"
     RUST_TARGET_TRIPLET: "i586-unknown-linux-gnu"
+    PLATFORMIO_SYSTEM: "\"linux_i686\""
 
 riscv32_esp_lin_i586:
   extends: .build_template_linux
@@ -247,6 +270,7 @@ riscv32_esp_lin_i586:
     PLATFORM_NAME: "i586-linux-gnu"
     CONF_HOST: "i586-linux-gnu"
     CONF_TARGET: "riscv32-esp-elf"
+    PLATFORMIO_SYSTEM: "\"linux_i686\""
 
 # Fix osxcross library paths in built binaries
 .fix_macos_library_paths: &fix_macos_library_paths |
@@ -276,6 +300,7 @@ riscv32_esp_lin_i586:
     CONF_HOST: "x86_64-apple-darwin21.1"
     MACOSX_DEPLOYMENT_TARGET: "10.8"
     RUST_TARGET_TRIPLET: "x86_64-apple-darwin"
+    PLATFORMIO_SYSTEM: "\"darwin_x86_64\""
   script:
     - *build_ctng
     - *configure_common
@@ -284,6 +309,7 @@ riscv32_esp_lin_i586:
     - *build_toolchain
     - *add_wrappers
     - *fix_macos_library_paths
+    - *gen_platformio_package_json
     - *package_toolchain
 
 xtensa_esp_macos:
@@ -305,12 +331,14 @@ riscv32_esp_macos:
     # so 10.13 value is used, it works correctly and creates binaries for minimal os version == 11.0
     MACOSX_DEPLOYMENT_TARGET: "10.13"
     RUST_TARGET_TRIPLET: "aarch64-apple-darwin"
+    PLATFORMIO_SYSTEM: "\"darwin_arm64\""
   script:
     - *build_ctng_macos_native
     - *configure_common
     - *configure_docker
     - *build_toolchain
     - *add_wrappers
+    - *gen_platformio_package_json
     - *package_toolchain
 
 xtensa_esp_macos_arm64:
@@ -368,6 +396,7 @@ macos_codesign_riscv32_esp_macos:
     EXTRA_BINS: "/usr/lib/gcc/i686-w64-mingw32/6.3-win32/libgcc_s_sjlj-1.dll /usr/lib/gcc/i686-w64-mingw32/6.3-win32/libstdc++-6.dll"
     RUST_TARGET_TRIPLET: "i686-pc-windows-gnu"
     BINARY_EXT: ".exe"
+    PLATFORMIO_SYSTEM: "\"windows_x86\""
   script:
     - *build_ctng
     - *configure_common
@@ -377,6 +406,7 @@ macos_codesign_riscv32_esp_macos:
     - *build_toolchain
     - *add_extra_files
     - *add_wrappers
+    - *gen_platformio_package_json
     - *package_toolchain
 
 xtensa_esp_win:
@@ -400,6 +430,7 @@ riscv32_esp_win:
     EXTRA_BINS: "/usr/lib/gcc/x86_64-w64-mingw32/6.3-win32/libgcc_s_seh-1.dll /usr/lib/gcc/x86_64-w64-mingw32/6.3-win32/libstdc++-6.dll"
     RUST_TARGET_TRIPLET: "x86_64-pc-windows-gnu"
     BINARY_EXT: ".exe"
+    PLATFORMIO_SYSTEM: "\"windows_amd64\""
   script:
     - *build_ctng
     - *configure_common
@@ -409,6 +440,7 @@ riscv32_esp_win:
     - *build_toolchain
     - *add_extra_files
     - *add_wrappers
+    - *gen_platformio_package_json
     - *package_toolchain
 
 xtensa_esp_win64:
@@ -479,6 +511,7 @@ win_manifest_riscv32_esp_win:
     - *configure_crossbuild
     - *build_toolchain
     - *add_wrappers
+    - *gen_platformio_package_json
     - *package_toolchain
 
 xtensa_esp_lin_armel:
@@ -488,6 +521,7 @@ xtensa_esp_lin_armel:
     CONF_TARGET: "xtensa-esp-elf"
     CONF_HOST: "arm-linux-gnueabi"
     RUST_TARGET_TRIPLET: "arm-unknown-linux-gnueabi"
+    PLATFORMIO_SYSTEM: "[\"linux_armv6l\",\"linux_armv7l\"]"
 
 riscv32_esp_lin_armel:
   extends: .template_lin_arm_cross
@@ -495,6 +529,7 @@ riscv32_esp_lin_armel:
     PLATFORM_NAME: "arm-linux-gnueabi"
     CONF_TARGET: "riscv32-esp-elf"
     CONF_HOST: "arm-linux-gnueabi"
+    PLATFORMIO_SYSTEM: "[\"linux_armv6l\",\"linux_armv7l\"]"
 
 # ARMHF
 
@@ -505,6 +540,7 @@ xtensa_esp_lin_armhf:
     CONF_TARGET: "xtensa-esp-elf"
     CONF_HOST: "arm-linux-gnueabihf"
     RUST_TARGET_TRIPLET: "arm-unknown-linux-gnueabihf"
+    PLATFORMIO_SYSTEM: "[\"linux_armv7l\",\"linux_armv8l\"]"
 
 riscv32_esp_lin_armhf:
   extends: .template_lin_arm_cross
@@ -512,6 +548,7 @@ riscv32_esp_lin_armhf:
     PLATFORM_NAME: "arm-linux-gnueabihf"
     CONF_TARGET: "riscv32-esp-elf"
     CONF_HOST: "arm-linux-gnueabihf"
+    PLATFORMIO_SYSTEM: "[\"linux_armv7l\",\"linux_armv8l\"]"
 
 # ARM64
 
@@ -522,6 +559,7 @@ xtensa_esp_lin_arm64:
     CONF_TARGET: "xtensa-esp-elf"
     CONF_HOST: "aarch64-linux-gnu"
     RUST_TARGET_TRIPLET: "aarch64-unknown-linux-gnu"
+    PLATFORMIO_SYSTEM: "\"linux_aarch64\""
 
 riscv32_esp_lin_arm64:
   extends: .template_lin_arm_cross
@@ -529,6 +567,7 @@ riscv32_esp_lin_arm64:
     PLATFORM_NAME: "aarch64-linux-gnu"
     CONF_TARGET: "riscv32-esp-elf"
     CONF_HOST: "aarch64-linux-gnu"
+    PLATFORMIO_SYSTEM: "\"linux_aarch64\""
 
 generate_version:
   stage: generate_version
