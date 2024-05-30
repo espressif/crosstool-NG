@@ -130,6 +130,7 @@ before_script:
 
 # build/add toolchain wrappers
 .add_wrappers: &add_wrappers |
+  export CARGO_NET_GIT_FETCH_WITH_CLI=true
   if [ $CONF_TARGET == "xtensa-esp-elf" ]; then
     pushd esp-toolchain-bin-wrappers/gnu-xtensa-toolchian
     if [ "${INSTALL_LIBC_DEV:-}" ]; then
@@ -226,6 +227,7 @@ before_script:
 .build_template_linux:
   extends: .build_template
   script:
+    - *add_wrappers
     - *build_ctng
     - *configure_common
     - *configure_docker
@@ -303,6 +305,7 @@ riscv32_esp_lin_i586:
     RUST_TARGET_TRIPLET: "x86_64-apple-darwin"
     PLATFORMIO_SYSTEM: "\"darwin_x86_64\""
   script:
+    - *add_wrappers
     - *build_ctng
     - *configure_common
     - *configure_docker
@@ -334,6 +337,7 @@ riscv32_esp_macos:
     RUST_TARGET_TRIPLET: "aarch64-apple-darwin"
     PLATFORMIO_SYSTEM: "\"darwin_arm64\""
   script:
+    - *add_wrappers
     - *build_ctng_macos_native
     - *configure_common
     - *configure_docker
@@ -399,6 +403,7 @@ macos_codesign_riscv32_esp_macos:
     BINARY_EXT: ".exe"
     PLATFORMIO_SYSTEM: "\"windows_x86\""
   script:
+    - *add_wrappers
     - *build_ctng
     - *configure_common
     - *configure_docker
@@ -433,6 +438,7 @@ riscv32_esp_win:
     BINARY_EXT: ".exe"
     PLATFORMIO_SYSTEM: "\"windows_amd64\""
   script:
+    - *add_wrappers
     - *build_ctng
     - *configure_common
     - *configure_docker
@@ -505,13 +511,13 @@ win_manifest_riscv32_esp_win:
   variables:
     INSTALL_LIBC_DEV: "y"
   script:
+    - *add_wrappers
     - *build_ctng
     - *configure_common
     - *configure_docker
     - *configure_linux_no_pie
     - *configure_crossbuild
     - *build_toolchain
-    - *add_wrappers
     - *gen_platformio_package_json
     - *package_toolchain
 
