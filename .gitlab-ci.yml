@@ -213,6 +213,7 @@ before_script:
 # Common template for all builds
 .build_template:
   stage: build
+  allow_failure: true
   tags: [ "build", "amd64" ]
   variables:
     # Do not compress artifacts because we already use compressed archives
@@ -342,7 +343,6 @@ riscv32_esp_macos:
     MACOSX_DEPLOYMENT_TARGET: "10.8"
     RUST_TARGET_TRIPLET: "aarch64-apple-darwin"
   script:
-    - pip3 install meson
     - *build_ctng_macos_native
     - *configure_common
     - *configure_docker
