@@ -89,23 +89,30 @@ default_ram_size = '${CT_LIBC_PICOLIBC_DEFAULT_RAM_SIZE}'
 EOF
 
     local picolibc_sysroot_dir
+    local picolibc_include_dir
     local picolibc_lib_dir
+    local picolibc_libgcc_opt
     if [ "${CT_LIBC_PICOLIBC}" = 'y' ]; then
         picolibc_sysroot_dir="${CT_SYSROOT_DIR}"
+        picolibc_include_dir="include"
         picolibc_lib_dir="${CT_SYSROOT_DIR}/lib"
+        picolibc_libgcc_opt=""
         picolibc_opts+=( '-Dsystem-libc=true' )
     else
-        picolibc_sysroot_dir="${CT_PREFIX_DIR}/picolibc"
-        picolibc_lib_dir="${picolibc_sysroot_dir}/${CT_TARGET}/lib"
+        picolibc_sysroot_dir="${CT_PREFIX_DIR}"
+        picolibc_include_dir="picolibc/include"
+        picolibc_lib_dir="picolibc/${CT_TARGET}/lib"
+        picolibc_libgcc_opt="-Dlibgccdir=picolibc/lib/gcc/${CT_TARGET}"
     fi
 
     CT_DoExecLog CFG                                               \
     meson                                                          \
         --cross-file picolibc-cross.txt                            \
         --prefix="${picolibc_sysroot_dir}"                         \
-        -Dincludedir=include                                       \
+        -Dincludedir="${picolibc_include_dir}"                     \
         -Dlibdir="${picolibc_lib_dir}"                             \
         -Dspecsdir="${CT_SYSROOT_DIR}/lib"                         \
+        "${picolibc_libgcc_opt}"                                   \
         "${CT_SRC_DIR}/picolibc"                                   \
         "${picolibc_opts[@]}"                                      \
         "${CT_LIBC_PICOLIBC_EXTRA_CONFIG_ARRAY[@]}"
