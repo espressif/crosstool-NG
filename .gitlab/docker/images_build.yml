@@ -1,0 +1,70 @@
+.build_image: &build_image
+  stage: images
+  image: espressif/dind:1
+  tags: [ "dind", "internet", "amd64" ]
+  before_script: []
+  rules:
+    - if: $BUILD_IMAGES
+    - changes:
+      - .gitlab/docker/**/*
+  variables:
+    EXTRA_BUILD_ARGS: ""
+  artifacts:
+    expire_in: 1 week
+    when: on_failure
+    paths:
+      - ${CI_PROJECT_DIR}/build.log
+  script:
+    - cd .gitlab/docker
+    # This is workaround for https://github.com/edrevo/dockerfile-plus/issues/13
+    # After the bug is fixed, please remove the line below.
+    - ./dockerfile-plus_workaround.sh ${DOCKERFILE_NAME} && cat ${DOCKERFILE_NAME}
+    - echo -n $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+    - docker pull $CI_REGISTRY_IMAGE/$IMAGE_NAME:latest || true
+    - docker build
+        --cache-from $CI_REGISTRY_IMAGE/$IMAGE_NAME:latest
+        --file $DOCKERFILE_NAME
+        ${EXTRA_BUILD_ARGS}
+        --tag $CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_SHA
+        --tag $CI_REGISTRY_IMAGE/$IMAGE_NAME:latest .
+        > ${CI_PROJECT_DIR}/build.log
+    - docker push $CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_SHA
+    - docker push $CI_REGISTRY_IMAGE/$IMAGE_NAME:latest
+
+image_linux_x86:
+  variables:
+    DOCKERFILE_NAME: Dockerfile.linux-x86_64
+    EXTRA_BUILD_ARGS: "--build-arg FROM_IMAGE=i386/debian:jessie --build-arg RUST_TARGET_TRIPLETS=i586-unknown-linux-gnu"
+    IMAGE_NAME: build-linux-x86
+  extends: .build_image
+
+image_linux_x86_64:
+  variables:
+    DOCKERFILE_NAME: Dockerfile.linux-x86_64
+    IMAGE_NAME: build-linux-x86_64
+  extends: .build_image
+
+image_linux_arm:
+  variables:
+    DOCKERFILE_NAME: Dockerfile.linux-arm
+    IMAGE_NAME: build-linux-arm
+  extends: .build_image
+
+image_win_x86:
+  variables:
+    DOCKERFILE_NAME: Dockerfile.win
+    EXTRA_BUILD_ARGS: "--build-arg WIN_CROSSTOOL=g++-mingw-w64-i686 --build-arg RUST_TARGET_TRIPLETS=i686-pc-windows-gnu"
+    IMAGE_NAME: build-win-x86
+  extends: .build_image
+
+image_win_x86_64:
+  variables:
+    DOCKERFILE_NAME: Dockerfile.win
+    IMAGE_NAME: build-win-x86_64
+  extends: .build_image
+
+image_macos:
+  variables:
+    DOCKERFILE_NAME: Dockerfile.macos
+    IMAGE_NAME: build-macos
+  extends: .build_image

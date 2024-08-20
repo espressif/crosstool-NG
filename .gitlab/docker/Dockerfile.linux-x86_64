@@ -1,0 +1,9 @@
+# syntax = edrevo/dockerfile-plus
+
+ARG FROM_IMAGE="debian:jessie"
+
+INCLUDE+ ./common/Dockerfile.base
+INCLUDE+ ./common/Dockerfile.picolibc-dependencies
+
+ARG RUST_TARGET_TRIPLETS="x86_64-unknown-linux-gnu"
+INCLUDE+ ./common/Dockerfile.binwrappers-dependencies
