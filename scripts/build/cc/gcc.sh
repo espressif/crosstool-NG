@@ -585,7 +585,12 @@ do_gcc_core_backend() {
     # selection that doesn't merge the headers (i.e. musl, uClibc-ng) may not
     # work. Better suggestions welcome.
     if [ "${CT_USE_SYSROOT}" != "y" ]; then
-        cflags_for_target="${cflags_for_target} -idirafter ${CT_HEADERS_DIR}"
+        if [ "${build_step}" = "libstdcxx" ]; then
+            local gcc_version=$(cat "${CT_SRC_DIR}/gcc/gcc/BASE-VER" )
+            cflags_for_target="${cflags_for_target} -idirafter ${CT_PREFIX_DIR}/lib/gcc/${CT_TARGET}/${gcc_version}/include -nostdinc"
+        else
+            cflags_for_target="${cflags_for_target} -idirafter ${CT_HEADERS_DIR}"
+        fi
     fi
 
     # Assume '-O2' by default for building target libraries.
