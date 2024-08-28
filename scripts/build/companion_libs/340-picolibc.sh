@@ -150,13 +150,14 @@ do_cc_libstdcxx_picolibc()
 
     final_opts+=( "host=${CT_HOST}" )
     final_opts+=( "libstdcxx_name=picolibc" )
-    final_opts+=( "prefix=${CT_PREFIX_DIR}" )
+    final_opts+=( "prefix=${CT_BUILD_DIR}/build-cc-libstdcxx-picolibc/dist" )
     final_opts+=( "complibs=${CT_HOST_COMPLIBS_DIR}" )
     final_opts+=( "cflags=${CT_CFLAGS_FOR_HOST}" )
     final_opts+=( "ldflags=${CT_LDFLAGS_FOR_HOST}" )
     final_opts+=( "lang_list=c,c++" )
     final_opts+=( "build_step=libstdcxx" )
     final_opts+=( "extra_config+=('--enable-stdio=stdio_pure')" )
+    final_opts+=( "extra_cxxflags_for_target=-specs=picolibcpp.specs -nostartfiles" )
     if [ "${CT_PICOLIBC_older_than_1_8}" = "y" ]; then
 	final_opts+=( "extra_config+=('--disable-wchar_t')" )
     fi
@@ -180,6 +181,14 @@ do_cc_libstdcxx_picolibc()
     CT_DoStep INFO "Installing libstdc++ picolibc"
     CT_mkdir_pushd "${CT_BUILD_DIR}/build-cc-libstdcxx-picolibc"
     "${final_backend}" "${final_opts[@]}"
+    CT_Popd
+
+    # picolibc may have differences in generated c++config.h
+    # it seems the only different file in libstdc++ includes
+    # this file should be picked first if picolibc.specs was specified
+    CT_mkdir_pushd "${CT_PREFIX_DIR}/picolibc/include/bits"
+    local gcc_version=$(cat "${CT_SRC_DIR}/gcc/gcc/BASE-VER" )
+    CT_DoExecLog ALL cp -v "${CT_BUILD_DIR}/build-cc-libstdcxx-picolibc/dist/${CT_TARGET}/include/c++/${gcc_version}/${CT_TARGET}/bits/c++config.h" "./"
     CT_Popd
 
     CT_EndStep
