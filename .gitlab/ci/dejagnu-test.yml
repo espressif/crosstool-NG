@@ -41,28 +41,28 @@
 .dejagnu-test-ld-template:
   extends: .dejagnu-test-template
   variables:
-    REPO_URL: "${CI_SERVER_PROTOCOL}://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}:${CI_SERVER_PORT}/idf/binutils-gdb.git"
+    REPO_URL: "${GIT_SERVER}/idf/binutils-gdb.git"
     REPO_BRANCH: "CT_BINUTILS_DEVEL_BRANCH"
     TEST_TOOL: "ld"
 
 .dejagnu-test-gas-template:
   extends: .dejagnu-test-template
   variables:
-    REPO_URL: "${CI_SERVER_PROTOCOL}://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}:${CI_SERVER_PORT}/idf/binutils-gdb.git"
+    REPO_URL: "${GIT_SERVER}/idf/binutils-gdb.git"
     REPO_BRANCH: "CT_BINUTILS_DEVEL_BRANCH"
     TEST_TOOL: "gas"
 
 .dejagnu-test-gcc-template:
   extends: .dejagnu-test-template
   variables:
-    REPO_URL: "${CI_SERVER_PROTOCOL}://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}:${CI_SERVER_PORT}/idf/gcc.git"
+    REPO_URL: "${GIT_SERVER}/idf/gcc.git"
     REPO_BRANCH: "CT_GCC_DEVEL_BRANCH"
     TEST_TOOL: "gcc"
 
 .dejagnu-test-gxx-template:
   extends: .dejagnu-test-template
   variables:
-    REPO_URL: "${CI_SERVER_PROTOCOL}://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}:${CI_SERVER_PORT}/idf/gcc.git"
+    REPO_URL: "${GIT_SERVER}/idf/gcc.git"
     REPO_BRANCH: "CT_GCC_DEVEL_BRANCH"
     TEST_TOOL: "g++"
 

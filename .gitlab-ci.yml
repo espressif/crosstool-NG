@@ -32,12 +32,11 @@ variables:
   DEJAGNU_IMAGE_TAG: 20210826-3
   COMPILER_TESTSUITE_IMAGE: $CI_DOCKER_REGISTRY/compiler-testsuite:3
 
+  GIT_SERVER: "${CI_SERVER_PROTOCOL}://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}:${CI_SERVER_PORT}"
+
 .use_ci_tools: &use_ci_tools |
   curl -sSL ${CIT_LOADER_URL} -o cit_loader.sh && sh cit_loader.sh
   source citools/import_functions
-
-.add_gitlab_key: &add_gitlab_key |
-  cit_add_ssh_key "${GITLAB_KEY}"
 
 # ESPCI_HOMEBREW_PREFIX is set up in runner's config.toml
 .check_and_setup_homebrew: &check_and_setup_homebrew |
@@ -47,7 +46,6 @@ variables:
 
 before_script:
   - *use_ci_tools
-  - *add_gitlab_key
   - *check_and_setup_homebrew
 
 # Configure crosstool-NG
@@ -68,10 +66,10 @@ before_script:
   echo "CT_USE_MIRROR=y" >> .config
   echo "CT_FORCE_MIRROR=y" >> .config
   echo "CT_MIRROR_BASE_URL=\"${MIRROR_BASE}\"" >> .config
-  echo "CT_NEWLIB_DEVEL_URL=\"${GITLAB_SSH_SERVER}/idf/newlib-cygwin.git\"" >> .config
-  echo "CT_GCC_DEVEL_URL=\"${GITLAB_SSH_SERVER}/idf/gcc.git\"" >> .config
-  echo "CT_BINUTILS_DEVEL_URL=\"${GITLAB_SSH_SERVER}/idf/binutils-gdb.git\"" >> .config
-  echo "CT_PICOLIBC_DEVEL_URL=\"${GITLAB_SSH_SERVER}/idf/picolibc.git\"" >> .config
+  echo "CT_NEWLIB_DEVEL_URL=\"${GIT_SERVER}/idf/newlib-cygwin.git\"" >> .config
+  echo "CT_GCC_DEVEL_URL=\"${GIT_SERVER}/idf/gcc.git\"" >> .config
+  echo "CT_BINUTILS_DEVEL_URL=\"${GIT_SERVER}/idf/binutils-gdb.git\"" >> .config
+  echo "CT_PICOLIBC_DEVEL_URL=\"${GIT_SERVER}/idf/picolibc.git\"" >> .config
 
 # Configuration specific to Docker
 .configure_docker: &configure_docker |
@@ -346,7 +344,7 @@ riscv32_esp_macos_arm64:
     # directory with distro archives
     DIST_ART_DIR: dist
     # URL to macos codesign repo
-    NOTARIZATION_SCRIPTS_GIT: "${CI_SERVER_PROTOCOL}://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}:${CI_SERVER_PORT}/espressif/macos_codesign_notarization.git"
+    NOTARIZATION_SCRIPTS_GIT: "${GIT_SERVER}/espressif/macos_codesign_notarization.git"
   script:
     - git clone -q --depth=1 ${NOTARIZATION_SCRIPTS_GIT} -b ${CI_COMMIT_REF_NAME} ||
       git clone -q --depth=1 ${NOTARIZATION_SCRIPTS_GIT}
@@ -447,7 +445,7 @@ riscv32_esp_win64:
     # directory with distro archives
     DIST_ART_DIR: dist
     # URL to windows manifest repo
-    MANIFEST_SCRIPTS_GIT: "${CI_SERVER_PROTOCOL}://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}:${CI_SERVER_PORT}/espressif/windows_manifest.git"
+    MANIFEST_SCRIPTS_GIT: "${GIT_SERVER}/espressif/windows_manifest.git"
   script:
     - git clone -q --depth=1 ${MANIFEST_SCRIPTS_GIT} -b ${CI_COMMIT_REF_NAME}; if ($LASTEXITCODE -ne 0) { git clone -q --depth=1 ${MANIFEST_SCRIPTS_GIT} }
     - ./windows_manifest/run.ps1
@@ -579,7 +577,7 @@ upload_to_internal:
   variables:
     # don't use "GIT_STRATEGY: none", because we need cleaning old artifacts in 'dist/' that came from previous pipelines
     GIT_SUBMODULE_STRATEGY: none
-    CTNG_ESP_HELPERS_BRANCH: "-b master"
+    CTNG_ESP_HELPERS_GIT: "${GIT_SERVER}/idf/ctng-esp-helpers.git"
     TARGETS: "xtensa-esp-elf riscv32-esp-elf"
     HOSTS: "x86_64-linux-gnu aarch64-linux-gnu arm-linux-gnueabi arm-linux-gnueabihf i586-linux-gnu x86_64-apple-darwin aarch64-apple-darwin i686-w64-mingw32 x86_64-w64-mingw32"
   artifacts:
@@ -629,8 +627,8 @@ upload_to_internal:
     - echo "DIST_URL_LIST=$DIST_URL_LIST" >> dist.env
     - echo -e "\nArchives were published there:\n\n$(for n in ${DIST_FILE_LIST}; do echo "${HTTP_PUBLIC_DIR}/${n}"; done)\n"
     # Show JSON snipppet
-    - cit_add_ssh_key "${GITLAB_KEY}"
-    - git clone -q --depth 1 ${CTNG_ESP_HELPERS_BRANCH} ${GITLAB_SSH_SERVER}/idf/ctng-esp-helpers.git
+    - git clone -q --depth=1 ${CTNG_ESP_HELPERS_GIT} -b ${CI_COMMIT_REF_NAME} ||
+      git clone -q --depth=1 ${CTNG_ESP_HELPERS_GIT}
     - ./ctng-esp-helpers/print_all_checksum_json.sh "${HTTP_PUBLIC_DIR}" "${TARGETS}" "${HOSTS}" 2>err.log
     - echo ""
     - cat err.log
@@ -725,7 +723,6 @@ prep_tests:
   needs: []
   variables:
     GIT_STRATEGY: none
-    GIT_SERVER: "https://gitlab-ci-token:${ESPCI_TOKEN}@${CI_SERVER_HOST}:${CI_SERVER_PORT}"
   before_script: []
   artifacts:
     paths:
