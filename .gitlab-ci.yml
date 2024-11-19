@@ -568,6 +568,16 @@ generate_version:
     - echo "WIN_MANIFEST_APP_VERSION=$WIN_MANIFEST_APP_VERSION" >> version.env
     - cat version.env
 
+.gen_sha256_file: &gen_sha256_file |
+  FILES_LIST=$(find . -name dist_name_\* -exec cat {} \+)
+  SHA256_FILE="${CI_PROJECT_NAME}-${DIST_VERSION_FULL}-checksum.sha256"
+  for n in $FILES_LIST; do
+    sz=$(stat -c%s "${n}") >> ${SHA256_FILE};
+    printf "# %s: %s bytes\n" "${n}" "${sz}" >> ${SHA256_FILE};
+    sha256sum -b "${n}" >> ${SHA256_FILE};
+  done
+  FILES_LIST="${SHA256_FILE} ${FILES_LIST}"
+
 upload_to_internal:
   stage: internal_deploy
   image: $COMPILER_TESTSUITE_IMAGE
@@ -590,42 +600,16 @@ upload_to_internal:
     - *use_ci_tools
   script:
     - cd dist
-    - RELEASE_CHECKSUM_FILE="${CI_PROJECT_NAME}-${DIST_VERSION_FULL}-checksum.sha256"
-    - echo "RELEASE_CHECKSUM_FILE=$RELEASE_CHECKSUM_FILE" >> dist.env
-    - RELEASE_SRC_NAME="${CI_PROJECT_NAME}-${DIST_VERSION_FULL}-src"
-    - RELEASE_SRC_FILE="${RELEASE_SRC_NAME}.${ARCHIVE_EXT}"
-    # Create a source archive
-    - rm -rf -- "${RELEASE_SRC_NAME}" "${RELEASE_SRC_FILE}"
-    - git clone --quiet --depth 1 --recurse-submodules --shallow-submodules ${CI_REPOSITORY_URL} "${RELEASE_SRC_NAME}"
-    - find "${RELEASE_SRC_NAME}" -name ".git" -type d -exec rm -rf -- "{}" +
-    - find "${RELEASE_SRC_NAME}" -name .git\* -exec rm -rf -- {} +
-    - ${ARCHIVE_TOOL} "${RELEASE_SRC_FILE}" "${RELEASE_SRC_NAME}" > src-tar-list.txt 2>&1
-    - rm -rf -- "${RELEASE_SRC_NAME}"
-    - ls -l
     # Create a checksum file
-    - DIST_FILE_LIST=$(find . -name dist_name_\* -exec cat {} \+)
-    - DIST_FILE_LIST="${DIST_FILE_LIST} ${RELEASE_SRC_FILE}"
-    - |
-      for n in $DIST_FILE_LIST; do
-        sz=$(stat -c%s "${n}");
-        printf "# %s: %s bytes\n" "${n}" "${sz}" >> ${RELEASE_CHECKSUM_FILE};
-        sha256sum -b "${n}" >> ${RELEASE_CHECKSUM_FILE};
-      done
-    - DIST_FILE_LIST="${DIST_FILE_LIST} ${RELEASE_CHECKSUM_FILE}"
-    # remove new lines from file list
-    - DIST_FILE_LIST="${DIST_FILE_LIST//$'\n'/ }"
-    - echo "DIST_FILE_LIST=$DIST_FILE_LIST" >> dist.env
+    - *gen_sha256_file
     # Upload all needed files
     - HTTP_UPLOAD_DIR=${HTTP_UPLOAD_DIR}/${DIST_VERSION_FULL}
     - HTTP_PUBLIC_DIR=${HTTP_PUBLIC_DIR}/${DIST_VERSION_FULL}
     - cit_add_ssh_key "${HTTP_UPLOAD_KEY}"
     - ssh ${HTTP_UPLOAD_DIR%:*} "mkdir -p ${HTTP_UPLOAD_DIR#*:}"
-    - scp ${DIST_FILE_LIST} ${HTTP_UPLOAD_DIR}
+    - scp ${FILES_LIST} ${HTTP_UPLOAD_DIR}
     # Show download links
-    - DIST_URL_LIST=""
-    - for n in ${DIST_FILE_LIST}; do DIST_URL_LIST="${DIST_URL_LIST} ${HTTP_PUBLIC_DIR}/${n}"; done
-    - echo "DIST_URL_LIST=$DIST_URL_LIST" >> dist.env
-    - echo -e "\nArchives were published there:\n\n$(for n in ${DIST_FILE_LIST}; do echo "${HTTP_PUBLIC_DIR}/${n}"; done)\n"
+    - echo -e "\nArchives were published there:\n\n$(for n in ${FILES_LIST}; do echo "${HTTP_PUBLIC_DIR}/${n}"; done)\n"
     # Show JSON snipppet
     - git clone -q --depth=1 ${CTNG_ESP_HELPERS_GIT} -b ${CI_COMMIT_REF_NAME} ||
       git clone -q --depth=1 ${CTNG_ESP_HELPERS_GIT}
@@ -639,7 +623,6 @@ upload_to_internal:
 upload_to_github:
   stage: github_deploy
   image: espressif/github-hub:2
-  needs: [ upload_to_internal ]
   tags: [ "build", "amd64", "brew" ]
   allow_failure: true
   rules:
@@ -647,20 +630,16 @@ upload_to_github:
       when: manual
   variables:
     GIT_SUBMODULE_STRATEGY: none
-    DIST_URL_LIST: ${DIST_URL_LIST}
-    DIST_FILE_LIST: ${DIST_FILE_LIST}
     GITHUB_USER: "${GH_USER}"
     GITHUB_TOKEN: "${GH_TOKEN}"
     TAG: ${CI_COMMIT_TAG}
     REPO_URL: ${GH_REPO_URL}
   before_script: []
   script:
-    - echo hello
-    - echo $DIST_URL_LIST
-    # TMP dir
-    - rm -rf TMP && mkdir TMP && cd TMP
-    # download urls
-    - for u in ${DIST_URL_LIST}; do curl -O -sSL --connect-timeout 10 --retry 10 "${u}"; done
+    - cd dist
+    # Create a checksum file
+    - *gen_sha256_file
+    # add gz archives needs for platformio
     - which xz || apt update && apt install -y xz-utils
     - |
       for n in $(ls *.tar.xz); do
@@ -670,10 +649,10 @@ upload_to_github:
         files_to_arch=$(find tmp_ -maxdepth 1 -printf "%P\n" )
         tar -czf $gz_file -C tmp_ $files_to_arch;
         sz=$(stat -c%s "${gz_file}");
-        printf "# %s: %s bytes\n" "${gz_file}" "${sz}" >> ${RELEASE_CHECKSUM_FILE};
-        sha256sum -b "${gz_file}" >> ${RELEASE_CHECKSUM_FILE};
+        printf "# %s: %s bytes\n" "${gz_file}" "${sz}" >> ${SHA256_FILE};
+        sha256sum -b "${gz_file}" >> ${SHA256_FILE};
         rm -fr tmp_;
-        DIST_FILE_LIST="${DIST_FILE_LIST} $gz_file";
+        FILES_LIST="${FILES_LIST} $gz_file";
       done
     - ls -l
     # hub release upload
@@ -682,9 +661,7 @@ upload_to_github:
     - git remote add github ${REPO_URL}
     - hub release
     - hub release show ${TAG} || { echo "Please create a release on GitHub with ${TAG} tag at first"; exit 1; }
-    - for n in ${DIST_FILE_LIST}; do hub release edit -m "" -a "${n}" "${TAG}"; done
-    - cd -
-    - rm -rf TMP
+    - for n in ${FILES_LIST}; do hub release edit -m "" -a "${n}" "${TAG}"; done
 
 .update_idf_tools:
   allow_failure: true
