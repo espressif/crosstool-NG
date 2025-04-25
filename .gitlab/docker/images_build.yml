@@ -34,7 +34,7 @@
 image_linux_x86:
   variables:
     DOCKERFILE_NAME: Dockerfile.linux-x86_64
-    EXTRA_BUILD_ARGS: "--build-arg FROM_IMAGE=i386/debian:jessie --build-arg RUST_TARGET_TRIPLETS=i586-unknown-linux-gnu"
+    EXTRA_BUILD_ARGS: "--build-arg FROM_IMAGE=i386/debian:jessie --build-arg RUST_TARGET_TRIPLETS=i586-unknown-linux-gnu --build-arg TARGET_HOST=i586-linux-gnu"
     IMAGE_NAME: build-linux-x86
   extends: .build_image
 
