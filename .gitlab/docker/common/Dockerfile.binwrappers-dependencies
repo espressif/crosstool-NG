@@ -2,8 +2,7 @@ RUN apt-get -o Acquire::Check-Valid-Until=false update \
  && apt-get install -y -q libc6-dev \
  && rm -rf /var/lib/apt/lists/*
 
-ARG RUST_VERSION=1.69.0
-# Can not use rust version > 1.69.0 because of https://github.com/rust-lang/rust/issues/112368
+ARG RUST_VERSION=1.86.0
 RUN export  _ARCH=$(gcc -dumpmachine) \
  && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | setarch ${_ARCH%%-*} sh  -s -- -y --default-toolchain ${RUST_VERSION} \
  && source "$HOME/.cargo/env" \
