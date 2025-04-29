@@ -209,6 +209,33 @@ before_script:
     - *gen_platformio_package_json
     - *package_toolchain
 
+.needs_all_distros: &needs_all_distros
+  needs:
+    - generate_version
+    - riscv32_esp_lin_amd64
+    - riscv32_esp_lin_arm64
+    - riscv32_esp_lin_armel
+    - riscv32_esp_lin_armhf
+    - riscv32_esp_lin_i586
+    - xtensa_esp_lin_amd64
+    - xtensa_esp_lin_arm64
+    - xtensa_esp_lin_armel
+    - xtensa_esp_lin_armhf
+    - xtensa_esp_lin_i586
+    - macos_codesign_riscv32_esp_macos
+    - macos_codesign_riscv32_esp_macos_arm64
+    - macos_codesign_xtensa_esp_macos
+    - macos_codesign_xtensa_esp_macos_arm64
+    - riscv32_esp_win
+    - riscv32_esp_win64
+    - xtensa_esp_win
+    - xtensa_esp_win64
+# TODO
+#    - win_manifest_riscv32_esp_win
+#    - win_manifest_riscv32_esp_win64
+#    - win_manifest_xtensa_esp_win
+#    - win_manifest_xtensa_esp_win64
+
 xtensa_esp_lin_amd64:
   extends: .build_template_linux
   image: $CI_REGISTRY_IMAGE/build-linux-x86_64:latest
@@ -335,6 +362,7 @@ riscv32_esp_macos_arm64:
 .template_macos_codesign:
   stage: codesign
   when: manual
+  allow_failure: true
   resource_group: macos_codesign
   tags: [ "darwin", "codesign" ]
   artifacts:
@@ -581,6 +609,7 @@ generate_version:
 upload_to_internal:
   stage: internal_deploy
   image: $COMPILER_TESTSUITE_IMAGE
+  <<: *needs_all_distros
   when: manual
   allow_failure: true
   tags: [ "build", "amd64", "shiny" ]
@@ -624,6 +653,7 @@ upload_to_github:
   stage: github_deploy
   image: espressif/github-hub:2
   tags: [ "build", "amd64", "brew" ]
+  <<: *needs_all_distros
   allow_failure: true
   rules:
     - if: $CI_COMMIT_TAG
