@@ -619,12 +619,6 @@ upload_to_internal:
     CTNG_ESP_HELPERS_GIT: "${GIT_SERVER}/idf/ctng-esp-helpers.git"
     TARGETS: "xtensa-esp-elf riscv32-esp-elf"
     HOSTS: "x86_64-linux-gnu aarch64-linux-gnu arm-linux-gnueabi arm-linux-gnueabihf i586-linux-gnu x86_64-apple-darwin aarch64-apple-darwin i686-w64-mingw32 x86_64-w64-mingw32"
-  artifacts:
-    paths:
-      # a list just for check files, debug
-      - dist/src-tar-list.txt
-    reports:
-      dotenv: dist/dist.env
   before_script:
     - *use_ci_tools
   script:
@@ -639,15 +633,8 @@ upload_to_internal:
     - scp ${FILES_LIST} ${HTTP_UPLOAD_DIR}
     # Show download links
     - echo -e "\nArchives were published there:\n\n$(for n in ${FILES_LIST}; do echo "${HTTP_PUBLIC_DIR}/${n}"; done)\n"
-    # Show JSON snipppet
-    - git clone -q --depth=1 ${CTNG_ESP_HELPERS_GIT} -b ${CI_COMMIT_REF_NAME} ||
-      git clone -q --depth=1 ${CTNG_ESP_HELPERS_GIT}
-    - ./ctng-esp-helpers/print_all_checksum_json.sh "${HTTP_PUBLIC_DIR}" "${TARGETS}" "${HOSTS}" 2>err.log
-    - echo ""
-    - cat err.log
-    # remove empty lines
-    - sed -i '/^[[:space:]]*$/d' dist.env
-    - cat dist.env
+    - echo "${SHA256_FILE}:"
+    - cat ${SHA256_FILE}
 
 upload_to_github:
   stage: github_deploy
@@ -709,7 +696,7 @@ internal_update_idf_tools:
   needs: [ generate_version, upload_to_internal ]
   when: manual
   variables:
-    TOOL_SHA256_URL: ${HTTP_PUBLIC_DIR}/${DIST_VERSION_FULL}/crosstool-NG-${DIST_VERSION_FULL}-checksum.sha256
+    TOOL_SHA256_URL: ${HTTP_PUBLIC_DIR}/${DIST_VERSION_FULL}/${CI_PROJECT_NAME}-${DIST_VERSION_FULL}-checksum.sha256
 
 github_update_idf_tools:
   extends: .update_idf_tools
@@ -719,7 +706,7 @@ github_update_idf_tools:
     - if: $CI_COMMIT_TAG
       when: manual
   variables:
-    TOOL_SHA256_URL: ${GH_REPO_URL}/releases/download/${CI_COMMIT_TAG}/crosstool-NG-${DIST_VERSION_FULL}-checksum.sha256
+    TOOL_SHA256_URL: ${GH_REPO_URL}/releases/download/${CI_COMMIT_TAG}/${CI_PROJECT_NAME}-${DIST_VERSION_FULL}-checksum.sha256
 
 # We use prep_tests job to collect all test data and scripts in artifacts,
 # to avoid dependencies for git, because we run some tests on original images.
