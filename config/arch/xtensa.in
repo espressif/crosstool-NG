@@ -43,4 +43,7 @@ config XTENSA_DYNCONFIG_LOCATION
 config XTENSA_DYNCONFIG_CONF_DIR
     string "Full path to xtensa configs sources"
 
+config XTENSA_ESP_BIN_WRAPPERS_LOCATION
+    string "Full path to xtensa binary wrapper sources"
+
 endchoice
