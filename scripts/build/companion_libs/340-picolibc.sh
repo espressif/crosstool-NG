@@ -107,15 +107,15 @@ EOF
         picolibc_lib_dir="${CT_SYSROOT_DIR}/lib"
         picolibc_opts+=( '-Dsystem-libc=true' )
     else
-        picolibc_sysroot_dir="${CT_PREFIX_DIR}/picolibc"
-        picolibc_lib_dir="${picolibc_sysroot_dir}/${CT_TARGET}/lib"
+        picolibc_sysroot_dir="${CT_PREFIX_DIR}"
+        picolibc_lib_dir="picolibc/${CT_TARGET}/lib"
     fi
 
     CT_DoExecLog CFG                                               \
     meson                                                          \
         --cross-file picolibc-cross.txt                            \
         --prefix="${picolibc_sysroot_dir}"                         \
-        -Dincludedir=include                                       \
+        -Dincludedir="picolibc/include"                            \
         -Dlibdir="${picolibc_lib_dir}"                             \
         -Dspecsdir="${CT_SYSROOT_DIR}/lib"                         \
         "${CT_SRC_DIR}/picolibc"                                   \
