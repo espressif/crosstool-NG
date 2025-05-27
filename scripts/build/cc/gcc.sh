@@ -615,6 +615,19 @@ do_gcc_core_backend() {
         cflags_for_target="${cflags_for_target} -idirafter ${header_dir}"
     fi
 
+    if [ "${CT_CANADIAN}" = "y" ]; then
+        # Canadian builds uses gcc_build toolcahin wich has libstd installed
+        # This affects gcc_host c++config.h generation.
+        # E.g.: conflicts with complex.h file when configuring libstdc++
+        case "${build_step}" in
+            gcc_host|libstdcxx)
+                cflags_for_target="${cflags_for_target} -nostdinc++"
+                ;;
+            *)
+                ;;
+        esac
+    fi
+
     # For non-sysrooted toolchain, GCC doesn't search except at the installation
     # prefix; in core stage we use a temporary installation prefix - but
     # we may have installed something into the final prefix. This is less than ideal:
