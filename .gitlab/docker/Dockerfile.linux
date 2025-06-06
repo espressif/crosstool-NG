@@ -1,0 +1,12 @@
+# syntax = edrevo/dockerfile-plus
+
+INCLUDE+ ./common/Dockerfile.base
+
+ARG TARGET_HOST="x86_64-linux-gnu"
+
+INCLUDE+ ./common/Dockerfile.build-toolchain
+
+ARG RUST_TARGET_TRIPLETS="x86_64-unknown-linux-gnu"
+INCLUDE+ ./common/Dockerfile.binwrappers-dependencies
+
+INCLUDE+ ./common/Dockerfile.picolibc-dependencies

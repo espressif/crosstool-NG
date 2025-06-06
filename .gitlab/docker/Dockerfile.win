@@ -1,0 +1,13 @@
+# syntax = edrevo/dockerfile-plus
+
+INCLUDE+ ./common/Dockerfile.base
+
+ARG WIN_CROSSTOOL=g++-mingw-w64-x86-64
+RUN apt-get -o Acquire::Check-Valid-Until=false update && \
+    apt-get install --allow-unauthenticated -y -q ${WIN_CROSSTOOL} \
+    && rm -rf /var/lib/apt/lists/*
+
+INCLUDE+ ./common/Dockerfile.picolibc-dependencies
+
+ARG RUST_TARGET_TRIPLETS=x86_64-pc-windows-gnu
+INCLUDE+ ./common/Dockerfile.binwrappers-dependencies

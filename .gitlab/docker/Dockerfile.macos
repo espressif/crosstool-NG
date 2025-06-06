@@ -1,0 +1,84 @@
+# syntax = edrevo/dockerfile-plus
+
+INCLUDE+ ./common/Dockerfile.base
+
+# Based on https://github.com/andrew-d/docker-osxcross
+# and https://github.com/multiarch/crossbuild
+
+RUN set -ex; \
+  apt-get update && apt-get install -y -q --no-install-recommends \
+    build-essential \
+    clang \
+    libc++-dev \
+    libc++abi-dev \
+    libgmp-dev \
+    libmpc-dev \
+    libmpfr-dev \
+    libncurses5-dev \
+    libxml2-dev \
+    llvm \
+    llvm-dev \
+    zlib1g-dev \
+  && rm -rf /var/lib/apt/lists/*
+
+ARG OSXCROSS_SDK_VERSION=15.5
+# MACOSX_DEPLOYMENT_TARGET is used while building osxcross
+ARG MACOSX_DEPLOYMENT_TARGET=10.12
+ENV MACOSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET}
+
+ARG DARWIN_VERSION="24.5"
+ARG SDK_VERSION=${OSXCROSS_SDK_VERSION}
+ARG OSX_VERSION_MIN=${MACOSX_DEPLOYMENT_TARGET}
+ARG SDK_TAR=MacOSX${SDK_VERSION}.sdk.tar.xz
+ARG SDK_SHA256=c15cf0f3f17d714d1aa5a642da8e118db53d79429eb015771ba816aa7c6c1cbd
+
+ARG OSXCROSS_COMMIT=f873f534c6cdb0776e457af8c7513da1e02abe59
+
+RUN OSXCROSS_SRCS=/opt/osxcross \
+  && OSXCROSS_TMP=/tmp/osxcross \
+  && cd $(dirname ${OSXCROSS_SRCS}) \
+  && git clone https://github.com/tpoechtrager/osxcross.git \
+  && cd ${OSXCROSS_SRCS} \
+  && git reset --hard ${OSXCROSS_COMMIT} \
+  && cd tarballs/ && wget --no-verbose "https://dl.espressif.com/dl/toolchains/${SDK_TAR}" \
+  && echo "${SDK_SHA256} *${SDK_TAR}" | sha256sum --check --strict - \
+  && cd - \
+  && export PORTABLE=1 \
+  && export UNATTENDED=1 \
+  && export ENABLE_COMPILER_RT_INSTALL=1 \
+  && ./build.sh \
+  && sed -i "s|https://ftp.gnu.org|https://ftpmirror.gnu.org|g" build_binutils.sh \
+  && ./build_binutils.sh \
+  ####################### fix issue when trying to download already downloaded ###################### \
+  && rm ${OSXCROSS_SRCS}/tarballs/binutils-*.tar.gz \
+  && rm ${OSXCROSS_SRCS}/tarballs/gdb-*.tar.gz \
+  && TARGET_ARCH=aarch64 ./build_binutils.sh \
+  && mkdir -p ${OSXCROSS_TMP} \
+  && mv target ${OSXCROSS_TMP}/ \
+  && mv tools ${OSXCROSS_TMP}/ \
+  && rm -rf "${OSXCROSS_TMP}/target/SDK/MacOSX${SDK_VERSION}.sdk/usr/share/man" \
+  && rm -rf "${OSXCROSS_SRCS}" \
+  && mv ${OSXCROSS_TMP} /opt/
+
+ENV PATH $PATH:/opt/osxcross/target/bin
+ENV PATH $PATH:/opt/osxcross/target/binutils/bin
+
+RUN for _TARGET_HOST in "arm64-apple-darwin${DARWIN_VERSION}" "aarch64-apple-darwin${DARWIN_VERSION}" "x86_64-apple-darwin${DARWIN_VERSION}"; do \
+  which $_TARGET_HOST-gcc || \
+    (set +H && \
+     echo -e "#!/bin/bash\n$_TARGET_HOST-clang++ \"\$@\"" > /opt/osxcross/target/bin/$_TARGET_HOST-g++ && \
+     echo -e "#!/bin/bash\n$_TARGET_HOST-clang \"\$@\"" > /opt/osxcross/target/bin/$_TARGET_HOST-gcc && \
+     chmod 755 /opt/osxcross/target/bin/$_TARGET_HOST-g++ /opt/osxcross/target/bin/$_TARGET_HOST-gcc) \
+  done
+
+INCLUDE+ ./common/Dockerfile.picolibc-dependencies
+
+ARG RUST_TARGET_TRIPLETS="x86_64-apple-darwin aarch64-apple-darwin"
+INCLUDE+ ./common/Dockerfile.binwrappers-dependencies
+
+# fix crosstool-ng build: it cannot mix GCC and Clang during the build
+# Note: osxcross uses clang
+RUN rm /usr/bin/gcc \
+  && rm /usr/bin/g++ \
+  && ln -s clang /usr/bin/gcc \
+  && ln -s clang++ /usr/bin/g++

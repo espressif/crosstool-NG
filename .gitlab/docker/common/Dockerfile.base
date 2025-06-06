@@ -1,0 +1,50 @@
+ARG FROM_IMAGE="debian:trixie"
+
+FROM ${FROM_IMAGE}
+
+ARG DEBIAN_FRONTEND=noninteractive
+RUN rm /bin/sh && ln -s /bin/bash /bin/sh && \
+    apt-get -o Acquire::Check-Valid-Until=false update && \
+    apt-get install --allow-unauthenticated -y -q \
+    autoconf \
+    automake \
+    autotools-dev \
+    bc \
+    binfmt-support \
+    bison \
+    cmake \
+    cpio \
+    curl \
+    devscripts \
+    file \
+    flex \
+    g++ \
+    gawk \
+    gcc \
+    gettext \
+    git \
+    gperf \
+    grep \
+    gzip \
+    help2man \
+    libc6-dev \
+    libffi-dev \
+    libncurses-dev \
+    libssl-dev \
+    libtool \
+    libtool-bin \
+    make \
+    openssh-client \
+    patch \
+    pkg-config \
+    rsync \
+    tar \
+    texinfo \
+    unzip \
+    uuid-dev \
+    vim \
+    wget \
+    xz-utils \
+    zip \
+    zlib1g-dev \
+  && rm -rf /var/lib/apt/lists/*

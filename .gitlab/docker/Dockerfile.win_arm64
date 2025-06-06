@@ -1,0 +1,33 @@
+# syntax = edrevo/dockerfile-plus
+
+INCLUDE+ ./common/Dockerfile.base
+
+RUN set -ex; \
+  apt-get update && apt-get install -y -q --no-install-recommends \
+    build-essential \
+    clang \
+    llvm \
+    llvm-dev \
+  && rm -rf /var/lib/apt/lists/*
+
+ARG WIN_CROSSTOOL_URL=https://github.com/mstorsjo/llvm-mingw/releases/download/20260519/llvm-mingw-20260519-ucrt-ubuntu-22.04-x86_64.tar.xz
+RUN mkdir -p /opt/llvm-mingw && \
+    wget --no-verbose -O - "${WIN_CROSSTOOL_URL}" | \
+    tar -xJ -C /opt/llvm-mingw --strip-components=1 && \
+    rm -fr /opt/llvm-mingw/arm64ec-w64-mingw32 && \
+    rm -fr /opt/llvm-mingw/x86_64-w64-mingw32 && \
+    rm -fr /opt/llvm-mingw/i686-w64-mingw32 && \
+    rm -fr /opt/llvm-mingw/armv7-w64-mingw32
+
+ENV PATH="/opt/llvm-mingw/bin:${PATH}"
+
+INCLUDE+ ./common/Dockerfile.picolibc-dependencies
+
+ARG RUST_TARGET_TRIPLETS=aarch64-pc-windows-gnullvm
+INCLUDE+ ./common/Dockerfile.binwrappers-dependencies
+
+# fix crosstool-ng build: it cannot mix GCC and Clang during the build
+RUN rm /usr/bin/gcc \
+  && rm /usr/bin/g++ \
+  && ln -s clang /usr/bin/gcc \
+  && ln -s clang++ /usr/bin/g++
