@@ -1,0 +1,43 @@
+# syntax = edrevo/dockerfile-plus
+
+ARG FROM_IMAGE="debian:jessie"
+
+INCLUDE+ ./common/Dockerfile.base
+INCLUDE+ ./common/Dockerfile.picolibc-dependencies
+
+ARG RUST_TARGET_TRIPLETS="x86_64-unknown-linux-gnu"
+INCLUDE+ ./common/Dockerfile.binwrappers-dependencies
+
+ARG TARGET_HOST=x86_64-linux-gnu
+ARG GCC_VERSION=6.3.0
+ARG BINUTILS_VERSION=2.28
+
+# GCC versions greater than 5 require C++14 support
+# Upgrade GCC for native builds, as they currently use Debian "jessie"
+# Cross-compilation images use Debian "stretch", which already supports C++14
+
+RUN wget -q https://ftp.gnu.org/gnu/binutils/binutils-$BINUTILS_VERSION.tar.gz \
+ && wget -q https://ftp.gnu.org/gnu/gcc/gcc-$GCC_VERSION/gcc-$GCC_VERSION.tar.gz \
+ && tar -xzf binutils-$BINUTILS_VERSION.tar.gz \
+ && pushd binutils-$BINUTILS_VERSION \
+ && mkdir build \
+ && cd build \
+ && ../configure --target=$TARGET_HOST --prefix=/usr --with-sysroot=/ --disable-multilib --disable-doc --disable-gprof --disable-gprofng --disable-gold --disable-gdb --disable-gdbserver --disable-sim \
+ && make -j$(nproc) \
+ && popd \
+ && tar -xzf gcc-$GCC_VERSION.tar.gz \
+ && pushd gcc-$GCC_VERSION \
+ && ./contrib/download_prerequisites \
+ && mkdir build \
+ && cd build \
+ && ../configure --target=$TARGET_HOST --prefix=/usr --with-sysroot=/ --disable-bootstrap --disable-multilib --enable-languages=c,c++ --without-python-dir \
+ && make -j$(nproc) \
+ && popd \
+ && rm -f /usr/bin/$TARGET_HOST-* \
+ && for dir in binutils-$BINUTILS_VERSION/build gcc-$GCC_VERSION/build; do \
+      pushd "$dir"; make install; popd; \
+    done \
+ && rm -fr binutils-* gcc-* \
+ && for binary in /usr/bin/$TARGET_HOST-*; do \
+      ln -sf $(basename $binary) ${binary/$TARGET_HOST-/}; \
+    done

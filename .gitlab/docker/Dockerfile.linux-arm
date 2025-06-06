@@ -1,0 +1,32 @@
+# syntax = edrevo/dockerfile-plus
+ARG FROM_IMAGE="debian:stretch"
+
+INCLUDE+ ./common/Dockerfile.base
+
+#
+# For basic dependencies see
+#     http://crosstool-ng.github.io/docs/os-setup/
+#     https://github.com/crosstool-ng/crosstool-ng/blob/master/.travis.yml
+#
+# Crossbuild environment is made based on
+#    https://github.com/multiarch/crossbuild
+#
+
+RUN apt-get -o Acquire::Check-Valid-Until=false update  \
+  && apt-get install --allow-unauthenticated -y -q --no-install-recommends \
+        binutils-multiarch                              \
+        binutils-multiarch-dev                          \
+        build-essential                                 \
+        crossbuild-essential-arm64                      \
+        crossbuild-essential-armel                      \
+        crossbuild-essential-armhf                      \
+        multistrap                                      \
+        libc6-dev                                       \
+        linux-libc-dev                                  \
+        libncurses5-dev                                 \
+  && rm -rf /var/lib/apt/lists/*
+
+INCLUDE+ ./common/Dockerfile.picolibc-dependencies
+
+ARG RUST_TARGET_TRIPLETS="arm-unknown-linux-gnueabi arm-unknown-linux-gnueabihf aarch64-unknown-linux-gnu"
+INCLUDE+ ./common/Dockerfile.binwrappers-dependencies

@@ -1,0 +1,3 @@
+RUN apt-get -o Acquire::Check-Valid-Until=false update \
+ && apt-get install -y -q libc6-dev \
+ && rm -rf /var/lib/apt/lists/*
