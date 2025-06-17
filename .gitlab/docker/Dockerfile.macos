@@ -1,0 +1,87 @@
+# syntax = edrevo/dockerfile-plus
+
+ARG FROM_IMAGE="debian:stretch"
+
+INCLUDE+ ./common/Dockerfile.base
+
+# Based on https://github.com/andrew-d/docker-osxcross
+# and https://github.com/multiarch/crossbuild
+
+RUN set -ex; \
+  apt-get update && apt-get install -y -q --no-install-recommends \
+    build-essential \
+    clang-11 \
+    libgmp-dev \
+    libmpc-dev \
+    libmpfr-dev \
+    libncurses5-dev \
+    libxml2-dev \
+    llvm-11 \
+    llvm-11-dev \
+  && rm -rf /var/lib/apt/lists/*
+
+ENV OSXCROSS_SDK_VERSION=12.0
+
+ARG SDK_VERSION=${OSXCROSS_SDK_VERSION}
+ARG OSX_VERSION_MIN=${SDK_VERSION}
+ARG SDK_TAR=MacOSX${SDK_VERSION}.sdk.tar.xz
+ARG SDK_SHA256=cae67d142880ce67a3eca5dfd742f875f286d838abf3f2b6af8259c76b2e6c72
+
+ARG OSXCROSS_COMMIT=56d8ec4ec9875f560e93aee738a631a35cfd6be9
+
+ARG CLANG_VERSION=11
+
+# Install clang/llvm alternative to use specific version
+RUN for file in /usr/bin/*-$CLANG_VERSION; do \
+        newfile="$(echo "$file" | sed 's/-'$CLANG_VERSION'$//')"; \
+        update-alternatives --install "$newfile" "$(basename "$newfile")" "$file" 1; \
+    done;
+
+RUN OSXCROSS_SRCS=/opt/osxcross \
+  && OSXCROSS_TMP=/tmp/osxcross \
+  && cd $(dirname ${OSXCROSS_SRCS}) \
+  && git clone https://github.com/tpoechtrager/osxcross.git \
+  && cd ${OSXCROSS_SRCS} \
+  && git reset --hard ${OSXCROSS_COMMIT} \
+  && cd tarballs/ && wget --no-verbose "https://dl.espressif.com/dl/toolchains/${SDK_TAR}" \
+  && echo "${SDK_SHA256} *${SDK_TAR}" | sha256sum --check --strict - \
+  && cd - \
+  && export PORTABLE=1 \
+  && export UNATTENDED=1 \
+  && export GCC_VERSION=8.3.0 \
+  && ./build.sh \
+  && sed -i "s|https://git.llvm.org/git/compiler-rt.git|https://github.com/llvm-mirror/compiler-rt.git|g" build_compiler_rt.sh \
+  && ./build_compiler_rt.sh \
+  && ./build_gcc.sh \
+  && ./build_binutils.sh \
+  ####################### fix issue when trying to download already downloaded ###################### \
+  && rm ${OSXCROSS_SRCS}/tarballs/binutils-2.32.tar.gz && rm ${OSXCROSS_SRCS}/tarballs/gdb-8.3.tar.gz \
+  && TARGET_ARCH=aarch64 ./build_binutils.sh \
+  && mkdir -p ${OSXCROSS_TMP} \
+  && mv target ${OSXCROSS_TMP}/ \
+  && mv tools ${OSXCROSS_TMP}/ \
+  && rm -rf "${OSXCROSS_TMP}/target/SDK/MacOSX${SDK_VERSION}.sdk/usr/share/man" \
+  && rm -rf "${OSXCROSS_SRCS}" \
+  && mv ${OSXCROSS_TMP} /opt/
+
+ENV PATH $PATH:/opt/osxcross/target/bin
+ENV PATH $PATH:/opt/osxcross/target/binutils/bin
+ENV MACOSX_DEPLOYMENT_TARGET=10.12
+
+RUN for TARGET_HOST in "aarch64-apple-darwin21.1" "x86_64-apple-darwin21.1"; do \
+  which $TARGET_HOST-gcc || \
+    (set +H && \
+     echo -e "#!/bin/bash\n$TARGET_HOST-clang++ \"\$@\"" > /opt/osxcross/target/bin/$TARGET_HOST-g++ && \
+     echo -e "#!/bin/bash\n$TARGET_HOST-clang \"\$@\"" > /opt/osxcross/target/bin/$TARGET_HOST-gcc && \
+     chmod 755 /opt/osxcross/target/bin/$TARGET_HOST-g++ /opt/osxcross/target/bin/$TARGET_HOST-gcc) \
+  done
+
+# Crosstool uses gcc-ar/gcc-nm/... by default, which require liblto_plugin.so.
+# The macOS toolchain does not support LTO, but for some reason, it includes
+# these executables for x86_64. Remove them to avoid the issue:
+#   Cannot find plugin 'liblto_plugin.so'
+# See: https://github.com/tpoechtrager/osxcross/issues/165
+RUN rm -f \
+    /opt/osxcross/target/bin/x86_64-apple-darwin21.1-gcc-nm \
+    /opt/osxcross/target/bin/x86_64-apple-darwin21.1-gcc-ar \
+    /opt/osxcross/target/bin/x86_64-apple-darwin21.1-gcc-ranlib
