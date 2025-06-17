@@ -1,7 +1,6 @@
 include:
   - template: 'Workflows/Branch-Pipelines.gitlab-ci.yml'
   - '.gitlab/ci/dejagnu-test.yml'
-  - '.gitlab/docker/images_build.yml'
 
 stages:
   - images
@@ -47,6 +46,77 @@ variables:
 before_script:
   - *use_ci_tools
   - *check_and_setup_homebrew
+
+.build_image: &build_image
+  stage: images
+  image: espressif/dind:1
+  tags: [ "dind", "internet", "amd64" ]
+  before_script: []
+  rules:
+    - if: $BUILD_IMAGES
+    - changes:
+      - .gitlab/docker/**/*
+  variables:
+    EXTRA_BUILD_ARGS: ""
+  artifacts:
+    expire_in: 1 week
+    when: on_failure
+    paths:
+      - ${CI_PROJECT_DIR}/build.log
+  script:
+    - cd .gitlab/docker
+    # This is workaround for https://github.com/edrevo/dockerfile-plus/issues/13
+    # After the bug is fixed, please remove the line below.
+    - ./dockerfile-plus_workaround.sh ${DOCKERFILE_NAME} && cat ${DOCKERFILE_NAME}
+    - echo -n $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+    - docker pull $CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_REF_NAME || true
+    - docker build
+        --cache-from $CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_REF_NAME
+        --file $DOCKERFILE_NAME
+        ${EXTRA_BUILD_ARGS}
+        --tag $CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_SHA
+        --tag $CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_REF_NAME .
+        > ${CI_PROJECT_DIR}/build.log
+    - docker push $CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_SHA
+    - docker push $CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_REF_NAME
+
+image_linux_x86:
+  variables:
+    DOCKERFILE_NAME: Dockerfile.linux-x86_64
+    EXTRA_BUILD_ARGS: "--build-arg FROM_IMAGE=i386/debian:jessie --build-arg RUST_TARGET_TRIPLETS=i586-unknown-linux-gnu"
+    IMAGE_NAME: build-linux-x86
+  extends: .build_image
+
+image_linux_x86_64:
+  variables:
+    DOCKERFILE_NAME: Dockerfile.linux-x86_64
+    IMAGE_NAME: build-linux-x86_64
+  extends: .build_image
+
+image_linux_arm:
+  variables:
+    DOCKERFILE_NAME: Dockerfile.linux-arm
+    IMAGE_NAME: build-linux-arm
+  extends: .build_image
+
+image_win_x86:
+  variables:
+    DOCKERFILE_NAME: Dockerfile.win
+    EXTRA_BUILD_ARGS: "--build-arg WIN_CROSSTOOL=g++-mingw-w64-i686 --build-arg RUST_TARGET_TRIPLETS=i686-pc-windows-gnu"
+    IMAGE_NAME: build-win-x86
+  extends: .build_image
+
+image_win_x86_64:
+  variables:
+    DOCKERFILE_NAME: Dockerfile.win
+    IMAGE_NAME: build-win-x86_64
+  extends: .build_image
+
+image_macos:
+  variables:
+    DOCKERFILE_NAME: Dockerfile.macos
+    IMAGE_NAME: build-macos
+  extends: .build_image
 
 # Configure crosstool-NG
 .build_ctng: &build_ctng |
@@ -233,7 +303,7 @@ before_script:
 
 xtensa_esp_lin_amd64:
   extends: .build_template_linux
-  image: $CI_REGISTRY_IMAGE/build-linux-x86_64:latest
+  image: $CI_REGISTRY_IMAGE/build-linux-x86_64:$CI_COMMIT_REF_NAME
   variables:
     PLATFORM_NAME: "x86_64-linux-gnu"
     CONF_HOST: "x86_64-linux-gnu"
@@ -243,7 +313,7 @@ xtensa_esp_lin_amd64:
 
 riscv32_esp_lin_amd64:
   extends: .build_template_linux
-  image: $CI_REGISTRY_IMAGE/build-linux-x86_64:latest
+  image: $CI_REGISTRY_IMAGE/build-linux-x86_64:$CI_COMMIT_REF_NAME
   variables:
     PLATFORM_NAME: "x86_64-linux-gnu"
     CONF_HOST: "x86_64-linux-gnu"
@@ -252,7 +322,7 @@ riscv32_esp_lin_amd64:
 
 xtensa_esp_lin_i586:
   extends: .build_template_linux
-  image: $CI_REGISTRY_IMAGE/build-linux-x86:latest
+  image: $CI_REGISTRY_IMAGE/build-linux-x86:$CI_COMMIT_REF_NAME
   variables:
     PLATFORM_NAME: "i586-linux-gnu"
     CONF_HOST: "i586-linux-gnu"
@@ -262,7 +332,7 @@ xtensa_esp_lin_i586:
 
 riscv32_esp_lin_i586:
   extends: .build_template_linux
-  image: $CI_REGISTRY_IMAGE/build-linux-x86:latest
+  image: $CI_REGISTRY_IMAGE/build-linux-x86:$CI_COMMIT_REF_NAME
   variables:
     PLATFORM_NAME: "i586-linux-gnu"
     CONF_HOST: "i586-linux-gnu"
@@ -291,7 +361,7 @@ riscv32_esp_lin_i586:
 
 .template_macos_cross:
   extends: .build_template
-  image: $CI_REGISTRY_IMAGE/build-macos:latest
+  image: $CI_REGISTRY_IMAGE/build-macos:$CI_COMMIT_REF_NAME
   variables:
     PLATFORM_NAME: "x86_64-apple-darwin"
     CONF_HOST: "x86_64-apple-darwin21.1"
@@ -321,7 +391,7 @@ riscv32_esp_macos:
 
 .template_macos_arm64_cross:
   extends: .build_template
-  image: $CI_REGISTRY_IMAGE/build-macos:latest
+  image: $CI_REGISTRY_IMAGE/build-macos:$CI_COMMIT_REF_NAME
   variables:
     PLATFORM_NAME: "aarch64-apple-darwin"
     CONF_HOST: "aarch64-apple-darwin21.1"
@@ -390,7 +460,7 @@ macos_codesign_riscv32_esp_macos:
 
 .template_win_cross:
   extends: .build_template
-  image: $CI_REGISTRY_IMAGE/build-win-x86:latest
+  image: $CI_REGISTRY_IMAGE/build-win-x86:$CI_COMMIT_REF_NAME
   variables:
     PLATFORM_NAME: "i686-w64-mingw32"
     CONF_HOST: "i686-w64-mingw32"
@@ -424,7 +494,7 @@ riscv32_esp_win:
 
 .template_win64_cross:
   extends: .build_template
-  image: $CI_REGISTRY_IMAGE/build-win-x86_64:latest
+  image: $CI_REGISTRY_IMAGE/build-win-x86_64:$CI_COMMIT_REF_NAME
   variables:
     PLATFORM_NAME: "x86_64-w64-mingw32"
     CONF_HOST: "x86_64-w64-mingw32"
@@ -502,7 +572,7 @@ win_manifest_riscv32_esp_win:
 
 .template_lin_arm_cross:
   extends: .build_template
-  image: $CI_REGISTRY_IMAGE/build-linux-arm:latest
+  image: $CI_REGISTRY_IMAGE/build-linux-arm:$CI_COMMIT_REF_NAME
   variables:
     INSTALL_LIBC_DEV: "y"
   script:
@@ -574,7 +644,7 @@ riscv32_esp_lin_arm64:
 generate_version:
   stage: generate_version
   tags: [ "build", "amd64" ]
-  image: $CI_REGISTRY_IMAGE/build-linux-x86_64:latest
+  image: $CI_REGISTRY_IMAGE/build-linux-x86_64:$CI_COMMIT_REF_NAME
   variables:
     GIT_SUBMODULE_STRATEGY: none
   artifacts:
