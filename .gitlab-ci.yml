@@ -209,6 +209,28 @@ before_script:
     - *gen_platformio_package_json
     - *package_toolchain
 
+.needs_all_distros: &needs_all_distros
+  needs:
+    - generate_version
+    - riscv32_esp_lin_amd64
+    - riscv32_esp_lin_arm64
+    - riscv32_esp_lin_armel
+    - riscv32_esp_lin_armhf
+    - riscv32_esp_lin_i586
+    - xtensa_esp_lin_amd64
+    - xtensa_esp_lin_arm64
+    - xtensa_esp_lin_armel
+    - xtensa_esp_lin_armhf
+    - xtensa_esp_lin_i586
+    - macos_codesign_riscv32_esp_macos
+    - macos_codesign_riscv32_esp_macos_arm64
+    - macos_codesign_xtensa_esp_macos
+    - macos_codesign_xtensa_esp_macos_arm64
+    - win_manifest_riscv32_esp_win
+    - win_manifest_riscv32_esp_win64
+    - win_manifest_xtensa_esp_win
+    - win_manifest_xtensa_esp_win64
+
 xtensa_esp_lin_amd64:
   extends: .build_template_linux
   image: $CI_REGISTRY_IMAGE/build-linux-x86_64:latest
@@ -580,7 +602,7 @@ generate_version:
 
 upload_to_internal:
   stage: internal_deploy
-  image: $COMPILER_TESTSUITE_IMAGE
+  <<: *needs_all_distros
   when: manual
   allow_failure: true
   tags: [ "build", "amd64", "shiny" ]
@@ -590,12 +612,6 @@ upload_to_internal:
     CTNG_ESP_HELPERS_GIT: "${GIT_SERVER}/idf/ctng-esp-helpers.git"
     TARGETS: "xtensa-esp-elf riscv32-esp-elf"
     HOSTS: "x86_64-linux-gnu aarch64-linux-gnu arm-linux-gnueabi arm-linux-gnueabihf i586-linux-gnu x86_64-apple-darwin aarch64-apple-darwin i686-w64-mingw32 x86_64-w64-mingw32"
-  artifacts:
-    paths:
-      # a list just for check files, debug
-      - dist/src-tar-list.txt
-    reports:
-      dotenv: dist/dist.env
   before_script:
     - *use_ci_tools
   script:
@@ -610,20 +626,14 @@ upload_to_internal:
     - scp ${FILES_LIST} ${HTTP_UPLOAD_DIR}
     # Show download links
     - echo -e "\nArchives were published there:\n\n$(for n in ${FILES_LIST}; do echo "${HTTP_PUBLIC_DIR}/${n}"; done)\n"
-    # Show JSON snipppet
-    - git clone -q --depth=1 ${CTNG_ESP_HELPERS_GIT} -b ${CI_COMMIT_REF_NAME} ||
-      git clone -q --depth=1 ${CTNG_ESP_HELPERS_GIT}
-    - ./ctng-esp-helpers/print_all_checksum_json.sh "${HTTP_PUBLIC_DIR}" "${TARGETS}" "${HOSTS}" 2>err.log
-    - echo ""
-    - cat err.log
-    # remove empty lines
-    - sed -i '/^[[:space:]]*$/d' dist.env
-    - cat dist.env
+    - echo "${SHA256_FILE}:"
+    - cat ${SHA256_FILE}
 
 upload_to_github:
   stage: github_deploy
   image: espressif/github-hub:2
   tags: [ "build", "amd64", "brew" ]
+  <<: *needs_all_distros
   allow_failure: true
   rules:
     - if: $CI_COMMIT_TAG
@@ -639,8 +649,20 @@ upload_to_github:
     - cd dist
     # Create a checksum file
     - *gen_sha256_file
+    # Install xz if not found
+    - which xz || (apt update && apt install -y xz-utils)
+    # Create a source archive
+    - RELEASE_SRC_NAME="${CI_PROJECT_NAME}-${DIST_VERSION_FULL}-src"
+    - RELEASE_SRC_FILE="${RELEASE_SRC_NAME}.${ARCHIVE_EXT}"
+    - rm -rf -- "${RELEASE_SRC_NAME}" "${RELEASE_SRC_FILE}"
+    - git clone --quiet --depth 1 --recurse-submodules --shallow-submodules ${CI_REPOSITORY_URL} "${RELEASE_SRC_NAME}"
+    - find "${RELEASE_SRC_NAME}" -name ".git" -type d -exec rm -rf -- "{}" +
+    - find "${RELEASE_SRC_NAME}" -name .git\* -exec rm -rf -- {} +
+    - ${ARCHIVE_TOOL} "${RELEASE_SRC_FILE}" "${RELEASE_SRC_NAME}" > src-tar-list.txt 2>&1
+    - rm -rf -- "${RELEASE_SRC_NAME}"
+    - ls -l
+    - FILES_LIST="${FILES_LIST} ${RELEASE_SRC_FILE}"
     # add gz archives needs for platformio
-    - which xz || apt update && apt install -y xz-utils
     - |
       for n in $(ls *.tar.xz); do
         mkdir tmp_;
@@ -679,7 +701,7 @@ internal_update_idf_tools:
   needs: [ generate_version, upload_to_internal ]
   when: manual
   variables:
-    TOOL_SHA256_URL: ${HTTP_PUBLIC_DIR}/${DIST_VERSION_FULL}/crosstool-NG-${DIST_VERSION_FULL}-checksum.sha256
+    TOOL_SHA256_URL: ${HTTP_PUBLIC_DIR}/${DIST_VERSION_FULL}/${CI_PROJECT_NAME}-${DIST_VERSION_FULL}-checksum.sha256
 
 github_update_idf_tools:
   extends: .update_idf_tools
@@ -689,7 +711,7 @@ github_update_idf_tools:
     - if: $CI_COMMIT_TAG
       when: manual
   variables:
-    TOOL_SHA256_URL: ${GH_REPO_URL}/releases/download/${CI_COMMIT_TAG}/crosstool-NG-${DIST_VERSION_FULL}-checksum.sha256
+    TOOL_SHA256_URL: ${GH_REPO_URL}/releases/download/${CI_COMMIT_TAG}/${CI_PROJECT_NAME}-${DIST_VERSION_FULL}-checksum.sha256
 
 # We use prep_tests job to collect all test data and scripts in artifacts,
 # to avoid dependencies for git, because we run some tests on original images.
