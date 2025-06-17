@@ -488,8 +488,7 @@ riscv32_esp_win64:
     # URL to windows manifest repo
     MANIFEST_SCRIPTS_GIT: "${CI_SERVER_PROTOCOL}://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}:${CI_SERVER_PORT}/espressif/windows_manifest.git"
   script:
-    - git clone -q --depth=1 ${MANIFEST_SCRIPTS_GIT} -b ${CI_COMMIT_REF_NAME}
-    - if ($LASTEXITCODE -ne 0) { git clone -q --depth=1 ${MANIFEST_SCRIPTS_GIT} }
+    - git clone -q --depth=1 ${MANIFEST_SCRIPTS_GIT} -b ${CI_COMMIT_REF_NAME}; if ($LASTEXITCODE -ne 0) { git clone -q --depth=1 ${MANIFEST_SCRIPTS_GIT} }
     - ./windows_manifest/run.ps1
 
 win_manifest_xtensa_esp_win64:
