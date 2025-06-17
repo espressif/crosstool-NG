@@ -145,7 +145,7 @@ image_macos:
   ${ARCHIVE_TOOL} ${ARCHIVE_NAME} ${CONF_TARGET}/ > tar-list.txt 2>&1
   mv tar-list.txt ..
   mv ${ARCHIVE_NAME} ../dist/
-  echo "${ARCHIVE_NAME}" > ../dist/file_${PLATFORM_NAME}_${CONF_TARGET}
+  echo "${ARCHIVE_NAME}" > ../dist/dist_name_${PLATFORM_NAME}_${CONF_TARGET}
   ls -l ../dist/
   cd -
 
@@ -184,6 +184,46 @@ image_macos:
     - *configure_linux_no_pie
     - *build_toolchain
     - *package_toolchain
+
+.needs_all_distros: &needs_all_distros
+  needs:
+    - generate_version
+    - esp32_lin_amd64
+    - esp32_lin_arm64
+    - esp32_lin_armel
+    - esp32_lin_armhf
+    - esp32_lin_i686
+    - esp32_macos
+    - esp32_macos_arm64
+    - esp32_win
+    - esp32_win64
+    - esp32s2_lin_amd64
+    - esp32s2_lin_arm64
+    - esp32s2_lin_armel
+    - esp32s2_lin_armhf
+    - esp32s2_lin_i686
+    - esp32s2_macos
+    - esp32s2_macos_arm64
+    - esp32s2_win
+    - esp32s2_win64
+    - esp32s3_lin_amd64
+    - esp32s3_lin_arm64
+    - esp32s3_lin_armel
+    - esp32s3_lin_armhf
+    - esp32s3_lin_i686
+    - esp32s3_macos
+    - esp32s3_macos_arm64
+    - esp32s3_win
+    - esp32s3_win64
+    - riscv32_esp_lin_amd64
+    - riscv32_esp_lin_arm64
+    - riscv32_esp_lin_armel
+    - riscv32_esp_lin_armhf
+    - riscv32_esp_lin_i686
+    - riscv32_esp_macos
+    - riscv32_esp_macos_arm64
+    - riscv32_esp_win
+    - riscv32_esp_win64
 
 esp32_lin_amd64:
   extends: .build_template_linux
@@ -519,32 +559,67 @@ generate_version:
     - echo "DIST_VERSION_SHORT=$DIST_VERSION_SHORT" >> version.env
     - cat version.env
 
+.gen_sha256_file: &gen_sha256_file |
+  FILES_LIST=$(find . -name dist_name_\* -exec cat {} \+)
+  SHA256_FILE="${CI_PROJECT_NAME}-${DIST_VERSION_FULL}-checksum.sha256"
+  for n in $FILES_LIST; do
+    sz=$(stat -c%s "${n}") >> ${SHA256_FILE};
+    printf "# %s: %s bytes\n" "${n}" "${sz}" >> ${SHA256_FILE};
+    sha256sum -b "${n}" >> ${SHA256_FILE};
+  done
+  FILES_LIST="${SHA256_FILE} ${FILES_LIST}"
+
 upload_to_internal:
   stage: internal_deploy
-  image: $CI_DOCKER_REGISTRY/compiler-testsuite:2
+  <<: *needs_all_distros
   when: manual
   allow_failure: true
   tags: [ "build", "amd64", "shiny" ]
   variables:
     # don't use "GIT_STRATEGY: none", because we need cleaning old artifacts in 'dist/' that came from previous pipelines
     GIT_SUBMODULE_STRATEGY: none
-    CTNG_ESP_HELPERS_BRANCH: "-b master"
-    TARGETS: "xtensa-esp32-elf xtensa-esp32s2-elf xtensa-esp32s3-elf riscv32-esp-elf"
-    HOSTS: "x86_64-linux-gnu aarch64-linux-gnu arm-linux-gnueabi arm-linux-gnueabihf i686-linux-gnu x86_64-apple-darwin aarch64-apple-darwin i686-w64-mingw32 x86_64-w64-mingw32"
-  artifacts:
-    paths:
-      # a list just for check files, debug
-      - dist/src-tar-list.txt
-    reports:
-      dotenv: dist/dist.env
   before_script:
     - *use_ci_tools
   script:
     - cd dist
-    - RELEASE_CHECKSUM_FILE="${CI_PROJECT_NAME}-${DIST_VERSION_FULL}-checksum.sha256"
+    # Create a checksum file
+    - *gen_sha256_file
+    # Upload all needed files
+    - HTTP_UPLOAD_DIR=${HTTP_UPLOAD_DIR}/${DIST_VERSION_FULL}
+    - HTTP_PUBLIC_DIR=${HTTP_PUBLIC_DIR}/${DIST_VERSION_FULL}
+    - cit_add_ssh_key "${HTTP_UPLOAD_KEY}"
+    - ssh ${HTTP_UPLOAD_DIR%:*} "mkdir -p ${HTTP_UPLOAD_DIR#*:}"
+    - scp ${FILES_LIST} ${HTTP_UPLOAD_DIR}
+    # Show download links
+    - echo -e "\nArchives were published there:\n\n$(for n in ${FILES_LIST}; do echo "${HTTP_PUBLIC_DIR}/${n}"; done)\n"
+    - echo "${SHA256_FILE}:"
+    - cat ${SHA256_FILE}
+
+upload_to_github:
+  stage: github_deploy
+  image: espressif/github-hub:2
+  tags: [ "build", "amd64", "brew" ]
+  <<: *needs_all_distros
+  allow_failure: true
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: manual
+  variables:
+    GIT_SUBMODULE_STRATEGY: none
+    GITHUB_USER: "${GH_USER}"
+    GITHUB_TOKEN: "${GH_TOKEN}"
+    TAG: ${CI_COMMIT_TAG}
+    REPO_URL: ${GH_REPO_URL}
+  before_script: []
+  script:
+    - cd dist
+    # Create a checksum file
+    - *gen_sha256_file
+    # Install xz if not found
+    - which xz || (apt update && apt install -y xz-utils)
+    # Create a source archive
     - RELEASE_SRC_NAME="${CI_PROJECT_NAME}-${DIST_VERSION_FULL}-src"
     - RELEASE_SRC_FILE="${RELEASE_SRC_NAME}.${ARCHIVE_EXT}"
-    # Create a source archive
     - rm -rf -- "${RELEASE_SRC_NAME}" "${RELEASE_SRC_FILE}"
     - git clone --quiet --depth 1 --recurse-submodules --shallow-submodules ${CI_REPOSITORY_URL} "${RELEASE_SRC_NAME}"
     - find "${RELEASE_SRC_NAME}" -name ".git" -type d -exec rm -rf -- "{}" +
@@ -552,65 +627,21 @@ upload_to_internal:
     - ${ARCHIVE_TOOL} "${RELEASE_SRC_FILE}" "${RELEASE_SRC_NAME}" > src-tar-list.txt 2>&1
     - rm -rf -- "${RELEASE_SRC_NAME}"
     - ls -l
-    # Create a checksum file
-    - DIST_FILE_LIST=$(find . -name file_\* -exec cat {} \+)
-    - DIST_FILE_LIST="${DIST_FILE_LIST} ${RELEASE_SRC_FILE}"
+    - FILES_LIST="${FILES_LIST} ${RELEASE_SRC_FILE}"
+    # add gz archives needs for platformio
     - |
-      for n in $DIST_FILE_LIST; do
-        sz=$(stat -c%s "${n}") >> ${RELEASE_CHECKSUM_FILE};
-        printf "# %s: %s bytes\n" "${n}" "${sz}" >> ${RELEASE_CHECKSUM_FILE};
-        sha256sum -b "${n}" >> ${RELEASE_CHECKSUM_FILE};
+      for n in $(ls *.tar.xz); do
+        mkdir tmp_;
+        tar -xJf $n -C tmp_;
+        gz_file="${n//tar.xz/tar.gz}";
+        files_to_arch=$(find tmp_ -maxdepth 1 -printf "%P\n" )
+        tar -czf $gz_file -C tmp_ $files_to_arch;
+        sz=$(stat -c%s "${gz_file}");
+        printf "# %s: %s bytes\n" "${gz_file}" "${sz}" >> ${SHA256_FILE};
+        sha256sum -b "${gz_file}" >> ${SHA256_FILE};
+        rm -fr tmp_;
+        FILES_LIST="${FILES_LIST} $gz_file";
       done
-    - DIST_FILE_LIST="${DIST_FILE_LIST} ${RELEASE_CHECKSUM_FILE}"
-    # remove new lines from file list
-    - DIST_FILE_LIST="${DIST_FILE_LIST//$'\n'/ }"
-    - echo "DIST_FILE_LIST=$DIST_FILE_LIST" >> dist.env
-    # Upload all needed files
-    - HTTP_UPLOAD_DIR=${HTTP_UPLOAD_DIR}/${DIST_VERSION_FULL}
-    - HTTP_PUBLIC_DIR=${HTTP_PUBLIC_DIR}/${DIST_VERSION_FULL}
-    - cit_add_ssh_key "${HTTP_UPLOAD_KEY}"
-    - ssh ${HTTP_UPLOAD_DIR%:*} "mkdir -p ${HTTP_UPLOAD_DIR#*:}"
-    - scp ${DIST_FILE_LIST} ${HTTP_UPLOAD_DIR}
-    # Show download links
-    - DIST_URL_LIST=""
-    - for n in ${DIST_FILE_LIST}; do DIST_URL_LIST="${DIST_URL_LIST} ${HTTP_PUBLIC_DIR}/${n}"; done
-    - echo "DIST_URL_LIST=$DIST_URL_LIST" >> dist.env
-    - echo -e "\nArchives were published there:\n\n$(for n in ${DIST_FILE_LIST}; do echo "${HTTP_PUBLIC_DIR}/${n}"; done)\n"
-    # Show JSON snipppet
-    - cit_add_ssh_key "${GITLAB_KEY}"
-    - git clone -q --depth 1 ${CTNG_ESP_HELPERS_BRANCH} ${GITLAB_SSH_SERVER}/idf/ctng-esp-helpers.git
-    - ./ctng-esp-helpers/print_all_checksum_json.sh "${HTTP_PUBLIC_DIR}" "${TARGETS}" "${HOSTS}" 2>err.log
-    - echo ""
-    - cat err.log
-    # remove empty lines
-    - sed -i '/^[[:space:]]*$/d' dist.env
-    - cat dist.env
-
-upload_to_github:
-  stage: github_deploy
-  image: espressif/github-hub:2
-  needs: [ upload_to_internal ]
-  tags: [ "build", "amd64", "brew" ]
-  allow_failure: true
-  rules:
-    - if: $CI_COMMIT_TAG
-      when: manual
-  variables:
-    GIT_SUBMODULE_STRATEGY: none
-    DIST_URL_LIST: ${DIST_URL_LIST}
-    DIST_FILE_LIST: ${DIST_FILE_LIST}
-    GITHUB_USER: "${GH_USER}"
-    GITHUB_TOKEN: "${GH_TOKEN}"
-    TAG: ${CI_COMMIT_TAG}
-    REPO_URL: ${GH_REPO_URL}
-  before_script: []
-  script:
-    - echo hello
-    - echo $DIST_URL_LIST
-    # TMP dir
-    - rm -rf TMP && mkdir TMP && cd TMP
-    # download urls
-    - for u in ${DIST_URL_LIST}; do curl -O -sSL --connect-timeout 10 --retry 10 "${u}"; done
     - ls -l
     # hub release upload
     - git remote remove github || true
@@ -618,9 +649,7 @@ upload_to_github:
     - git remote add github ${REPO_URL}
     - hub release
     - hub release show ${TAG} || { echo "Please create a release on GitHub with ${TAG} tag at first"; exit 1; }
-    - for n in ${DIST_FILE_LIST}; do hub release edit -m "" -a "${n}" "${TAG}"; done
-    - cd -
-    - rm -rf TMP
+    - for n in ${FILES_LIST}; do hub release edit -m "" -a "${n}" "${TAG}"; done
 
 .update_idf_tools:
   allow_failure: true
@@ -638,7 +667,7 @@ internal_update_idf_tools:
   needs: [ generate_version, upload_to_internal ]
   when: manual
   variables:
-    TOOL_SHA256_URL: ${HTTP_PUBLIC_DIR}/${DIST_VERSION_FULL}/crosstool-NG-${DIST_VERSION_FULL}-checksum.sha256
+    TOOL_SHA256_URL: ${HTTP_PUBLIC_DIR}/${DIST_VERSION_FULL}/${CI_PROJECT_NAME}-${DIST_VERSION_FULL}-checksum.sha256
 
 github_update_idf_tools:
   extends: .update_idf_tools
@@ -648,7 +677,7 @@ github_update_idf_tools:
     - if: $CI_COMMIT_TAG
       when: manual
   variables:
-    TOOL_SHA256_URL: ${GH_REPO_URL}/releases/download/${CI_COMMIT_TAG}/crosstool-NG-${DIST_VERSION_FULL}-checksum.sha256
+    TOOL_SHA256_URL: ${GH_REPO_URL}/releases/download/${CI_COMMIT_TAG}/${CI_PROJECT_NAME}-${DIST_VERSION_FULL}-checksum.sha256
 
 # We use prep_tests job to collect all test data and scripts in artifacts,
 # to avoid dependencies for git, because we run some tests on original images.
@@ -696,7 +725,7 @@ prep_tests:
     - source citools/import_functions
     - cit_rm ${CONF_TARGET}
   script:
-    - ARCHIVE_NAME=$(cat dist/file_${PLATFORM_NAME}_${CONF_TARGET})
+    - ARCHIVE_NAME=$(cat dist/dist_name_${PLATFORM_NAME}_${CONF_TARGET})
     - ${UNARCHIVE_TOOL} dist/${ARCHIVE_NAME}
     - export PATH="${CI_PROJECT_DIR}/${CONF_TARGET}/bin:${PATH}"
 
@@ -830,7 +859,7 @@ riscv32_macos_aarch64_compiler_tests:
   after_script:
     - Remove-Item -Recurse -Force ${CI_PROJECT_DIR}\*
   script:
-    - $ARCHIVE_NAME=$(cat "dist\file_${PLATFORM_NAME}_${CONF_TARGET}")
+    - $ARCHIVE_NAME=$(cat "dist\dist_name_${PLATFORM_NAME}_${CONF_TARGET}")
     - Expand-Archive -DestinationPATH . "dist\$ARCHIVE_NAME"
     - $env:PATH = "${CI_PROJECT_DIR}\${CONF_TARGET}\bin;" + $env:PATH
     - Push-Location esp-compiler-tests\just-run-tools
