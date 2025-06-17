@@ -2,6 +2,7 @@ include:
   - template: 'Workflows/Branch-Pipelines.gitlab-ci.yml'
 
 stages:
+  - images
   - generate_version
   - build
   - internal_deploy
@@ -43,32 +44,45 @@ before_script:
   - *add_gitlab_key
   - *check_and_setup_homebrew
 
+.build_image: &build_image
+  stage: images
+  image: espressif/dind:1
+  tags: [ "dind", "internet", "amd64" ]
+  before_script: []
+  artifacts:
+    expire_in: 1 week
+    when: on_failure
+    paths:
+      - ${CI_PROJECT_DIR}/build.log
+  script:
+    - cd .gitlab/docker
+    # This is workaround for https://github.com/edrevo/dockerfile-plus/issues/13
+    # After the bug is fixed, please remove the line below.
+    - ./dockerfile-plus_workaround.sh ${DOCKERFILE_NAME} && cat ${DOCKERFILE_NAME}
+    - echo -n $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+    - docker pull $CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_REF_NAME || true
+    - docker build
+        --cache-from $CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_REF_NAME
+        --file $DOCKERFILE_NAME
+        ${EXTRA_BUILD_ARGS}
+        --tag $CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_SHA
+        --tag $CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_REF_NAME .
+        > ${CI_PROJECT_DIR}/build.log
+    - docker push $CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_SHA
+    - docker push $CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_REF_NAME
+
+image_macos:
+  extends: .build_image
+  variables:
+    DOCKERFILE_NAME: Dockerfile.macos
+    IMAGE_NAME: build-macos
+
 # Configure crosstool-NG
 .build_ctng: &build_ctng |
   ./bootstrap
   ./configure --enable-local
   make
   ./ct-ng ${CONF_TARGET}
-
-# HOMEBREW_PREFIX is an original variable from "brew shellenv"
-.build_ctng_macos_native: &build_ctng_macos_native |
-  (
-    PATH="${HOMEBREW_PREFIX}/opt/gnu-sed/libexec/gnubin:${PATH:-}";
-    PATH="${HOMEBREW_PREFIX}/opt/openssl@3/bin:${PATH:-}";
-    PATH="${HOMEBREW_PREFIX}/opt/binutils/bin:${PATH:-}";
-    PATH="${HOMEBREW_PREFIX}/opt/libtool/libexec/gnubin:${PATH:-}";
-    PATH="${HOMEBREW_PREFIX}/opt/ncurses/bin:${PATH:-}";
-    export PATH;
-    export LDFLAGS="-L${HOMEBREW_PREFIX}/opt/ncurses/lib ${LDFLAGS:-}";
-    export LDFLAGS="-L${HOMEBREW_PREFIX}/opt/gettext/lib ${LDFLAGS:-}";
-    export CPPFLAGS="-I${HOMEBREW_PREFIX}/opt/ncurses/include ${CPPFLAGS:-}";
-    export CPPFLAGS="-I${HOMEBREW_PREFIX}/opt/gettext/include ${CPPFLAGS:-}";
-
-    ./bootstrap;
-    ./configure --enable-local;
-    make;
-    ./ct-ng ${CONF_TARGET};
-  )
 
 # ct-ng options common for all platforms
 .configure_common: &configure_common |
@@ -263,39 +277,47 @@ riscv32_esp_macos:
   variables:
     CONF_TARGET: "riscv32-esp-elf"
 
-.template_macos_arm64_native:
+.template_macos_arm64_cross:
   extends: .build_template
-  tags: [ "darwin", "aarch64" ]
+  image: $CI_REGISTRY_IMAGE/build-macos:$CI_COMMIT_REF_NAME
   variables:
     PLATFORM_NAME: "aarch64-apple-darwin"
+    CONF_BUILD: "x86_64-linux-gnu"
+    CONF_HOST: "aarch64-apple-darwin21.1"
     CONF_TARGET: "xtensa-esp32-elf"
     # Although version >= 11 is required, there is some compile-time problem with such value
-    # so 10.8 value is used, it works correctly and creates binaries for minimal os version == 11.0
-    MACOSX_DEPLOYMENT_TARGET: "10.8"
+    # so 10.13 value is used, it works correctly and creates binaries for minimal os version == 11.0
+    MACOSX_DEPLOYMENT_TARGET: "10.13"
   script:
-    - *build_ctng_macos_native
+    - |
+      if [ -f /.dockerenv ]; then
+        rm /usr/bin/gcc && ln -s clang /usr/bin/gcc;
+        rm /usr/bin/g++ && ln -s clang++ /usr/bin/g++;
+      fi
+    - *build_ctng
     - *configure_common
     - *configure_docker
+    - *configure_crossbuild
     - *build_toolchain
     - *package_toolchain
 
 esp32_macos_arm64:
-  extends: .template_macos_arm64_native
+  extends: .template_macos_arm64_cross
   variables:
     CONF_TARGET: "xtensa-esp32-elf"
 
 esp32s2_macos_arm64:
-  extends: .template_macos_arm64_native
+  extends: .template_macos_arm64_cross
   variables:
     CONF_TARGET: "xtensa-esp32s2-elf"
 
 esp32s3_macos_arm64:
-  extends: .template_macos_arm64_native
+  extends: .template_macos_arm64_cross
   variables:
     CONF_TARGET: "xtensa-esp32s3-elf"
 
 riscv32_esp_macos_arm64:
-  extends: .template_macos_arm64_native
+  extends: .template_macos_arm64_cross
   variables:
     CONF_TARGET: "riscv32-esp-elf"
 
