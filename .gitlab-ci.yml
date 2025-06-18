@@ -985,7 +985,6 @@ riscv32_macos_aarch64_compiler_tests:
     - $ARCHIVE_NAME=$(cat "dist\dist_name_${PLATFORM_NAME}_${CONF_TARGET}")
     - Expand-Archive -DestinationPATH . "dist\$ARCHIVE_NAME"
     - $env:PATH = "${CI_PROJECT_DIR}\${CONF_TARGET}\bin;" + $env:PATH
-    - $env:CONF_TARGET = "${CONF_TARGET_WRAPPER}"
     - Push-Location esp-compiler-tests\just-run-tools
     - .\run.ps1
     - Pop-Location
