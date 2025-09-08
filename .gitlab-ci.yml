@@ -5,6 +5,7 @@ stages:
   - images
   - generate_version
   - build
+  - codesign
   - internal_deploy
   - pre_test
   - test
@@ -193,37 +194,37 @@ image_macos:
     - esp32_lin_armel
     - esp32_lin_armhf
     - esp32_lin_i686
-    - esp32_macos
-    - esp32_macos_arm64
-    - esp32_win
-    - esp32_win64
+    - macos_codesign_esp32_macos
+    - macos_codesign_esp32_macos_arm64
+    - win_manifest_esp32_win
+    - win_manifest_esp32_win64
     - esp32s2_lin_amd64
     - esp32s2_lin_arm64
     - esp32s2_lin_armel
     - esp32s2_lin_armhf
     - esp32s2_lin_i686
-    - esp32s2_macos
-    - esp32s2_macos_arm64
-    - esp32s2_win
-    - esp32s2_win64
+    - macos_codesign_esp32s2_macos
+    - macos_codesign_esp32s2_macos_arm64
+    - win_manifest_esp32s2_win
+    - win_manifest_esp32s2_win64
     - esp32s3_lin_amd64
     - esp32s3_lin_arm64
     - esp32s3_lin_armel
     - esp32s3_lin_armhf
     - esp32s3_lin_i686
-    - esp32s3_macos
-    - esp32s3_macos_arm64
-    - esp32s3_win
-    - esp32s3_win64
+    - macos_codesign_esp32s3_macos
+    - macos_codesign_esp32s3_macos_arm64
+    - win_manifest_esp32s3_win
+    - win_manifest_esp32s3_win64
     - riscv32_esp_lin_amd64
     - riscv32_esp_lin_arm64
     - riscv32_esp_lin_armel
     - riscv32_esp_lin_armhf
     - riscv32_esp_lin_i686
-    - riscv32_esp_macos
-    - riscv32_esp_macos_arm64
-    - riscv32_esp_win
-    - riscv32_esp_win64
+    - macos_codesign_riscv32_esp_macos
+    - macos_codesign_riscv32_esp_macos_arm64
+    - win_manifest_riscv32_esp_win
+    - win_manifest_riscv32_esp_win64
 
 esp32_lin_amd64:
   extends: .build_template_linux
@@ -283,11 +284,11 @@ riscv32_esp_lin_i686:
 
 .template_macos_cross:
   extends: .build_template
-  image: $CI_DOCKER_REGISTRY/esp32-toolchain-macos-cross
+  image: $CI_REGISTRY_IMAGE/build-macos:$CI_COMMIT_REF_NAME
   variables:
     PLATFORM_NAME: "x86_64-apple-darwin"
     CONF_BUILD: "x86_64-linux-gnu"
-    CONF_HOST: "x86_64-apple-darwin12"
+    CONF_HOST: "x86_64-apple-darwin21.1"
     MACOSX_DEPLOYMENT_TARGET: "10.8"
   script:
     - *build_ctng
@@ -360,6 +361,55 @@ riscv32_esp_macos_arm64:
   extends: .template_macos_arm64_cross
   variables:
     CONF_TARGET: "riscv32-esp-elf"
+
+.template_macos_codesign:
+  stage: codesign
+  resource_group: macos_codesign
+  tags: [ "darwin", "codesign" ]
+  artifacts:
+    paths:
+      - ${DIST_ART_DIR}
+  variables:
+    # directory with distro archives
+    DIST_ART_DIR: dist
+    # URL to macos codesign repo
+    NOTARIZATION_SCRIPTS_GIT: "${CI_SERVER_PROTOCOL}://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}:${CI_SERVER_PORT}/espressif/macos_codesign_notarization.git"
+  script:
+    - git clone -q --depth=1 ${NOTARIZATION_SCRIPTS_GIT} -b ${CI_COMMIT_REF_NAME} ||
+      git clone -q --depth=1 ${NOTARIZATION_SCRIPTS_GIT}
+    - ./macos_codesign_notarization/run.sh
+
+macos_codesign_esp32_macos_arm64:
+  extends: .template_macos_codesign
+  needs: [ esp32_macos_arm64 ]
+
+macos_codesign_esp32s2_macos_arm64:
+  extends: .template_macos_codesign
+  needs: [ esp32s2_macos_arm64 ]
+
+macos_codesign_esp32s3_macos_arm64:
+  extends: .template_macos_codesign
+  needs: [ esp32s3_macos_arm64 ]
+
+macos_codesign_riscv32_esp_macos_arm64:
+  extends: .template_macos_codesign
+  needs: [ riscv32_esp_macos_arm64 ]
+
+macos_codesign_esp32_macos:
+  extends: .template_macos_codesign
+  needs: [ esp32_macos ]
+
+macos_codesign_esp32s2_macos:
+  extends: .template_macos_codesign
+  needs: [ esp32s2_macos ]
+
+macos_codesign_esp32s3_macos:
+  extends: .template_macos_codesign
+  needs: [ esp32s3_macos ]
+
+macos_codesign_riscv32_esp_macos:
+  extends: .template_macos_codesign
+  needs: [ riscv32_esp_macos ]
 
 .template_win_cross:
   extends: .build_template
@@ -440,6 +490,78 @@ riscv32_esp_win64:
   extends: .template_win64_cross
   variables:
     CONF_TARGET: "riscv32-esp-elf"
+
+.template_win_manifest:
+  stage: codesign
+  tags: [ "windows", "manifest", "powershell" ]
+  artifacts:
+    paths:
+      - ${DIST_ART_DIR}
+  before_script: []
+  variables:
+    # directory with distro archives
+    DIST_ART_DIR: dist
+    # URL to windows manifest repo
+    MANIFEST_SCRIPTS_GIT: "${CI_SERVER_PROTOCOL}://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}:${CI_SERVER_PORT}/espressif/windows_manifest.git"
+  script:
+    - git clone -q --depth=1 ${MANIFEST_SCRIPTS_GIT} -b ${CI_COMMIT_REF_NAME}; if ($LASTEXITCODE -ne 0) { git clone -q --depth=1 ${MANIFEST_SCRIPTS_GIT} }
+    - ./windows_manifest/run.ps1
+
+win_manifest_esp32_win64:
+  extends: .template_win_manifest
+  needs: [ generate_version, esp32_win64 ]
+  variables:
+    WIN_MANIFEST_APP_NAME: "esp32_win64"
+    WIN_MANIFEST_ARCH: "x64"
+
+win_manifest_esp32s2_win64:
+  extends: .template_win_manifest
+  needs: [ generate_version, esp32s2_win64 ]
+  variables:
+    WIN_MANIFEST_APP_NAME: "esp32s2_win64"
+    WIN_MANIFEST_ARCH: "x64"
+
+win_manifest_esp32s3_win64:
+  extends: .template_win_manifest
+  needs: [ generate_version, esp32s3_win64 ]
+  variables:
+    WIN_MANIFEST_APP_NAME: "esp32s3_win64"
+    WIN_MANIFEST_ARCH: "x64"
+
+win_manifest_riscv32_esp_win64:
+  extends: .template_win_manifest
+  needs: [ generate_version, riscv32_esp_win64 ]
+  variables:
+    WIN_MANIFEST_APP_NAME: "riscv32_esp_win64"
+    WIN_MANIFEST_ARCH: "x64"
+
+win_manifest_esp32_win:
+  extends: .template_win_manifest
+  needs: [ generate_version, esp32_win ]
+  variables:
+    WIN_MANIFEST_APP_NAME: "esp32_win"
+    WIN_MANIFEST_ARCH: "x64"
+
+win_manifest_esp32s2_win:
+  extends: .template_win_manifest
+  needs: [ generate_version, esp32s2_win ]
+  variables:
+    WIN_MANIFEST_APP_NAME: "esp32s2_win"
+    WIN_MANIFEST_ARCH: "x64"
+
+win_manifest_esp32s3_win:
+  extends: .template_win_manifest
+  needs: [ generate_version, esp32s3_win ]
+  variables:
+    WIN_MANIFEST_APP_NAME: "esp32s3_win"
+    WIN_MANIFEST_ARCH: "x64"
+
+win_manifest_riscv32_esp_win:
+  extends: .template_win_manifest
+  needs: [ generate_version, riscv32_esp_win ]
+  variables:
+    WIN_MANIFEST_APP_NAME: "riscv32_esp_win"
+    WIN_MANIFEST_ARCH: "x86"
 
 .template_lin_arm_cross:
   extends: .build_template
@@ -555,8 +677,11 @@ generate_version:
   script:
     - DIST_VERSION_FULL=$(${CI_PROJECT_DIR}/maintainer/git-version-gen .)
     - DIST_VERSION_SHORT=${DIST_VERSION_FULL#"esp-"}
+    - tmp=${DIST_VERSION_SHORT#*_}
+    - WIN_MANIFEST_APP_VERSION="${DIST_VERSION_SHORT%_*}.${tmp:3:5}"
     - echo "DIST_VERSION_FULL=$DIST_VERSION_FULL" > version.env
     - echo "DIST_VERSION_SHORT=$DIST_VERSION_SHORT" >> version.env
+    - echo "WIN_MANIFEST_APP_VERSION=$WIN_MANIFEST_APP_VERSION" >> version.env
     - cat version.env
 
 .gen_sha256_file: &gen_sha256_file |
@@ -790,25 +915,25 @@ riscv32_lin_amd64_compiler_tests:
 
 esp32_macos_amd64_compiler_tests:
   extends: .template_macos_amd64_compiler_tests
-  needs: [ esp32_macos, prep_tests ]
+  needs: [ macos_codesign_esp32_macos, prep_tests ]
   variables:
     CONF_TARGET: "xtensa-esp32-elf"
 
 esp32s2_macos_amd64_compiler_tests:
   extends: .template_macos_amd64_compiler_tests
-  needs: [ esp32s2_macos, prep_tests ]
+  needs: [ macos_codesign_esp32s2_macos, prep_tests ]
   variables:
     CONF_TARGET: "xtensa-esp32s2-elf"
 
 esp32s3_macos_amd64_compiler_tests:
   extends: .template_macos_amd64_compiler_tests
-  needs: [ esp32s3_macos, prep_tests ]
+  needs: [ macos_codesign_esp32s3_macos, prep_tests ]
   variables:
     CONF_TARGET: "xtensa-esp32s3-elf"
 
 riscv32_macos_amd64_compiler_tests:
   extends: .template_macos_amd64_compiler_tests
-  needs: [ riscv32_esp_macos, prep_tests ]
+  needs: [ macos_codesign_riscv32_esp_macos, prep_tests ]
   variables:
     CONF_TARGET: "riscv32-esp-elf"
 
@@ -822,25 +947,25 @@ riscv32_macos_amd64_compiler_tests:
 
 esp32_macos_aarch64_compiler_tests:
   extends: .template_macos_aarch64_compiler_tests
-  needs: [ esp32_macos_arm64, prep_tests ]
+  needs: [ macos_codesign_esp32_macos_arm64, prep_tests ]
   variables:
     CONF_TARGET: "xtensa-esp32-elf"
 
 esp32s2_macos_aarch64_compiler_tests:
   extends: .template_macos_aarch64_compiler_tests
-  needs: [ esp32s2_macos_arm64, prep_tests ]
+  needs: [ macos_codesign_esp32s2_macos_arm64, prep_tests ]
   variables:
     CONF_TARGET: "xtensa-esp32s2-elf"
 
 esp32s3_macos_aarch64_compiler_tests:
   extends: .template_macos_aarch64_compiler_tests
-  needs: [ esp32s3_macos_arm64, prep_tests ]
+  needs: [ macos_codesign_esp32s3_macos_arm64, prep_tests ]
   variables:
     CONF_TARGET: "xtensa-esp32s3-elf"
 
 riscv32_macos_aarch64_compiler_tests:
   extends: .template_macos_aarch64_compiler_tests
-  needs: [ riscv32_esp_macos_arm64, prep_tests ]
+  needs: [ macos_codesign_riscv32_esp_macos_arm64, prep_tests ]
   variables:
     CONF_TARGET: "riscv32-esp-elf"
 
