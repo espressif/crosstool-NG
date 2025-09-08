@@ -52,6 +52,7 @@ RUN OSXCROSS_SRCS=/opt/osxcross \
   && export GCC_VERSION=8.3.0 \
   && ./build.sh \
   && sed -i "s|https://git.llvm.org/git/compiler-rt.git|https://github.com/llvm-mirror/compiler-rt.git|g" build_compiler_rt.sh \
+  && sed -i "s|https://ftp.gnu.org|https://ftpmirror.gnu.org|g" build_binutils.sh \
   && ./build_compiler_rt.sh \
   && ./build_gcc.sh \
   && ./build_binutils.sh \
