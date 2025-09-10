@@ -217,3 +217,13 @@ config ELF2FLT_EXTRA_CONFIG_ARRAY
           --with-foo="1st arg with 4 spaces" --with-bar=2nd-arg-without-space
 
 endif # ARCH_BINFMT_FLAT
+
+config BINUTILS_XESPV2P1
+    bool
+    prompt "enable xespv2p1"
+    help
+      Build additional binutils tools with --enable-xespv2p1
+      And add bin-wrappers for such tools.
+
+config BINUTILS_ESP32P4_BIN_WRAPPERS_LOCATION
+    string "Full path to xtensa binary wrapper sources"
