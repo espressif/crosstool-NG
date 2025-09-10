@@ -53,6 +53,111 @@ do_binutils_for_build() {
     CT_EndStep
 }
 
+do_binutils_move_wrapped_tools() {
+    local action=$1
+    local arg=$2
+    wrapped_tools=(
+        "${CT_PREFIX_DIR}/bin/${CT_TARGET}-as"
+        "${CT_PREFIX_DIR}/bin/${CT_TARGET}-objdump"
+        "${CT_PREFIX_DIR}/bin/${CT_TARGET}-ld"
+        "${CT_PREFIX_DIR}/${CT_TARGET}/bin/as"
+        "${CT_PREFIX_DIR}/${CT_TARGET}/bin/objdump"
+        "${CT_PREFIX_DIR}/${CT_TARGET}/bin/ld"
+    )
+    ext=""
+    if [[ "${CT_HOST}" == *mingw32 ]]; then
+        ext=".exe"
+    fi
+
+    for tool in "${wrapped_tools[@]}"; do
+        case "$action" in
+            rename)
+                CT_DoExecLog ALL mv $tool$ext $tool-$arg$ext
+                ;;
+            mv_wrapper)
+                CT_DoExecLog ALL cp $arg$ext $tool$ext
+                ;;
+            *)
+                CT_DoLog ERROR ">> do_binutils_move_wrapped_tools: unknown action ($action)"
+                ;;
+        esac
+    done
+}
+
+map_triplet_to_rust() {
+    local gcc_triplet="$1"
+
+    case "$gcc_triplet" in
+        x86_64*-linux-gnu)
+            echo "x86_64-unknown-linux-gnu"
+            ;;
+        i586*-linux-gnu)
+            echo "i586-unknown-linux-gnu"
+            ;;
+        i686*-linux-gnu)
+            echo "i686-unknown-linux-gnu"
+            ;;
+        arm*-linux-gnueabi)
+            echo "arm-unknown-linux-gnueabi"
+            ;;
+        arm*-linux-gnueabihf)
+            echo "arm-unknown-linux-gnueabihf"
+            ;;
+        aarch64*-linux-gnu)
+            echo "aarch64-unknown-linux-gnu"
+            ;;
+        aarch64*apple-darwin*)
+            echo "aarch64-apple-darwin"
+            ;;
+        x86_64*apple-darwin*)
+            echo "x86_64-apple-darwin"
+            ;;
+        i686*-mingw32)
+            echo "i686-pc-windows-gnu"
+            ;;
+        x86_64*-mingw32)
+            echo "x86_64-pc-windows-gnu"
+            ;;
+        *)
+            echo "Unsupported"
+            CT_DoLog ERROR ">> map_triplet_to_rust: unknown mapping for: $gcc_triplet"
+            ;;
+    esac
+}
+
+do_binutils_install_bin_wrappers () {
+    CT_DoLog EXTRA "Installing rust for binutils wrappers"
+    export RUSTUP_HOME=${CT_BUILD_DIR}/rust/rustup
+    export CARGO_HOME=${CT_BUILD_DIR}/rust/cargo
+    export CARGO_NET_GIT_FETCH_WITH_CLI=true
+    export CARGO_TARGET_DIR=${CT_BUILD_DIR}/esp_bin_wrapper
+    RUST_VERSION=1.86.0
+
+    CT_mkdir_pushd "${CT_BUILD_DIR}/rust"
+    CT_DoExecLog ALL curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o rustup.sh
+    CT_DoExecLog ALL chmod +x rustup.sh
+    setarch ${CT_BUILD%%-*} ./rustup.sh -y \
+        --no-modify-path \
+        --default-toolchain "$RUST_VERSION" 2>&1
+    CT_DoExecLog ALL ${CT_BUILD_DIR}/rust/cargo/bin/rustup target add $(map_triplet_to_rust ${CT_HOST})
+    CT_DoExecLog ALL rm rustup.sh
+    CT_Popd
+
+    CT_DoLog EXTRA "Building binutils wrappers"
+
+    rust_target=$(map_triplet_to_rust ${CT_HOST})
+
+    CT_Pushd "${CT_BINUTILS_ESP32P4_BIN_WRAPPERS_LOCATION}"
+    CT_DoExecLog ALL CT_DoExecLog ALL ${CT_BUILD_DIR}/rust/cargo/bin/cargo build --release --target=${rust_target} --config target.${rust_target}.linker=\"${CT_HOST}-gcc\"
+    CT_Popd
+
+    rust_target=$(map_triplet_to_rust ${CT_HOST})
+
+    CT_DoLog EXTRA "Installing binutils wrappers"
+    bin_wrapper=${CARGO_TARGET_DIR}/${rust_target}/release/riscv-binutil-wrapper
+    do_binutils_move_wrapped_tools mv_wrapper $bin_wrapper
+}
+
 # Build binutils for host -> target
 do_binutils_for_host() {
     local -a binutils_opts
@@ -67,7 +172,20 @@ do_binutils_for_host() {
     binutils_opts+=( "ldflags=${CT_LDFLAGS_FOR_HOST}" )
     binutils_opts+=( "build_manuals=${CT_BUILD_MANUALS}" )
 
+    if [ "${CT_BINUTILS_XESPV2P1}" = "y" ]; then
+        CT_DoLog EXTRA "Installing binutils for host (xespv2p1)"
+        CT_mkdir_pushd "${CT_BUILD_DIR}/build-binutils-host-${CT_HOST}-xespv2p1"
+        do_binutils_backend "${binutils_opts[@]}" "enable_xespv2p1=y"
+        do_binutils_move_wrapped_tools rename xespv2p1
+        CT_Popd
+        CT_DoLog EXTRA "Installing binutils for host (xespv2p2)"
+    fi
+
     do_binutils_backend "${binutils_opts[@]}"
+    if [ "${CT_BINUTILS_XESPV2P1}" = "y" ]; then
+        do_binutils_move_wrapped_tools rename xespv2p2
+        do_binutils_install_bin_wrappers
+    fi
 
     CT_Popd
 
@@ -119,6 +237,7 @@ do_binutils_backend() {
     local cflags
     local ldflags
     local build_manuals=no
+    local enable_xespv2p1=no
     local -a extra_config
     local -a extra_make_flags
     local -a manuals_for
@@ -185,6 +304,10 @@ do_binutils_backend() {
     # Disable usage of glob for higher compatibility.
     # Not strictly needed for anything but GDB anyways.
     export ac_cv_func_glob=no
+
+    if [ "${enable_xespv2p1}" = "y" ]; then
+        extra_config+=("--enable-xespv2p1")
+    fi
 
     CT_DoLog DEBUG "Extra config passed: '${extra_config[*]}'"
 
