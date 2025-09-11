@@ -258,7 +258,7 @@ riscv32_esp_lin_i586:
   image: $CI_REGISTRY_IMAGE/build-macos:latest
   variables:
     PLATFORM_NAME: "x86_64-apple-darwin"
-    CONF_HOST: "x86_64-apple-darwin21.1"
+    CONF_HOST: "x86_64-apple-darwin24.5"
     MACOSX_DEPLOYMENT_TARGET: "10.12"
     PLATFORMIO_SYSTEM: "\"darwin_x86_64\""
   script:
@@ -267,8 +267,8 @@ riscv32_esp_lin_i586:
     - *configure_docker
     - *configure_crossbuild
     - *build_toolchain
-    - *fix_macos_library_paths
     - *gen_platformio_package_json
+    - *fix_macos_library_paths
     - *package_toolchain
 
 xtensa_esp_macos:
@@ -282,27 +282,12 @@ riscv32_esp_macos:
     CONF_TARGET: "riscv32-esp-elf"
 
 .template_macos_arm64_cross:
-  extends: .build_template
-  image: $CI_REGISTRY_IMAGE/build-macos:latest
+  extends: .template_macos_cross
   variables:
     PLATFORM_NAME: "aarch64-apple-darwin"
-    CONF_HOST: "aarch64-apple-darwin21.1"
+    CONF_HOST: "aarch64-apple-darwin24.5"
     MACOSX_DEPLOYMENT_TARGET: "10.13"
     PLATFORMIO_SYSTEM: "\"darwin_arm64\""
-  script:
-    - |
-      if [ -f /.dockerenv ]; then
-        rm /usr/bin/gcc && ln -s clang /usr/bin/gcc;
-        rm /usr/bin/g++ && ln -s clang++ /usr/bin/g++;
-      fi
-    - *build_ctng
-    - *configure_common
-    - *configure_docker
-    - *configure_crossbuild
-    - *build_toolchain
-    - *gen_platformio_package_json
-    - *fix_macos_library_paths
-    - *package_toolchain
 
 xtensa_esp_macos_arm64:
   extends: .template_macos_arm64_cross

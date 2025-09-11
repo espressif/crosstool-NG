@@ -16,8 +16,11 @@ ARG BINUTILS_VERSION=2.28
 # Upgrade GCC for native builds, as they currently use Debian "jessie"
 # Cross-compilation images use Debian "stretch", which already supports C++14
 
-RUN wget -q https://ftp.gnu.org/gnu/binutils/binutils-$BINUTILS_VERSION.tar.gz \
- && wget -q https://ftp.gnu.org/gnu/gcc/gcc-$GCC_VERSION/gcc-$GCC_VERSION.tar.gz \
+RUN apt-get -o Acquire::Check-Valid-Until=false update \
+ && apt-get build-dep --allow-unauthenticated -y -q binutils \
+ && rm -rf /var/lib/apt/lists/* \
+ && wget -q https://ftpmirror.gnu.org/gnu/binutils/binutils-$BINUTILS_VERSION.tar.gz \
+ && wget -q https://ftpmirror.gnu.org/gnu/gcc/gcc-$GCC_VERSION/gcc-$GCC_VERSION.tar.gz \
  && tar -xzf binutils-$BINUTILS_VERSION.tar.gz \
  && pushd binutils-$BINUTILS_VERSION \
  && mkdir build \
