@@ -18,9 +18,6 @@ elif grep -q stretch /etc/apt/sources.list; then \
     echo "deb-src http://archive.debian.org/debian/ stretch-proposed-updates main contrib non-free" >> /etc/apt/sources.list && \
     echo "deb http://archive.debian.org/debian-security stretch/updates main contrib non-free" >> /etc/apt/sources.list && \
     echo "deb-src http://archive.debian.org/debian-security stretch/updates main contrib non-free" >> /etc/apt/sources.list; \
-else \
-    echo "Error: /etc/apt/sources.list does not contain 'jessie' or 'stretch' or does not exist." && \
-    exit 1; \
 fi
 
 RUN apt-get -o Acquire::Check-Valid-Until=false update && \
@@ -29,8 +26,6 @@ RUN apt-get -o Acquire::Check-Valid-Until=false update && \
         ca-certificates \
         curl \
         wget \
-  && apt-get -o Acquire::Check-Valid-Until=false update \
-  && apt-get build-dep --allow-unauthenticated -y -q binutils \
   && rm -rf /var/lib/apt/lists/*
 
 # Remove expired DST Root CA X3 certificate
@@ -79,7 +74,6 @@ RUN apt-get -o Acquire::Check-Valid-Until=false update && \
     xz-utils \
     zip \
     zlib1g-dev \
-  && apt-get build-dep --allow-unauthenticated -y -q binutils \
   && rm -rf /var/lib/apt/lists/*
 
 ARG OPENSSL_VERSION=OpenSSL_1_1_1w
