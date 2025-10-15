@@ -155,7 +155,7 @@ do_cc_libstdcxx_picolibc()
 
     final_opts+=( "host=${CT_HOST}" )
     final_opts+=( "libstdcxx_name=picolibc" )
-    final_opts+=( "prefix=${CT_PREFIX_DIR}" )
+    final_opts+=( "prefix=${CT_PREFIX_DIR}/picolibc" )
     final_opts+=( "complibs=${CT_HOST_COMPLIBS_DIR}" )
     final_opts+=( "cflags=${CT_CFLAGS_FOR_HOST}" )
     final_opts+=( "ldflags=${CT_LDFLAGS_FOR_HOST}" )
@@ -186,10 +186,17 @@ do_cc_libstdcxx_picolibc()
         final_backend=do_gcc_backend
     fi
 
+    # add picolibc.specs to ldflags to have correct c++config.h
+    CT_TARGET_LDFLAGS_OLD="${CT_TARGET_LDFLAGS}"
+    CT_TARGET_LDFLAGS="${CT_TARGET_LDFLAGS} -specs=picolibc.specs"
+
     CT_DoStep INFO "Installing libstdc++ picolibc"
     CT_mkdir_pushd "${CT_BUILD_DIR}/build-cc-libstdcxx-picolibc"
     "${final_backend}" "${final_opts[@]}"
     CT_Popd
+
+    # restore ldflags
+    CT_TARGET_LDFLAGS="${CT_TARGET_LDFLAGS_OLD}"
 
     CT_EndStep
 }
