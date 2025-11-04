@@ -53,6 +53,7 @@ RUN OSXCROSS_SRCS=/opt/osxcross \
   && sed -i "s|https://git.llvm.org/git/compiler-rt.git|https://github.com/llvm-mirror/compiler-rt.git|g" build_compiler_rt.sh \
   && ./build_compiler_rt.sh \
   && ./build_gcc.sh \
+  && sed -i "s|https://ftp.gnu.org|https://ftpmirror.gnu.org|g" build_binutils.sh \
   && ./build_binutils.sh \
   ####################### fix issue when trying to download already downloaded ###################### \
   && rm ${OSXCROSS_SRCS}/tarballs/binutils-2.32.tar.gz && rm ${OSXCROSS_SRCS}/tarballs/gdb-8.3.tar.gz \
