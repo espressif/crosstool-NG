@@ -104,11 +104,13 @@ EOF
     local picolibc_lib_dir
     if [ "${CT_LIBC_PICOLIBC}" = 'y' ]; then
         picolibc_sysroot_dir="${CT_SYSROOT_DIR}"
+        picolibc_libgccdir_dir=""
         picolibc_lib_dir="${CT_SYSROOT_DIR}/lib"
         picolibc_opts+=( '-Dsystem-libc=true' )
     else
         picolibc_sysroot_dir="${CT_PREFIX_DIR}"
         picolibc_lib_dir="picolibc/${CT_TARGET}/lib"
+        picolibc_libgccdir_dir="picolibc/lib/gcc/${CT_TARGET}"
     fi
 
     CT_DoExecLog CFG                                               \
@@ -117,6 +119,7 @@ EOF
         --prefix="${picolibc_sysroot_dir}"                         \
         -Dincludedir="picolibc/include"                            \
         -Dlibdir="${picolibc_lib_dir}"                             \
+        -Dlibgccdir="${picolibc_libgccdir_dir}"                    \
         -Dspecsdir="${CT_SYSROOT_DIR}/lib"                         \
         "${CT_SRC_DIR}/picolibc"                                   \
         "${picolibc_opts[@]}"                                      \
