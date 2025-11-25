@@ -256,6 +256,7 @@ do_gcc_core_backend() {
     local exec_prefix
     local header_dir
     local libstdcxx_name
+    local libstdcxx_name_suffix=""
     local -a host_libstdcxx_flags
     local -a extra_config
     local -a core_LDFLAGS
@@ -271,6 +272,7 @@ do_gcc_core_backend() {
         eval "${arg// /\\ }"
     done
 
+    CT_CC_GCC_LIBSTDCXX_NORTTI="y" # TODO remove
     # This function gets called in case of a bare metal compiler for the final gcc, too.
     case "${build_step}" in
         core)
@@ -768,6 +770,38 @@ do_gcc_core_backend() {
         CT_DoExecLog ALL make -C gcc ${CT_JOBSFLAGS} cross-gnattools
     fi
 
+    if [[ "${CT_CC_GCC_LIBSTDCXX_NORTTI}" = "y" && -n "${libstdcxx_name_suffix}" ]]; then
+        CT_DoLog EXTRA "Checking ${log_txt} c++config.h are valid"
+        current_pwd="${PWD}"
+        CT_Popd
+        original_libstdcxx_root_dir="${PWD}"
+        CT_pushd "${saved_pwd}"
+
+        # print the original c++config.h file
+        CT_DoLog EXTRA "original_libstdcxx_root_dir: ${original_libstdcxx_root_dir}"
+        CT_DoLog EXTRA "current_pwd: ${current_pwd}"
+        CT_DoLog EXTRA "{CT_PREFIX_DIR}/{libstdcxx_name}: ${CT_PREFIX_DIR}/${libstdcxx_name}"
+
+        # find the c++config.h files in ${current_pwd}
+        local cxxconfig_h_files=$(find -name "c++config.h")
+        if [ -z "${cxxconfig_h_files}" ]; then
+            CT_DoLog ERROR "c++config.h files not found in ${CT_PREFIX_DIR}/${libstdcxx_name}"
+            CT_Abort "c++config.h files not found in ${CT_PREFIX_DIR}/${libstdcxx_name}"
+        fi
+        CT_DoLog EXTRA "cxxconfig_h_files: ${cxxconfig_h_files}"
+        for cxxconfig_h_file in ${cxxconfig_h_files}; do
+            CT_DoLog EXTRA "Checking ${cxxconfig_h_file} is valid"
+            # compare with the original c++config.h file
+            diff "${original_libstdcxx_root_dir}/${cxxconfig_h_file}" "${current_pwd}/${cxxconfig_h_file}"
+            if [ $? -ne 0 ]; then
+                CT_DoLog ERROR "${cxxconfig_h_file} is not valid"
+                CT_Abort "${cxxconfig_h_file} is not valid"
+            fi
+            CT_DoLog EXTRA "${cxxconfig_h_file} is valid"
+        done
+        CT_DoLog EXTRA "Installing ${log_txt} with suffix \"${libstdcxx_name_suffix}\""
+        return 0
+    fi
     # Do not pass ${CT_JOBSFLAGS} here: recent GCC builds have been failing
     # in parallel 'make install' at random locations: libitm, libcilk,
     # always for the files that are installed more than once to the same
@@ -816,6 +850,34 @@ do_gcc_core_backend() {
         [ -z "${file}" ] && ext="" || ext=".${file##*.}"
         CT_DoExecLog ALL ln -sfv "../../${plugins_dir}/liblto_plugin${ext}" \
                 "${CT_PREFIX_DIR}/lib/bfd-plugins/liblto_plugin${ext}"
+    fi
+
+    # Build libstdc++ with -fno-rtti if requested
+    if [[ "${CT_CC_GCC_LIBSTDCXX_NORTTI}" = "y" \
+          && "${cxxflags_for_target}" != *"-fno-rtti"* \
+          && "${core_targets[@]}" =~ "target-libstdc++-v3" ]]; then
+        local saved_pwd
+        local -a nortti_opts
+        local nortti_libstdcxx_name
+
+        saved_pwd="${PWD}"
+        CT_DoStep INFO "Building libstdc++ with -fno-rtti"
+        CT_mkdir_pushd "${saved_pwd}-nortti"
+
+        # Start with original arguments and override specific ones
+        nortti_opts=( "$@" )
+        nortti_opts+=( "build_libgcc=no" )
+        nortti_opts+=( "build_libgfortran=no" )
+        nortti_opts+=( "build_libstdcxx=yes" )
+        nortti_opts+=( "build_step=libstdcxx" )
+        nortti_opts+=( "libstdcxx_name=${libstdcxx_name}_nortti" )
+        nortti_opts+=( "extra_cxxflags_for_target=-fno-rtti" )
+        nortti_opts+=( "libstdcxx_name_suffix=_nortti")
+
+        do_gcc_core_backend "${nortti_opts[@]}"
+
+        CT_EndStep
+        CT_Popd
     fi
 }
 
@@ -1103,7 +1165,7 @@ do_gcc_backend() {
         m)  ;;
         "") extra_config+=("--disable-libstdcxx-verbose");;
     esac
-    
+
     if [ "${CT_CC_GCC_LIBSTDCXX}" = "n" ]; then
         extra_config+=(--disable-libstdcxx)
     elif [ "${CT_CC_GCC_LIBSTDCXX}" = "y" ]; then
