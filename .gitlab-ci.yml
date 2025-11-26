@@ -835,6 +835,7 @@ riscv32_macos_aarch64_compiler_tests:
 
 .template_cxxconfig_check:
   stage: cxxconfig-check
+  tags: [ "build", "amd64" ]
   variables:
     GIT_STRATEGY: none
   script:
