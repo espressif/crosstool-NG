@@ -770,38 +770,6 @@ do_gcc_core_backend() {
         CT_DoExecLog ALL make -C gcc ${CT_JOBSFLAGS} cross-gnattools
     fi
 
-    if [[ "${CT_CC_GCC_LIBSTDCXX_NORTTI}" = "y" && -n "${libstdcxx_name_suffix}" ]]; then
-        CT_DoLog EXTRA "Checking ${log_txt} c++config.h are valid"
-        current_pwd="${PWD}"
-        CT_Popd
-        original_libstdcxx_root_dir="${PWD}"
-        CT_pushd "${saved_pwd}"
-
-        # print the original c++config.h file
-        CT_DoLog EXTRA "original_libstdcxx_root_dir: ${original_libstdcxx_root_dir}"
-        CT_DoLog EXTRA "current_pwd: ${current_pwd}"
-        CT_DoLog EXTRA "{CT_PREFIX_DIR}/{libstdcxx_name}: ${CT_PREFIX_DIR}/${libstdcxx_name}"
-
-        # find the c++config.h files in ${current_pwd}
-        local cxxconfig_h_files=$(find -name "c++config.h")
-        if [ -z "${cxxconfig_h_files}" ]; then
-            CT_DoLog ERROR "c++config.h files not found in ${CT_PREFIX_DIR}/${libstdcxx_name}"
-            CT_Abort "c++config.h files not found in ${CT_PREFIX_DIR}/${libstdcxx_name}"
-        fi
-        CT_DoLog EXTRA "cxxconfig_h_files: ${cxxconfig_h_files}"
-        for cxxconfig_h_file in ${cxxconfig_h_files}; do
-            CT_DoLog EXTRA "Checking ${cxxconfig_h_file} is valid"
-            # compare with the original c++config.h file
-            diff "${original_libstdcxx_root_dir}/${cxxconfig_h_file}" "${current_pwd}/${cxxconfig_h_file}"
-            if [ $? -ne 0 ]; then
-                CT_DoLog ERROR "${cxxconfig_h_file} is not valid"
-                CT_Abort "${cxxconfig_h_file} is not valid"
-            fi
-            CT_DoLog EXTRA "${cxxconfig_h_file} is valid"
-        done
-        CT_DoLog EXTRA "Installing ${log_txt} with suffix \"${libstdcxx_name_suffix}\""
-        return 0
-    fi
     # Do not pass ${CT_JOBSFLAGS} here: recent GCC builds have been failing
     # in parallel 'make install' at random locations: libitm, libcilk,
     # always for the files that are installed more than once to the same
@@ -812,6 +780,49 @@ do_gcc_core_backend() {
     # install gets in the way.
     CT_DoLog EXTRA "Installing ${log_txt}"
     CT_DoExecLog ALL make ${core_targets_install}
+
+    if [[ "${CT_CC_GCC_LIBSTDCXX_NORTTI}" = "y" && -n "${libstdcxx_name_suffix}" ]]; then
+        CT_DoLog EXTRA "Installing ${log_txt} with suffix \"${libstdcxx_name_suffix}\""
+
+        # We're in the nortti build directory (prefix), need to copy files to original libstdcxx location
+        local dest_libstdcxx_dir="${CT_PREFIX_DIR}/${libstdcxx_name}"
+
+        # Find and copy c++config.h files - they should be identical
+        CT_Pushd "${dest_libstdcxx_dir}"
+        local cxxconfig_h_files=$(find . -name "c++config.h")
+        if [ -z "${cxxconfig_h_files}" ]; then
+            CT_DoLog ERROR "c++config.h files not found in ${dest_libstdcxx_dir}"
+            CT_Abort "c++config.h files not found in ${dest_libstdcxx_dir}"
+        fi
+        CT_DoLog EXTRA "Found c++config.h files: ${cxxconfig_h_files}"
+        for cxxconfig_h_file in ${cxxconfig_h_files}; do
+            CT_DoLog EXTRA "Checking ${cxxconfig_h_file} is valid"
+            # Compare with the original c++config.h file
+            if ! diff "${dest_libstdcxx_dir}/${cxxconfig_h_file}" "${prefix}/${cxxconfig_h_file}" >/dev/null 2>&1; then
+                CT_DoLog ERROR "${cxxconfig_h_file} differs between original and nortti build"
+                CT_Abort "${cxxconfig_h_file} is not valid"
+            fi
+            CT_DoLog EXTRA "${cxxconfig_h_file} is valid"
+        done
+
+        # Find and copy lib*c++.a files with suffix
+        local cxx_libraries=$(find . -name "lib*c++.a")
+        if [ -z "${cxx_libraries}" ]; then
+            CT_DoLog ERROR "lib*c++.a files not found in ${prefix}"
+            CT_Abort "lib*c++.a files not found in ${prefix}"
+        fi
+        CT_DoLog EXTRA "Found libc++ libraries: ${cxx_libraries}"
+        for cxx_lib in ${cxx_libraries}; do
+            cxx_lib_dir=$(dirname "${cxx_lib}")
+            cxx_lib_file=$(basename "${cxx_lib}")
+            dest_dir="${dest_libstdcxx_dir}/${cxx_lib_dir}"
+            dest_file="${dest_dir}/"${cxx_lib_file%.a}${libstdcxx_name_suffix}.a""
+            CT_DoLog EXTRA "Copying ${cxx_lib} to ${dest_file}"
+            CT_DoExecLog ALL cp "${cxx_lib}" "${dest_file}"
+        done
+        CT_Popd
+        return 0
+    fi
 
     # Remove the libtool "pseudo-libraries": having them in the installed
     # tree makes the libtoolized utilities that are built next assume
@@ -855,7 +866,7 @@ do_gcc_core_backend() {
     # Build libstdc++ with -fno-rtti if requested
     if [[ "${CT_CC_GCC_LIBSTDCXX_NORTTI}" = "y" \
           && "${cxxflags_for_target}" != *"-fno-rtti"* \
-          && "${core_targets[@]}" =~ "target-libstdc++-v3" ]]; then
+          && "${core_targets[@]}" =~ "libstdc++-v3" ]]; then
         local saved_pwd
         local -a nortti_opts
         local nortti_libstdcxx_name
@@ -870,7 +881,8 @@ do_gcc_core_backend() {
         nortti_opts+=( "build_libgfortran=no" )
         nortti_opts+=( "build_libstdcxx=yes" )
         nortti_opts+=( "build_step=libstdcxx" )
-        nortti_opts+=( "libstdcxx_name=${libstdcxx_name}_nortti" )
+        nortti_opts+=( "prefix=${prefix}-nortti" )
+        nortti_opts+=( "exec_prefix=${prefix}-nortti" )
         nortti_opts+=( "extra_cxxflags_for_target=-fno-rtti" )
         nortti_opts+=( "libstdcxx_name_suffix=_nortti")
 
