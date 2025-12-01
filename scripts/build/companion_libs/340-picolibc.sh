@@ -186,9 +186,17 @@ do_cc_libstdcxx_picolibc()
         final_backend=do_gcc_backend
     fi
 
-    # add picolibc.specs to ldflags to have correct c++config.h
+    # add picolibc.specs to have correct c++config.h
+    # for canadian add only to c/cxxflags because build will
+    # use cc=$TARGET_CC, otherwise it using build-cc-libstdcxx-picolibc/./gcc/xgcc
+    # and only ldflags is demanded for correct configuration.
     CT_TARGET_LDFLAGS_OLD="${CT_TARGET_LDFLAGS}"
-    CT_TARGET_LDFLAGS="${CT_TARGET_LDFLAGS} -specs=picolibc.specs"
+    if [ "${CT_CANADIAN}" = "y" ]; then
+        final_opts+=( "cflags_for_target=-specs=picolibc.specs" )
+        final_opts+=( "cxxflags_for_target=-specs=picolibc.specs" )
+    else
+        CT_TARGET_LDFLAGS="${CT_TARGET_LDFLAGS} -specs=picolibc.specs"
+    fi
 
     CT_DoStep INFO "Installing libstdc++ picolibc"
     CT_mkdir_pushd "${CT_BUILD_DIR}/build-cc-libstdcxx-picolibc"
