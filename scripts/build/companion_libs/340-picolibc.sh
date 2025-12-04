@@ -191,20 +191,19 @@ do_cc_libstdcxx_picolibc()
     # use cc=$TARGET_CC, otherwise it using build-cc-libstdcxx-picolibc/./gcc/xgcc
     # and only ldflags is demanded for correct configuration.
     CT_TARGET_LDFLAGS_OLD="${CT_TARGET_LDFLAGS}"
-    if [ "${CT_CANADIAN}" = "y" ]; then
-        final_opts+=( "cflags_for_target=-specs=picolibc.specs" )
-        final_opts+=( "cxxflags_for_target=-specs=picolibc.specs" )
-    else
-        CT_TARGET_LDFLAGS="${CT_TARGET_LDFLAGS} -specs=picolibc.specs"
-    fi
+    CT_TARGET_LDFLAGS="${CT_TARGET_LDFLAGS} -specs=picolibc.specs"
+
+    CT_TARGET_CFLAGS_OLD="${CT_TARGET_CFLAGS}"
+    CT_TARGET_CFLAGS="${CT_TARGET_CFLAGS} -ftls-model=local-exec"
 
     CT_DoStep INFO "Installing libstdc++ picolibc"
     CT_mkdir_pushd "${CT_BUILD_DIR}/build-cc-libstdcxx-picolibc"
     "${final_backend}" "${final_opts[@]}"
     CT_Popd
 
-    # restore ldflags
+    # restore flags
     CT_TARGET_LDFLAGS="${CT_TARGET_LDFLAGS_OLD}"
+    CT_TARGET_CFLAGS="${CT_TARGET_CFLAGS_OLD}"
 
     CT_EndStep
 }
