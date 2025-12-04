@@ -612,7 +612,12 @@ do_gcc_core_backend() {
     # when building libstdc++ with a libc other than the system libc (e.g.
     # picolibc)
     if [ -n "${header_dir}" ]; then
-        cflags_for_target="${cflags_for_target} -idirafter ${header_dir}"
+        # TODO: check if need only isystem
+        if [ "${CT_CANADIAN}" = "y" ]; then
+            cflags_for_target="${cflags_for_target} -isystem ${header_dir}"
+        else
+            cflags_for_target="${cflags_for_target} -idirafter ${header_dir}"
+        fi
     fi
 
     if [ "${CT_CANADIAN}" = "y" ]; then
