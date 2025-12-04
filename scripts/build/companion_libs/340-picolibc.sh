@@ -192,8 +192,7 @@ do_cc_libstdcxx_picolibc()
     # and only ldflags is demanded for correct configuration.
     CT_TARGET_LDFLAGS_OLD="${CT_TARGET_LDFLAGS}"
     if [ "${CT_CANADIAN}" = "y" ]; then
-        final_opts+=( "cflags_for_target=-specs=picolibc.specs" )
-        final_opts+=( "cxxflags_for_target=-specs=picolibc.specs" )
+        final_opts+=( "extra_cxxflags_for_target=-specs=picolibc.specs" )
     else
         CT_TARGET_LDFLAGS="${CT_TARGET_LDFLAGS} -specs=picolibc.specs"
     fi
