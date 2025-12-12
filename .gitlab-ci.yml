@@ -1,7 +1,16 @@
+workflow:
+  rules:
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH
+
 stages:
   - generate_version
   - build
   - internal_deploy
+  - docker
+
+include:
+  - { file: /include/build_image.yml, project: ci/gitlab-templates, ref: v1 }
 
 image: $CI_REGISTRY_IMAGE/default:latest
 
@@ -342,3 +351,19 @@ upload_to_dl_s3:
       echo ""
     - echo "${SHA256_FILE}:"
     - cat ${SHA256_FILE}
+
+linux_x86_64_docker:
+  extends: .build_image_template
+  stage: docker
+  needs:
+    - generate_version
+    - linux_x86_64_build
+  when: manual
+  allow_failure: true
+  variables:
+    PLATFORM_NAME: "x86_64-linux-gnu"
+    BUILD_IMAGE: 1
+    BUILD_IMAGE_URI: "${CI_REGISTRY_IMAGE}/dist-${CONF_TARGET}:${DIST_VERSION_SHORT}"
+    BUILD_IMAGE_DOCKERFILE: ".gitlab/docker/dist/Dockerfile"
+  before_script:
+    - mv -v "dist/$(cat dist/dist_name_${PLATFORM_NAME}_${CONF_TARGET})" .gitlab/docker/dist/dist.tar.xz
