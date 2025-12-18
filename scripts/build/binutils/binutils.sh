@@ -33,6 +33,7 @@ do_binutils_for_build() {
     binutils_opts+=( "prefix=${CT_BUILDTOOLS_PREFIX_DIR}" )
     binutils_opts+=( "cflags=${CT_CFLAGS_FOR_BUILD}" )
     binutils_opts+=( "ldflags=${CT_LDFLAGS_FOR_BUILD}" )
+    binutils_opts+=( "complibs=${CT_BUILDTOOLS_PREFIX_DIR}" )
 
     do_binutils_backend "${binutils_opts[@]}"
 
@@ -169,6 +170,7 @@ do_binutils_for_host() {
     binutils_opts+=( "cflags=${CT_CFLAGS_FOR_HOST}" )
     binutils_opts+=( "ldflags=${CT_LDFLAGS_FOR_HOST}" )
     binutils_opts+=( "build_manuals=${CT_BUILD_MANUALS}" )
+    binutils_opts+=( "complibs=${CT_HOST_COMPLIBS_DIR}" )
 
     if [ "${CT_BINUTILS_XESPV2P1}" = "y" ]; then
         CT_DoLog EXTRA "Installing binutils for host (xespv2p1)"
@@ -234,6 +236,7 @@ do_binutils_backend() {
     local static_build
     local cflags
     local ldflags
+    local complibs
     local build_manuals=no
     local enable_xespv2p1=no
     local -a extra_config
@@ -293,8 +296,8 @@ do_binutils_backend() {
 
     [ "${CT_TOOLCHAIN_ENABLE_NLS}" != "y" ] && extra_config+=("--disable-nls")
 
-    if [ "${CT_COMP_LIBS_ZSTD}}" = "y" ]; then
-        extra_config+=("--with-zstd=${complibs}")
+    if [ "${CT_COMP_LIBS_ZSTD}" = "y" ]; then
+        extra_config+=("--with-zstd")
     else
         extra_config+=("--without-zstd")
     fi
@@ -315,6 +318,7 @@ do_binutils_backend() {
     CT_DoLog DEBUG "Extra config passed: '${extra_config[*]}'"
 
     CT_DoExecLog CFG                                            \
+    PKG_CONFIG_PATH="${complibs}/lib/pkgconfig"                 \
     CC_FOR_BUILD="${CT_BUILD}-gcc"                              \
     CFLAGS_FOR_BUILD="${CT_CFLAGS_FOR_BUILD}"                   \
     CXXFLAGS_FOR_BUILD="${CT_CFLAGS_FOR_BUILD} ${CT_CXXFLAGS_FOR_BUILD}" \
