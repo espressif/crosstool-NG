@@ -95,9 +95,6 @@ default:
   echo "CT_GLIBC_DEVEL_URL=\"${GIT_SERVER}/idf/glibc.git\"" >> .config
   echo "CT_BINUTILS_DEVEL_URL=\"${GIT_SERVER}/idf/binutils-gdb.git\"" >> .config
   echo "CT_GDB_DEVEL_URL=\"${GIT_SERVER}/idf/binutils-gdb.git\"" >> .config
-  echo "# CT_DEBUG_GDB is not set" >> .config
-
-# TODO: GCC-432, fix GDB build, use GCC 8+ version (C++17) on host
 
 # Configuration specific to Docker
 .configure_docker: &configure_docker |
