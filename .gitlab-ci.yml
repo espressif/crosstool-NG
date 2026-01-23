@@ -30,7 +30,7 @@ stages:
   - generate_version
   - build
   - internal_deploy
-  - pre_test
+  - sources
   - test
   - docker
 
@@ -215,7 +215,6 @@ generate_version:
       - tar-list.txt
       - dist
     when: always
-    expire_in: 6 weeks
   after_script:
     # Use Git index to clean all except only needed files (to become artifacts)
     # Works on both failure and success
@@ -414,32 +413,70 @@ upload_to_dl_s3:
     - echo "${SHA256_FILE}:"
     - cat ${SHA256_FILE}
 
-# We use prep_tests job to collect all test data and scripts in artifacts,
-# to avoid dependencies for git, because we run some tests on original images.
-prep_tests:
-  stage: pre_test
+# Getting sources and tests
+
+.prepare_sources_template:
   tags: [ "build", "amd64" ]
   dependencies: []
-  variables:
-    GIT_STRATEGY: none
-  before_script: []
+  stage: sources
   artifacts:
     paths:
-      - esp-compiler-tests
-    expire_in: 1 week
+      - sources/${SOURCE_NAME}*.tar.xz
+    reports:
+      dotenv: sources.env
   script:
-    - rm -rf "esp-compiler-tests"
+    - mkdir -p sources/ && cd sources/
+    - rm -rf ${SOURCE_NAME}*
     - |
-      if [ -n "${ESP_COMPILER_TESTS_BRANCH}" ]; then
-        # Checkout a branch specified with gitlab environment variable "ESP_COMPILER_TESTS_BRANCH"
-        git clone -q --depth=1 "${GIT_SERVER}/idf/esp-compiler-tests.git" -b ${ESP_COMPILER_TESTS_BRANCH}
+      # Try to checkout the same branch with the same branch/tag name. Otherwise checkout the specified branch
+      if git clone -q --depth=1 "${SOURCE_REPO_URL}" -b "${CI_COMMIT_REF_NAME}"; then
+          echo "Cloned branch: ${CI_COMMIT_REF_NAME}"
       else
-        # Try to checkout the same branch with the same branch/tag name. Otherwise checkout default branch
-        git clone -q --depth=1 "${GIT_SERVER}/idf/esp-compiler-tests.git" -b ${CI_COMMIT_REF_NAME} || \
-        git clone -q --depth=1 "${GIT_SERVER}/idf/esp-compiler-tests.git"
+          if [ -z "${SOURCE_REPO_BRANCH:-}" ] ; then
+            echo "Error: SOURCE_REPO_BRANCH is not set" >&2
+            exit 1
+          fi
+          git clone -q --depth=1 "${SOURCE_REPO_URL}" -b "${SOURCE_REPO_BRANCH}"
+          echo "Cloned branch: ${SOURCE_REPO_BRANCH}"
       fi
-    - cd esp-compiler-tests
+    - GITDIR=${SOURCE_REPO_URL##*/}
+    - GITDIR=${GITDIR%.git}
+    - cd ${GITDIR}
+    - echo "The last log:"
     - git log --oneline
+    - SHA=$(git rev-parse --short HEAD)
+    - rm -rf .git
+    - cd ..
+    - TARBALL="${SOURCE_NAME}-git-${SHA}.tar.xz"
+    - time tar -c -I 'xz -T0' -f ${TARBALL} ${GITDIR}
+    - ls -l ${CI_PROJECT_DIR}/sources/
+
+    - |
+      if [ -z "${SOURCE_NAME_SLUG:-}" ] ; then
+        SOURCE_NAME_SLUG=${SOURCE_NAME^^}; SOURCE_NAME_SLUG=${SOURCE_NAME_SLUG//[^A-Z0-9_]/_}
+      fi
+    - ENV_VAR="SOURCE_${SOURCE_NAME_SLUG}_TARBALL=sources/${TARBALL}"
+    - echo $ENV_VAR >> ${CI_PROJECT_DIR}/sources.env
+    - cat ${CI_PROJECT_DIR}/sources.env
+
+esp_compiler_tests_sources:
+  extends: .prepare_sources_template
+  variables:
+    SOURCE_NAME: "esp-compiler-tests"
+    SOURCE_REPO_URL: "${GIT_SERVER}/idf/esp-compiler-tests.git"
+  before_script: []
+
+gcc_sources:
+  extends: .prepare_sources_template
+  variables:
+    SOURCE_NAME: "gcc"
+    SOURCE_REPO_URL: "${GIT_SERVER}/idf/gcc.git"
+    BRANCH_VAR: "CT_GCC_DEVEL_BRANCH"
+  before_script:
+   - set +u
+   - . "${CI_PROJECT_DIR}/samples/${CONF_TARGET}/crosstool.config"
+   - set -u
+   - SOURCE_REPO_BRANCH=${!BRANCH_VAR}
 
 #
 # Compiler tests: build-only and just-run-tools
@@ -458,10 +495,14 @@ prep_tests:
     - source citools/import_functions
     - cit_rm ${CONF_TARGET}
   script:
+    # From x_build
     - ARCHIVE_NAME=$(cat dist/dist_name_${PLATFORM_NAME}_${CONF_TARGET})
     - ${UNARCHIVE_TOOL} dist/${ARCHIVE_NAME}
     - export PATH="${CI_PROJECT_DIR}/${CONF_TARGET}/bin:${PATH}"
     - export CONF_TARGET="${CONF_TARGET_WRAPPER:-$CONF_TARGET}"
+
+    # From esp_compiler_tests_sources
+    - tar -xf ${SOURCE_ESP_COMPILER_TESTS_TARBALL}
 
     - echo ""
     - echo "*** Build-only tests ****"
@@ -489,14 +530,49 @@ prep_tests:
         ./run.sh
       )
 
-# Linux amd64
-
 linux_x86_64_compiler_tests:
   extends: .template_compiler_tests
   tags: [ "build", "amd64" ]
-  dependencies: [ linux_x86_64_build, prep_tests ]
+  dependencies: [ linux_x86_64_build, esp_compiler_tests_sources ]
   variables:
     PLATFORM_NAME: "x86_64-linux-gnu"
+
+dejagnu_gcc_test:
+  stage: test
+  tags: [ "build", "amd64" ]
+  dependencies: [ linux_x86_64_build, esp_compiler_tests_sources, gcc_sources ]
+  variables:
+    PLATFORM_NAME: "x86_64-linux-gnu"
+    WORKDIR: "workdir"
+    TOOL_NAME: "gcc"
+    TOOL_TRIPLET: ${CONF_TARGET}
+  artifacts:
+    paths:
+      - ${WORKDIR}/${TOOL_NAME}.log.xz
+      - ${WORKDIR}/${TOOL_NAME}.sum.xz
+      - dbg.log.xz
+      - report*.xml
+    reports:
+      junit: report*.xml
+    when: always
+  allow_failure: true
+  script:
+    # From gcc_sources
+    - export TOOL_SOURCE_TARBALL=${SOURCE_GCC_TARBALL}
+    - export TOOL_SOURCE_TESTSUITE_DIR="gcc/gcc/testsuite"
+    - rm -rf ${WORKDIR} && mkdir -p ${WORKDIR}
+
+    # From X_build
+    - ARCHIVE_NAME=$(cat dist/dist_name_${PLATFORM_NAME}_${CONF_TARGET})
+    - export TOOLCHAIN_DIST_TARBALL=dist/${ARCHIVE_NAME}
+
+    # From esp_compiler_tests_sources
+    - tar -xf ${SOURCE_ESP_COMPILER_TESTS_TARBALL}
+    - ./esp-compiler-tests/dejagnu/riscv64-linux/run.sh
+    - ./esp-compiler-tests/dejagnu/sum2junit.sh "${WORKDIR}/${TOOL_NAME}.sum" "report-${TOOL_TRIPLET}-${TOOL_NAME}.xml"
+    - xz ${WORKDIR}/${TOOL_NAME}.log
+    - xz ${WORKDIR}/${TOOL_NAME}.sum
+    - xz dbg.log
 
 # This image contains a prebuilt toolchain intended for testing other projects
 linux_x86_64_docker:
