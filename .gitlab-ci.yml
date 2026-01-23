@@ -1,9 +1,32 @@
+# Pipeline control rules
+# Only use branch and tag pipelines for simplicity, not merge_request_event
 workflow:
   rules:
+    # Tag: rebuild docker as a tagged
     - if: $CI_COMMIT_TAG
+      variables:
+        IMAGE_TAG: "$CI_COMMIT_TAG"
+        BUILD_IMAGE: 1
+    # Main branch: rebuild docker as a 'latest'
+    # (can't use a variable inside 'if' for the branch name)
+    - if: '$CI_COMMIT_BRANCH == "esp-linux-1.28.x-dev"'
+      variables:
+        BUILD_IMAGE: 1
+    # Feature branch, docker image has changed: an SHA-tagged image
+    # (can't use a variable inside 'compare_to' for the branch name)
+    - if: $CI_COMMIT_BRANCH
+      changes:
+        compare_to: 'refs/heads/esp-linux-1.28.x-dev'
+        paths:
+          - .gitlab/docker/**/*
+      variables:
+        IMAGE_TAG: "$CI_COMMIT_SHORT_SHA"
+        BUILD_IMAGE: 1
+    # Feature branch, docker image has not changed: don't rebuild docker, use 'latest'
     - if: $CI_COMMIT_BRANCH
 
 stages:
+  - images
   - generate_version
   - build
   - internal_deploy
@@ -12,9 +35,11 @@ stages:
 include:
   - { file: /include/build_image.yml, project: ci/gitlab-templates, ref: v1 }
 
-image: $CI_REGISTRY_IMAGE/default:latest
-
 variables:
+  BUILD_IMAGE: 0
+  IMAGE_TAG: "latest"
+  IMAGE_REGISTRY: "${CI_REGISTRY_IMAGE}/esp-linux-1.28.x-dev"
+
   # GIT_STRATEGY - use option from "CI / CD Settings" - "General pipelines"
   GIT_SUBMODULE_STRATEGY: normal
 
@@ -39,9 +64,11 @@ variables:
     eval "$(${ESPCI_HOMEBREW_PREFIX}/bin/brew shellenv)"
   fi
 
-before_script:
-  - *use_ci_tools
-  - *check_and_setup_homebrew
+default:
+  image: ${IMAGE_REGISTRY}-default:${IMAGE_TAG}
+  before_script:
+    - *use_ci_tools
+    - *check_and_setup_homebrew
 
 # Configure crosstool-NG
 .build_ctng: &build_ctng |
@@ -100,7 +127,7 @@ before_script:
 
 # Actual build
 .build_toolchain: &build_toolchain |
-  ./ct-ng upgradeconfig
+  ./ct-ng oldconfig
   ./ct-ng build
 
 .add_extra_files: &add_extra_files |
@@ -121,9 +148,42 @@ before_script:
   cd -
   echo "Job disk usage $(du -hs ${CI_PROJECT_DIR})"
 
+default_image:
+  extends: .build_image_template
+  stage: images
+  variables:
+    BUILD_IMAGE_URI: ${IMAGE_REGISTRY}-default:${IMAGE_TAG}
+    BUILD_IMAGE_DOCKERFILE: ".gitlab/docker/default/Dockerfile"
+  before_script: []
+
+build-linux-x86_64_image:
+  extends: .build_image_template
+  stage: images
+  variables:
+    BUILD_IMAGE_URI: ${IMAGE_REGISTRY}-build-linux-x86_64:${IMAGE_TAG}
+    BUILD_IMAGE_DOCKERFILE: ".gitlab/docker/build-linux-x86_64/Dockerfile"
+  before_script: []
+
+build-linux-i586_image:
+  extends: .build_image_template
+  stage: images
+  variables:
+    BUILD_IMAGE_URI: ${IMAGE_REGISTRY}-build-linux-i586:${IMAGE_TAG}
+    BUILD_IMAGE_DOCKERFILE: ".gitlab/docker/build-linux-i586/Dockerfile"
+  before_script: []
+
+build-linux-arm-cross_image:
+  extends: .build_image_template
+  stage: images
+  variables:
+    BUILD_IMAGE_URI: ${IMAGE_REGISTRY}-build-linux-arm-cross:${IMAGE_TAG}
+    BUILD_IMAGE_DOCKERFILE: ".gitlab/docker/build-linux-arm-cross/Dockerfile"
+  before_script: []
+
 generate_version:
   stage: generate_version
   tags: [ "build", "amd64" ]
+  dependencies: []
   variables:
     GIT_SUBMODULE_STRATEGY: none
   artifacts:
@@ -143,6 +203,7 @@ generate_version:
   stage: build
   allow_failure: true
   tags: [ "build", "amd64" ]
+  dependencies: [ generate_version ]
   variables:
     # Do not compress artifacts because we already use compressed archives
     ARTIFACT_COMPRESSION_LEVEL: "fastest"
@@ -179,22 +240,21 @@ generate_version:
 
 linux_x86_64_build:
   extends: .build_template_linux
-  image: $CI_REGISTRY_IMAGE/build-linux-x86_64:latest
+  image: ${IMAGE_REGISTRY}-build-linux-x86_64:${IMAGE_TAG}
   variables:
     PLATFORM_NAME: "x86_64-linux-gnu"
     CONF_HOST: "x86_64-linux-gnu"
 
-# TODO: GCC-433. Disabled due to an issue, compiler crashed during build
-.build_for_lin_i586:
+linux_i586_build:
   extends: .build_template_linux
-  image: $CI_REGISTRY_IMAGE/build-linux-x86:latest
+  image: ${IMAGE_REGISTRY}-build-linux-i586:${IMAGE_TAG}
   variables:
     PLATFORM_NAME: "i586-linux-gnu"
     CONF_HOST: "i586-linux-gnu"
 
 .template_lin_arm_cross:
   extends: .build_template
-  image: $CI_REGISTRY_IMAGE/build-linux-arm:latest
+  image: ${IMAGE_REGISTRY}-build-linux-arm-cross:${IMAGE_TAG}
   script:
     - *build_ctng
     - *configure_common
@@ -273,10 +333,13 @@ linux_armel_build:
 # TODO: GCC-434, add windows build
 
 .needs_all_distros: &needs_all_distros
-  needs:
+  dependencies:
     - generate_version
     - linux_x86_64_build
+    - linux_i586_build
     - linux_aarch64_build
+    - linux_armhf_build
+    - linux_armel_build
 
 .gen_sha256_file: &gen_sha256_file |
   FILES_LIST=$(find . -name dist_name_\* -exec cat {} \+)
@@ -352,12 +415,11 @@ upload_to_dl_s3:
     - echo "${SHA256_FILE}:"
     - cat ${SHA256_FILE}
 
+# This image contains a prebuilt toolchain intended for testing other projects
 linux_x86_64_docker:
   extends: .build_image_template
   stage: docker
-  needs:
-    - generate_version
-    - linux_x86_64_build
+  dependencies: [ generate_version, linux_x86_64_build ]
   when: manual
   allow_failure: true
   variables:
