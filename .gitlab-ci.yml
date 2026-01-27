@@ -30,6 +30,8 @@ stages:
   - generate_version
   - build
   - internal_deploy
+  - pre_test
+  - test
   - docker
 
 include:
@@ -414,6 +416,90 @@ upload_to_dl_s3:
       echo ""
     - echo "${SHA256_FILE}:"
     - cat ${SHA256_FILE}
+
+# We use prep_tests job to collect all test data and scripts in artifacts,
+# to avoid dependencies for git, because we run some tests on original images.
+prep_tests:
+  stage: pre_test
+  tags: [ "build", "amd64" ]
+  dependencies: []
+  variables:
+    GIT_STRATEGY: none
+  before_script: []
+  artifacts:
+    paths:
+      - esp-compiler-tests
+    expire_in: 1 week
+  script:
+    - rm -rf "esp-compiler-tests"
+    - |
+      if [ -n "${ESP_COMPILER_TESTS_BRANCH}" ]; then
+        # Checkout a branch specified with gitlab environment variable "ESP_COMPILER_TESTS_BRANCH"
+        git clone -q --depth=1 "${GIT_SERVER}/idf/esp-compiler-tests.git" -b ${ESP_COMPILER_TESTS_BRANCH}
+      else
+        # Try to checkout the same branch with the same branch/tag name. Otherwise checkout default branch
+        git clone -q --depth=1 "${GIT_SERVER}/idf/esp-compiler-tests.git" -b ${CI_COMMIT_REF_NAME} || \
+        git clone -q --depth=1 "${GIT_SERVER}/idf/esp-compiler-tests.git"
+      fi
+    - cd esp-compiler-tests
+    - git log --oneline
+
+#
+# Compiler tests: build-only and just-run-tools
+#
+
+.template_compiler_tests:
+  stage: test
+  artifacts:
+    when: always
+    paths:
+      - esp-compiler-tests/**/*.log
+      - esp-compiler-tests/**/*.elf
+  variables:
+    GIT_STRATEGY: none
+  after_script:
+    - source citools/import_functions
+    - cit_rm ${CONF_TARGET}
+  script:
+    - ARCHIVE_NAME=$(cat dist/dist_name_${PLATFORM_NAME}_${CONF_TARGET})
+    - ${UNARCHIVE_TOOL} dist/${ARCHIVE_NAME}
+    - export PATH="${CI_PROJECT_DIR}/${CONF_TARGET}/bin:${PATH}"
+    - export CONF_TARGET="${CONF_TARGET_WRAPPER:-$CONF_TARGET}"
+
+    - echo ""
+    - echo "*** Build-only tests ****"
+    - echo ""
+    - |
+      (
+        cd esp-compiler-tests/build-only
+        source profile-${CONF_TARGET}
+        ./run-all.sh
+      )
+    - echo ""
+    - echo "*** Just-run-tools tests ****"
+    - echo ""
+    - |
+      (
+        cd esp-compiler-tests/just-run-tools
+        ./run.sh
+      )
+    - echo ""
+    - echo "*** Binary analysis ****"
+    - echo ""
+    - |
+      (
+        cd esp-compiler-tests/bin-analysis
+        ./run.sh
+      )
+
+# Linux amd64
+
+linux_x86_64_compiler_tests:
+  extends: .template_compiler_tests
+  tags: [ "build", "amd64" ]
+  dependencies: [ linux_x86_64_build, prep_tests ]
+  variables:
+    PLATFORM_NAME: "x86_64-linux-gnu"
 
 # This image contains a prebuilt toolchain intended for testing other projects
 linux_x86_64_docker:
