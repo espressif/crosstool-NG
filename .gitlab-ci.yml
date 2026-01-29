@@ -543,7 +543,7 @@ linux_x86_64_compiler_tests:
 
 dejagnu_gcc_test:
   stage: test
-  tags: [ "build", "amd64" ]
+  tags: [ "build", "amd64", "brew" ]
   dependencies: [ linux_x86_64_build, esp_compiler_tests_sources, gcc_sources ]
   variables:
     PLATFORM_NAME: "x86_64-linux-gnu"
