@@ -38,9 +38,12 @@ include:
   - { file: /include/build_image.yml, project: ci/gitlab-templates, ref: v1 }
 
 variables:
+  # Target branch for changes when preparing release
+  RELEASE_BRANCH: "esp-linux-1.28.x-dev"
+
   BUILD_IMAGE: 0
   IMAGE_TAG: "latest"
-  IMAGE_REGISTRY: "${CI_REGISTRY_IMAGE}/esp-linux-1.28.x-dev"
+  IMAGE_REGISTRY: "${CI_REGISTRY_IMAGE}/${RELEASE_BRANCH}"
 
   # GIT_STRATEGY - use option from "CI / CD Settings" - "General pipelines"
   GIT_SUBMODULE_STRATEGY: normal
@@ -464,6 +467,7 @@ esp_compiler_tests_sources:
   variables:
     SOURCE_NAME: "esp-compiler-tests"
     SOURCE_REPO_URL: "${GIT_SERVER}/idf/esp-compiler-tests.git"
+    SOURCE_REPO_BRANCH: ${RELEASE_BRANCH}
   before_script: []
 
 gcc_sources:
