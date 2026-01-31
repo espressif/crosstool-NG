@@ -559,7 +559,6 @@ dejagnu_gcc_test:
     reports:
       junit: report*.xml
     when: always
-  allow_failure: true
   script:
     # From gcc_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_GCC_TARBALL}
