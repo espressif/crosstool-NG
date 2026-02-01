@@ -34,6 +34,7 @@ stages:
   - sources
   - test
   - deploy
+  - release
   - docker
 
 include:
@@ -60,6 +61,7 @@ variables:
   ARCHIVE_EXT: "tar.xz"
 
   GIT_SERVER: "${CI_SERVER_PROTOCOL}://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}:${CI_SERVER_PORT}"
+  STORAGE_URL: "${STORAGE_BASE_URL}/toolchains/preview/riscv64"
 
   CONF_TARGET: "riscv64-esp-linux-gnu"
 
@@ -374,7 +376,7 @@ linux_armel_build:
     # don't use "GIT_STRATEGY: none", because we need cleaning old artifacts in 'dist/' that came from previous pipelines
     GIT_SUBMODULE_STRATEGY: none
     S3_UPLOAD_DIR: "s3://${DL_BUCKET}/dl/toolchains/preview/riscv64/${DIST_VERSION_SHORT}"
-    S3_PUBLIC_DIR: "https://dl.espressif.com/dl/toolchains/preview/riscv64/${DIST_VERSION_SHORT}"
+    S3_PUBLIC_DIR: "${STORAGE_URL}/${DIST_VERSION_SHORT}"
   before_script: []
   script:
     - cd dist
@@ -563,6 +565,45 @@ dejagnu_gcc_test:
     - xz ${WORKDIR}/${TOOL_NAME}.log
     - xz ${WORKDIR}/${TOOL_NAME}.sum
     - xz dbg.log
+
+create_release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/cli:latest
+  dependencies: [ generate_version, upload_all_to_dl_s3 ]
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: manual
+  allow_failure: true
+  variables:
+    S3_PUBLIC_DIR: "${STORAGE_URL}/${DIST_VERSION_SHORT}"
+    DIST_NAME: "${CONF_TARGET}-${DIST_VERSION_SHORT}"
+  before_script: []
+  script:
+    - echo "Creating release ${DIST_VERSION_FULL}"
+  release:
+    tag_name: $CI_COMMIT_TAG
+    name: "${DIST_VERSION_FULL}"
+    description: "Espressif RISC-V 64-bit Linux GCC toolchain, release ${DIST_VERSION_FULL}"
+    assets:
+      links:
+        - name: "${DIST_NAME}-x86_64-linux-gnu.${ARCHIVE_EXT}"
+          url: "${S3_PUBLIC_DIR}/${DIST_NAME}-x86_64-linux-gnu.${ARCHIVE_EXT}"
+          link_type: other
+        - name: "${DIST_NAME}-i586-linux-gnu.${ARCHIVE_EXT}"
+          url: "${S3_PUBLIC_DIR}/${DIST_NAME}-i586-linux-gnu.${ARCHIVE_EXT}"
+          link_type: other
+        - name: "${DIST_NAME}-aarch64-linux-gnu.${ARCHIVE_EXT}"
+          url: "${S3_PUBLIC_DIR}/${DIST_NAME}-aarch64-linux-gnu.${ARCHIVE_EXT}"
+          link_type: other
+        - name: "${DIST_NAME}-arm-linux-gnueabihf.${ARCHIVE_EXT}"
+          url: "${S3_PUBLIC_DIR}/${DIST_NAME}-arm-linux-gnueabihf.${ARCHIVE_EXT}"
+          link_type: other
+        - name: "${DIST_NAME}-arm-linux-gnueabi.${ARCHIVE_EXT}"
+          url: "${S3_PUBLIC_DIR}/${DIST_NAME}-arm-linux-gnueabi.${ARCHIVE_EXT}"
+          link_type: other
+        - name: "${CI_PROJECT_NAME}-${DIST_VERSION_FULL}-checksum.sha256"
+          url: "${S3_PUBLIC_DIR}/${CI_PROJECT_NAME}-${DIST_VERSION_FULL}-checksum.sha256"
+          link_type: other
 
 # This image contains a prebuilt toolchain intended for testing other projects
 linux_x86_64_docker:
