@@ -31,9 +31,9 @@ stages:
   - images
   - generate_version
   - build
-  - internal_deploy
   - sources
   - test
+  - deploy
   - docker
 
 include:
@@ -74,6 +74,7 @@ variables:
   fi
 
 default:
+  tags: [ "build", "amd64" ]
   image: ${IMAGE_REGISTRY}-default:${IMAGE_TAG}
   before_script:
     - *use_ci_tools
@@ -191,7 +192,6 @@ build-linux-arm-cross_image:
 
 generate_version:
   stage: generate_version
-  tags: [ "build", "amd64" ]
   dependencies: []
   variables:
     GIT_SUBMODULE_STRATEGY: none
@@ -211,7 +211,6 @@ generate_version:
 .build_template:
   stage: build
   allow_failure: true
-  tags: [ "build", "amd64" ]
   dependencies: [ generate_version ]
   variables:
     # Do not compress artifacts because we already use compressed archives
@@ -369,7 +368,7 @@ linux_armel_build:
   FILES_LIST="${SHA256_FILE} ${FILES_LIST}"
 
 .upload_to_internal_template:
-  stage: internal_deploy
+  stage: deploy
   when: manual
   allow_failure: true
   tags: [ "deploy", "shiny" ]
@@ -403,7 +402,7 @@ upload_primary_to_internal:
   <<: *needs_primary_distros
 
 .upload_to_dl_s3_template:
-  stage: internal_deploy
+  stage: deploy
   image:
     name: amazon/aws-cli:latest
     entrypoint: [""]
@@ -451,7 +450,6 @@ upload_primary_to_dl_s3:
 # Getting sources and tests
 
 .prepare_sources_template:
-  tags: [ "build", "amd64" ]
   dependencies: []
   stage: sources
   artifacts:
@@ -568,7 +566,6 @@ gcc_sources:
 
 linux_x86_64_compiler_tests:
   extends: .template_compiler_tests
-  tags: [ "build", "amd64" ]
   dependencies: [ linux_x86_64_build, esp_compiler_tests_sources ]
   variables:
     PLATFORM_NAME: "x86_64-linux-gnu"
