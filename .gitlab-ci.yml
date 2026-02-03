@@ -189,7 +189,9 @@ build-linux-arm-cross_image:
 
 generate_version:
   stage: generate_version
-  dependencies: []
+  needs:
+    - job: default_image
+      optional: true
   variables:
     GIT_SUBMODULE_STRATEGY: none
   artifacts:
@@ -208,7 +210,6 @@ generate_version:
 .build_template:
   stage: build
   allow_failure: true
-  dependencies: [ generate_version ]
   variables:
     # Do not compress artifacts because we already use compressed archives
     ARTIFACT_COMPRESSION_LEVEL: "fastest"
@@ -245,6 +246,10 @@ generate_version:
 linux_x86_64_build:
   extends: .build_template_linux
   image: ${IMAGE_REGISTRY}-build-linux-x86_64:${IMAGE_TAG}
+  needs:
+    - job: build-linux-x86_64_image
+      optional: true
+    - generate_version
   variables:
     PLATFORM_NAME: "x86_64-linux-gnu"
     CONF_HOST: "x86_64-linux-gnu"
@@ -253,6 +258,10 @@ linux_i586_build:
   extends: .build_template_linux
   rules: *rules_secondary_platform
   image: ${IMAGE_REGISTRY}-build-linux-i586:${IMAGE_TAG}
+  needs:
+    - job: build-linux-i586_image
+      optional: true
+    - generate_version
   variables:
     PLATFORM_NAME: "i586-linux-gnu"
     CONF_HOST: "i586-linux-gnu"
@@ -260,6 +269,10 @@ linux_i586_build:
 .template_lin_arm_cross:
   extends: .build_template
   image: ${IMAGE_REGISTRY}-build-linux-arm-cross:${IMAGE_TAG}
+  needs:
+    - job: build-linux-arm-cross_image
+      optional: true
+    - generate_version
   script:
     - *build_ctng
     - *configure_common
@@ -313,6 +326,8 @@ linux_armel_build:
 .template_macos_cross:
   extends: .build_template
   image: $CI_REGISTRY_IMAGE/build-macos:latest
+  needs:
+    - generate_version
   script:
     - *build_ctng
     - *configure_common
@@ -341,12 +356,12 @@ linux_armel_build:
 # TODO: GCC-434, add windows build
 
 .needs_primary_distros: &needs_primary_distros
-  dependencies:
+  needs:
     - generate_version
     - linux_x86_64_build
 
 .needs_all_distros: &needs_all_distros
-  dependencies:
+  needs:
     - generate_version
     - linux_x86_64_build
     - linux_i586_build
@@ -413,7 +428,9 @@ upload_primary_to_dl_s3:
 # Getting sources and tests
 
 .prepare_sources_template:
-  dependencies: []
+  needs:
+    - job: default_image
+      optional: true
   stage: sources
   artifacts:
     paths:
@@ -526,14 +543,14 @@ gcc_sources:
 
 linux_x86_64_compiler_tests:
   extends: .template_compiler_tests
-  dependencies: [ linux_x86_64_build, esp_compiler_tests_sources ]
+  needs: [ linux_x86_64_build, esp_compiler_tests_sources ]
   variables:
     PLATFORM_NAME: "x86_64-linux-gnu"
 
 dejagnu_gcc_test:
   stage: test
   tags: [ "build", "amd64", "brew" ]
-  dependencies: [ linux_x86_64_build, esp_compiler_tests_sources, gcc_sources ]
+  needs: [ linux_x86_64_build, esp_compiler_tests_sources, gcc_sources ]
   variables:
     PLATFORM_NAME: "x86_64-linux-gnu"
     WORKDIR: "workdir"
@@ -569,7 +586,7 @@ dejagnu_gcc_test:
 create_release:
   stage: release
   image: registry.gitlab.com/gitlab-org/cli:latest
-  dependencies: [ generate_version, upload_all_to_dl_s3 ]
+  needs: [ generate_version, upload_all_to_dl_s3 ]
   rules:
     - if: $CI_COMMIT_TAG
       when: manual
@@ -609,7 +626,7 @@ create_release:
 linux_x86_64_docker:
   extends: .build_image_template
   stage: docker
-  dependencies: [ generate_version, linux_x86_64_build ]
+  needs: [ generate_version, linux_x86_64_build ]
   when: manual
   allow_failure: true
   variables:
