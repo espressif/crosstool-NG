@@ -63,10 +63,6 @@ variables:
 
   CONF_TARGET: "riscv64-esp-linux-gnu"
 
-.use_ci_tools: &use_ci_tools |
-  curl -sSL ${CIT_LOADER_URL} -o cit_loader.sh && sh cit_loader.sh
-  source citools/import_functions
-
 # ESPCI_HOMEBREW_PREFIX is set up in runner's config.toml
 .check_and_setup_homebrew: &check_and_setup_homebrew |
   if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -77,7 +73,6 @@ default:
   tags: [ "build", "amd64" ]
   image: ${IMAGE_REGISTRY}-default:${IMAGE_TAG}
   before_script:
-    - *use_ci_tools
     - *check_and_setup_homebrew
 
 .rules_secondary_platform: &rules_secondary_platform
@@ -367,40 +362,6 @@ linux_armel_build:
   done
   FILES_LIST="${SHA256_FILE} ${FILES_LIST}"
 
-.upload_to_internal_template:
-  stage: deploy
-  when: manual
-  allow_failure: true
-  tags: [ "deploy", "shiny" ]
-  variables:
-    # don't use "GIT_STRATEGY: none", because we need cleaning old artifacts in 'dist/' that came from previous pipelines
-    GIT_SUBMODULE_STRATEGY: none
-    HTTP_UPLOAD_DIR: "${HTTP_UPLOAD_DIR}/riscv64/${DIST_VERSION_FULL}"
-    HTTP_PUBLIC_DIR: "${HTTP_PUBLIC_DIR}/riscv64/${DIST_VERSION_FULL}"
-  before_script:
-    - *use_ci_tools
-  script:
-    - cd dist
-    # Create a checksum file
-    - *gen_sha256_file
-    # Upload all needed files
-    - cit_add_ssh_key "${HTTP_UPLOAD_KEY}"
-    - ssh ${HTTP_UPLOAD_DIR%:*} "mkdir -p ${HTTP_UPLOAD_DIR#*:}"
-    - scp ${FILES_LIST} ${HTTP_UPLOAD_DIR}
-    # Show download links
-    - echo -e "\nArchives were published there:\n\n$(for n in ${FILES_LIST}; do echo "${HTTP_PUBLIC_DIR}/${n}"; done)\n"
-    - echo "${SHA256_FILE}:"
-    - cat ${SHA256_FILE}
-
-upload_all_to_internal:
-  extends: .upload_to_internal_template
-  <<: *needs_all_distros
-  rules: *rules_secondary_platform
-
-upload_primary_to_internal:
-  extends: .upload_to_internal_template
-  <<: *needs_primary_distros
-
 .upload_to_dl_s3_template:
   stage: deploy
   image:
@@ -525,9 +486,6 @@ gcc_sources:
       - esp-compiler-tests/**/*.elf
   variables:
     GIT_STRATEGY: none
-  after_script:
-    - source citools/import_functions
-    - cit_rm ${CONF_TARGET}
   script:
     # From x_build
     - ARCHIVE_NAME=$(cat dist/dist_name_${PLATFORM_NAME}_${CONF_TARGET})
