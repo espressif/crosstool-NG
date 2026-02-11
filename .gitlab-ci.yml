@@ -359,7 +359,8 @@ build_for_macos_arm64:
 .needs_primary_distros: &needs_primary_distros
   needs:
     - generate_version
-    - linux_x86_64_build
+    - build_for_macos_x86_64
+    - build_for_macos_arm64
 
 .needs_all_distros: &needs_all_distros
   needs:
@@ -473,7 +474,7 @@ upload_primary_to_dl_s3:
     - echo $ENV_VAR >> ${CI_PROJECT_DIR}/sources.env
     - cat ${CI_PROJECT_DIR}/sources.env
 
-esp_compiler_tests_sources:
+.esp_compiler_tests_sources:
   extends: .prepare_sources_template
   variables:
     SOURCE_NAME: "esp-compiler-tests"
@@ -481,7 +482,7 @@ esp_compiler_tests_sources:
     SOURCE_REPO_BRANCH: ${RELEASE_BRANCH}
   before_script: []
 
-gcc_sources:
+.gcc_sources:
   extends: .prepare_sources_template
   variables:
     SOURCE_NAME: "gcc"
@@ -493,7 +494,7 @@ gcc_sources:
     - set -u
     - SOURCE_REPO_BRANCH=${!BRANCH_VAR}
 
-binutils_sources:
+.binutils_sources:
   extends: .prepare_sources_template
   variables:
     SOURCE_NAME: "binutils"
@@ -554,7 +555,7 @@ binutils_sources:
         ./run.sh
       )
 
-linux_x86_64_compiler_tests:
+.linux_x86_64_compiler_tests:
   extends: .template_compiler_tests
   needs: [ linux_x86_64_build, esp_compiler_tests_sources ]
   variables:
@@ -591,7 +592,7 @@ linux_x86_64_compiler_tests:
     - xz ${WORKDIR}/${TOOL_NAME}.sum
     - xz ${WORKDIR}/dbg.log
 
-dejagnu_gcc_test:
+.dejagnu_gcc_test:
   extends: .dejagnu_test_template
   needs: [ linux_x86_64_build, esp_compiler_tests_sources, gcc_sources ]
   variables:
@@ -601,7 +602,7 @@ dejagnu_gcc_test:
     # From gcc_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_GCC_TARBALL}
 
-dejagnu_gxx_test:
+.dejagnu_gxx_test:
   extends: .dejagnu_test_template
   needs: [ linux_x86_64_build, esp_compiler_tests_sources, gcc_sources ]
   variables:
@@ -611,7 +612,7 @@ dejagnu_gxx_test:
     # From gcc_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_GCC_TARBALL}
 
-dejagnu_gas_test:
+.dejagnu_gas_test:
   extends: .dejagnu_test_template
   needs: [ linux_x86_64_build, esp_compiler_tests_sources, binutils_sources ]
   variables:
@@ -621,7 +622,7 @@ dejagnu_gas_test:
     # From binutils_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_BINUTILS_TARBALL}
 
-dejagnu_ld_test:
+.dejagnu_ld_test:
   extends: .dejagnu_test_template
   needs: [ linux_x86_64_build, esp_compiler_tests_sources, binutils_sources ]
   variables:
@@ -631,7 +632,7 @@ dejagnu_ld_test:
     # From binutils_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_BINUTILS_TARBALL}
 
-create_release:
+.create_release:
   stage: release
   image: registry.gitlab.com/gitlab-org/cli:latest
   needs: [ generate_version, upload_all_to_dl_s3 ]
@@ -671,7 +672,7 @@ create_release:
           link_type: other
 
 # This image contains a prebuilt toolchain intended for testing other projects
-linux_x86_64_docker:
+.linux_x86_64_docker:
   extends: .build_image_template
   stage: docker
   needs: [ generate_version, linux_x86_64_build ]
