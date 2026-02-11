@@ -101,6 +101,7 @@ default:
   echo "CT_MIRROR_BASE_URL=\"${MIRROR_BASE}\"" >> .config
   echo "CT_GCC_DEVEL_URL=\"${GIT_SERVER}/idf/gcc.git\"" >> .config
   echo "CT_GLIBC_DEVEL_URL=\"${GIT_SERVER}/idf/glibc.git\"" >> .config
+  echo "CT_NEWLIB_DEVEL_URL=\"${GIT_SERVER}/idf/newlib-cygwin.git\"" >> .config
   echo "CT_BINUTILS_DEVEL_URL=\"${GIT_SERVER}/idf/binutils-gdb.git\"" >> .config
   echo "CT_GDB_DEVEL_URL=\"${GIT_SERVER}/idf/binutils-gdb.git\"" >> .config
 
@@ -254,6 +255,18 @@ linux_x86_64_build:
     PLATFORM_NAME: "x86_64-linux-gnu"
     CONF_HOST: "x86_64-linux-gnu"
 
+elf_x86_64_build:
+  extends: .build_template_linux
+  image: ${IMAGE_REGISTRY}-build-linux-x86_64:${IMAGE_TAG}
+  needs:
+    - job: build-linux-x86_64_image
+      optional: true
+    - generate_version
+  variables:
+    PLATFORM_NAME: "x86_64-linux-gnu"
+    CONF_HOST: "x86_64-linux-gnu"
+    CONF_TARGET: "riscv64-esp-elf"
+
 linux_i586_build:
   extends: .build_template_linux
   rules: *rules_secondary_platform
@@ -359,6 +372,7 @@ linux_armel_build:
   needs:
     - generate_version
     - linux_x86_64_build
+    - elf_x86_64_build
 
 .needs_all_distros: &needs_all_distros
   needs:
@@ -528,15 +542,6 @@ binutils_sources:
     - tar -xf ${SOURCE_ESP_COMPILER_TESTS_TARBALL}
 
     - echo ""
-    - echo "*** Build-only tests ****"
-    - echo ""
-    - |
-      (
-        cd esp-compiler-tests/build-only
-        source profile-${CONF_TARGET}
-        ./run-all.sh
-      )
-    - echo ""
     - echo "*** Just-run-tools tests ****"
     - echo ""
     - |
@@ -552,12 +557,28 @@ binutils_sources:
         cd esp-compiler-tests/bin-analysis
         ./run.sh
       )
+    - echo ""
+    - echo "*** Build-only tests ****"
+    - echo ""
+    - |
+      (
+        cd esp-compiler-tests/build-only
+        source profile-${CONF_TARGET}
+        ./run-all.sh
+      )
 
-linux_x86_64_compiler_tests:
+linux_compiler_tests:
   extends: .template_compiler_tests
   needs: [ linux_x86_64_build, esp_compiler_tests_sources ]
   variables:
     PLATFORM_NAME: "x86_64-linux-gnu"
+
+elf_compiler_tests:
+  extends: .template_compiler_tests
+  needs: [ elf_x86_64_build, esp_compiler_tests_sources ]
+  variables:
+    PLATFORM_NAME: "x86_64-linux-gnu"
+    CONF_TARGET: "riscv64-esp-elf"
 
 .dejagnu_test_template:
   stage: test
@@ -566,6 +587,8 @@ linux_x86_64_compiler_tests:
     PLATFORM_NAME: "x86_64-linux-gnu"
     WORKDIR: "workdir"
     TOOL_TRIPLET: ${CONF_TARGET}
+    # Empty for all tests
+    INCLUDE_TEST: ""
   artifacts:
     paths:
       - ${WORKDIR}/${TOOL_NAME}.log.xz
@@ -578,19 +601,22 @@ linux_x86_64_compiler_tests:
   script:
     - rm -rf ${WORKDIR} && mkdir -p ${WORKDIR}
 
+    # From X_sources
+    - ls -l sources/*
+
     # From X_build
     - ARCHIVE_NAME=$(cat dist/dist_name_${PLATFORM_NAME}_${CONF_TARGET})
     - export TOOLCHAIN_DIST_TARBALL=dist/${ARCHIVE_NAME}
 
     # From esp_compiler_tests_sources
     - tar -xf ${SOURCE_ESP_COMPILER_TESTS_TARBALL}
-    - ./esp-compiler-tests/dejagnu/riscv64-linux/run.sh
+    - ./esp-compiler-tests/dejagnu/riscv64-linux/run.sh ${INCLUDE_TEST}
     - ./esp-compiler-tests/dejagnu/sum2junit.sh "${WORKDIR}/${TOOL_NAME}.sum" "report-${TOOL_TRIPLET}-${TOOL_NAME}.xml"
     - xz ${WORKDIR}/${TOOL_NAME}.log
     - xz ${WORKDIR}/${TOOL_NAME}.sum
     - xz ${WORKDIR}/dbg.log
 
-dejagnu_gcc_test:
+linux_dejagnu_gcc_test:
   extends: .dejagnu_test_template
   needs: [ linux_x86_64_build, esp_compiler_tests_sources, gcc_sources ]
   variables:
@@ -600,7 +626,19 @@ dejagnu_gcc_test:
     # From gcc_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_GCC_TARBALL}
 
-dejagnu_gxx_test:
+elf_dejagnu_gcc_test:
+  extends: .dejagnu_test_template
+  needs: [ elf_x86_64_build, esp_compiler_tests_sources, gcc_sources ]
+  variables:
+    CONF_TARGET: "riscv64-esp-elf"
+    TOOL_NAME: "gcc"
+    TOOL_SOURCE_TESTSUITE_DIR: "gcc/gcc/testsuite"
+    INCLUDE_TEST: "compile.exp"
+  before_script:
+    # From gcc_sources
+    - export TOOL_SOURCE_TARBALL=${SOURCE_GCC_TARBALL}
+
+linux_dejagnu_gxx_test:
   extends: .dejagnu_test_template
   needs: [ linux_x86_64_build, esp_compiler_tests_sources, gcc_sources ]
   variables:
@@ -610,7 +648,19 @@ dejagnu_gxx_test:
     # From gcc_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_GCC_TARBALL}
 
-dejagnu_gas_test:
+elf_dejagnu_gxx_test:
+  extends: .dejagnu_test_template
+  needs: [ elf_x86_64_build, esp_compiler_tests_sources, gcc_sources ]
+  variables:
+    CONF_TARGET: "riscv64-esp-elf"
+    TOOL_NAME: "g++"
+    TOOL_SOURCE_TESTSUITE_DIR: "gcc/gcc/testsuite"
+    INCLUDE_TEST: "compat.exp"
+  before_script:
+    # From gcc_sources
+    - export TOOL_SOURCE_TARBALL=${SOURCE_GCC_TARBALL}
+
+linux_dejagnu_gas_test:
   extends: .dejagnu_test_template
   needs: [ linux_x86_64_build, esp_compiler_tests_sources, binutils_sources ]
   variables:
@@ -620,10 +670,32 @@ dejagnu_gas_test:
     # From binutils_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_BINUTILS_TARBALL}
 
-dejagnu_ld_test:
+elf_dejagnu_gas_test:
+  extends: .dejagnu_test_template
+  needs: [ elf_x86_64_build, esp_compiler_tests_sources, binutils_sources ]
+  variables:
+    CONF_TARGET: "riscv64-esp-elf"
+    TOOL_NAME: "gas"
+    TOOL_SOURCE_TESTSUITE_DIR: "binutils-gdb/gas/testsuite"
+  before_script:
+    # From binutils_sources
+    - export TOOL_SOURCE_TARBALL=${SOURCE_BINUTILS_TARBALL}
+
+linux_dejagnu_ld_test:
   extends: .dejagnu_test_template
   needs: [ linux_x86_64_build, esp_compiler_tests_sources, binutils_sources ]
   variables:
+    TOOL_NAME: "ld"
+    TOOL_SOURCE_TESTSUITE_DIR: "binutils-gdb/ld/testsuite"
+  before_script:
+    # From binutils_sources
+    - export TOOL_SOURCE_TARBALL=${SOURCE_BINUTILS_TARBALL}
+
+elf_dejagnu_ld_test:
+  extends: .dejagnu_test_template
+  needs: [ elf_x86_64_build, esp_compiler_tests_sources, binutils_sources ]
+  variables:
+    CONF_TARGET: "riscv64-esp-elf"
     TOOL_NAME: "ld"
     TOOL_SOURCE_TESTSUITE_DIR: "binutils-gdb/ld/testsuite"
   before_script:
