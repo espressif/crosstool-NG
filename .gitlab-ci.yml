@@ -245,6 +245,7 @@ generate_version:
 
 linux_x86_64_build:
   extends: .build_template_linux
+  rules: *rules_secondary_platform
   image: ${IMAGE_REGISTRY}-build-linux-x86_64:${IMAGE_TAG}
   needs:
     - job: build-linux-x86_64_image
@@ -338,7 +339,7 @@ linux_armel_build:
     - *package_toolchain
 
 # TODO: GCC-420. Disabled due to 'SDK/MacOSX15.5.sdk/usr/include/_stdio.h | :l318o:c7a:l  error: iexpected identifier'
-.build_for_macos_x86_64:
+build_for_macos_x86_64:
   extends: .template_macos_cross
   variables:
     PLATFORM_NAME: "x86_64-apple-darwin"
@@ -346,7 +347,7 @@ linux_armel_build:
     MACOSX_DEPLOYMENT_TARGET: "10.12"
 
 # TODO: GCC-420. Disabled due to 'SDK/MacOSX15.5.sdk/usr/include/_stdio.h | :l318o:c7a:l  error: iexpected identifier'
-.build_for_macos_arm64:
+build_for_macos_arm64:
   extends: .template_macos_cross
   variables:
     PLATFORM_NAME: "aarch64-apple-darwin"
