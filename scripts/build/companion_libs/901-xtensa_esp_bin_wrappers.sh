@@ -95,7 +95,7 @@ do_xtensa_esp_bin_wrappers_for_target() {
     bin_wrapper=${CT_BUILD_DIR}/esp_bin_wrapper/${rust_target}/release/xtensa-toolchian-wrapper${ext}
     for file in ${CT_PREFIX_DIR}/bin/*; do
       filename=$(basename $file)
-      for chip in esp32 esp32s2 esp32s3; do
+      for chip in esp32 esp32s2 esp32s3 esp8266; do
         dst_file=${CT_PREFIX_DIR}/bin/${filename//esp/$chip}
         cp ${bin_wrapper} ${dst_file}
       done
