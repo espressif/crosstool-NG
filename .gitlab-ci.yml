@@ -519,6 +519,18 @@ binutils_sources:
     - set -u
     - SOURCE_REPO_BRANCH=${!BRANCH_VAR}
 
+gdb_sources:
+  extends: .prepare_sources_template
+  variables:
+    SOURCE_NAME: "gdb"
+    SOURCE_REPO_URL: "${GIT_SERVER}/idf/binutils-gdb.git"
+    BRANCH_VAR: "CT_GDB_DEVEL_BRANCH"
+  before_script:
+    - set +u
+    - . "${CI_PROJECT_DIR}/samples/${CONF_TARGET}/crosstool.config"
+    - set -u
+    - SOURCE_REPO_BRANCH=${!BRANCH_VAR}
+
 #
 # Compiler tests: build-only and just-run-tools
 #
@@ -702,6 +714,17 @@ elf_dejagnu_ld_test:
   before_script:
     # From binutils_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_BINUTILS_TARBALL}
+
+linux_dejagnu_gdb_test:
+  extends: .dejagnu_test_template
+  needs: [ linux_x86_64_build, esp_compiler_tests_sources, gdb_sources ]
+  variables:
+    TOOL_NAME: "gdb"
+    TOOL_SOURCE_TESTSUITE_DIR: "binutils-gdb/gdb/testsuite"
+    INCLUDE_TEST: "gdb.base/break.exp"
+  before_script:
+    # From gdb_sources
+    - export TOOL_SOURCE_TARBALL=${SOURCE_GDB_TARBALL}
 
 create_release:
   stage: release
