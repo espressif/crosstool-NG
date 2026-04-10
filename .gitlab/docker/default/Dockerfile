@@ -13,6 +13,7 @@ RUN apt-get update && \
     dejagnu \
     expect \
     git \
+    iproute2 \
     iputils-ping \
     less \
     lzip \
