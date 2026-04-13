@@ -33,21 +33,36 @@
 
 image_linux_x86:
   variables:
-    DOCKERFILE_NAME: Dockerfile.linux-x86_64
-    EXTRA_BUILD_ARGS: "--build-arg FROM_IMAGE=i386/debian:jessie --build-arg TARGET_HOST=i586-linux-gnu"
+    DOCKERFILE_NAME: Dockerfile.linux
+    EXTRA_BUILD_ARGS: "--build-arg FROM_IMAGE=i386/debian:trixie --build-arg TARGET_HOST=i586-linux-gnu --build-arg RUST_TARGET_TRIPLETS=i586-unknown-linux-gnu"
     IMAGE_NAME: build-linux-x86
   extends: .build_image
 
 image_linux_x86_64:
   variables:
-    DOCKERFILE_NAME: Dockerfile.linux-x86_64
+    DOCKERFILE_NAME: Dockerfile.linux
     IMAGE_NAME: build-linux-x86_64
   extends: .build_image
 
 image_linux_arm:
   variables:
-    DOCKERFILE_NAME: Dockerfile.linux-arm
+    DOCKERFILE_NAME: Dockerfile.linux
+    EXTRA_BUILD_ARGS: "--build-arg TARGET_HOST=arm-linux-gnueabi --build-arg RUST_TARGET_TRIPLETS=arm-unknown-linux-gnueabi"
     IMAGE_NAME: build-linux-arm
+  extends: .build_image
+
+image_linux_armhf:
+  variables:
+    DOCKERFILE_NAME: Dockerfile.linux
+    EXTRA_BUILD_ARGS: "--build-arg TARGET_HOST=arm-linux-gnueabihf --build-arg RUST_TARGET_TRIPLETS=arm-unknown-linux-gnueabihf"
+    IMAGE_NAME: build-linux-armhf
+  extends: .build_image
+
+image_linux_arm64:
+  variables:
+    DOCKERFILE_NAME: Dockerfile.linux
+    EXTRA_BUILD_ARGS: "--build-arg TARGET_HOST=aarch64-linux-gnu --build-arg RUST_TARGET_TRIPLETS=aarch64-unknown-linux-gnu"
+    IMAGE_NAME: build-linux-arm64
   extends: .build_image
 
 image_win_x86:

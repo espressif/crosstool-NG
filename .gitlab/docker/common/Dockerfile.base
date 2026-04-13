@@ -1,40 +1,10 @@
+ARG FROM_IMAGE="debian:trixie"
+
 FROM ${FROM_IMAGE}
 
 ARG DEBIAN_FRONTEND=noninteractive
-
-RUN if grep -q jessie /etc/apt/sources.list; then \
-    find /etc/apt/ -name "*.list" -exec rm {} + && \
-    echo "deb http://archive.debian.org/debian/ jessie main contrib non-free" > /etc/apt/sources.list && \
-    echo "deb-src http://archive.debian.org/debian/ jessie main contrib non-free" >> /etc/apt/sources.list && \
-    echo "deb http://archive.debian.org/debian-security jessie/updates main contrib non-free" >> /etc/apt/sources.list && \
-    echo "deb-src http://archive.debian.org/debian-security jessie/updates main contrib non-free" >> /etc/apt/sources.list && \
-    echo "deb http://archive.debian.org/debian/ jessie-backports main contrib non-free" >> /etc/apt/sources.list && \
-    echo "deb-src http://archive.debian.org/debian/ jessie-backports main contrib non-free" >> /etc/apt/sources.list; \
-elif grep -q stretch /etc/apt/sources.list; then \
-    find /etc/apt/ -name "*.list" -exec rm {} + && \
-    echo "deb http://archive.debian.org/debian/ stretch main contrib non-free" > /etc/apt/sources.list && \
-    echo "deb-src http://archive.debian.org/debian/ stretch main contrib non-free" >> /etc/apt/sources.list && \
-    echo "deb http://archive.debian.org/debian/ stretch-proposed-updates main contrib non-free" >> /etc/apt/sources.list && \
-    echo "deb-src http://archive.debian.org/debian/ stretch-proposed-updates main contrib non-free" >> /etc/apt/sources.list && \
-    echo "deb http://archive.debian.org/debian-security stretch/updates main contrib non-free" >> /etc/apt/sources.list && \
-    echo "deb-src http://archive.debian.org/debian-security stretch/updates main contrib non-free" >> /etc/apt/sources.list; \
-fi
-
-RUN apt-get -o Acquire::Check-Valid-Until=false update && \
-    apt-get install --allow-unauthenticated -y -q --no-install-recommends \
-        apt-utils \
-        ca-certificates \
-        curl \
-        wget \
-  && rm -rf /var/lib/apt/lists/*
-
-# Remove expired DST Root CA X3 certificate
-# https://letsencrypt.org/docs/dst-root-ca-x3-expiration-september-2021/
-RUN sed -i '/DST_Root_CA_X3.crt/d' /etc/ca-certificates.conf && update-ca-certificates
-
-RUN rm /bin/sh && ln -s /bin/bash /bin/sh
-
-RUN apt-get -o Acquire::Check-Valid-Until=false update && \
+RUN rm /bin/sh && ln -s /bin/bash /bin/sh && \
+    apt-get -o Acquire::Check-Valid-Until=false update && \
     apt-get install --allow-unauthenticated -y -q \
     autoconf \
     automake \
@@ -42,7 +12,9 @@ RUN apt-get -o Acquire::Check-Valid-Until=false update && \
     bc \
     binfmt-support \
     bison \
+    cmake \
     cpio \
+    curl \
     devscripts \
     file \
     flex \
@@ -58,6 +30,7 @@ RUN apt-get -o Acquire::Check-Valid-Until=false update && \
     libc6-dev \
     libffi-dev \
     libncurses-dev \
+    libssl-dev \
     libtool \
     libtool-bin \
     make \
@@ -75,21 +48,3 @@ RUN apt-get -o Acquire::Check-Valid-Until=false update && \
     zip \
     zlib1g-dev \
   && rm -rf /var/lib/apt/lists/*
-
-ARG OPENSSL_VERSION=OpenSSL_1_1_1w
-RUN git clone https://github.com/openssl/openssl.git --depth=1 -b ${OPENSSL_VERSION} \
-  && cd openssl \
-  && _ARCH=$(gcc -dumpmachine) && setarch ${_ARCH%%-*} ./config \
-  && make -j$(nproc) \
-  && make install \
-  && cd .. \
-  && rm -fr openssl
-
-ARG CMAKE_VERSION=v3.28.6
-RUN git clone https://github.com/Kitware/CMake.git --depth=1 -b ${CMAKE_VERSION} \
-  && cd CMake \
-  && ./configure \
-  && make -j$(nproc) \
-  && make install \
-  && cd .. \
-  && rm -fr CMake

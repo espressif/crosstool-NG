@@ -1,7 +1,5 @@
 # syntax = edrevo/dockerfile-plus
 
-ARG FROM_IMAGE="debian:stretch"
-
 INCLUDE+ ./common/Dockerfile.base
 
 ARG WIN_CROSSTOOL=g++-mingw-w64-x86-64

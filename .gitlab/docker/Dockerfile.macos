@@ -1,7 +1,5 @@
 # syntax = edrevo/dockerfile-plus
 
-ARG FROM_IMAGE="debian:trixie"
-
 INCLUDE+ ./common/Dockerfile.base
 
 # Based on https://github.com/andrew-d/docker-osxcross

@@ -1,0 +1,18 @@
+COPY crosstool-ng /
+
+ARG CT_NG_VERSION="crosstool-ng-1.26.0"
+
+RUN git clone https://github.com/crosstool-ng/crosstool-ng.git -b $CT_NG_VERSION --depth=1 \
+ && cp -r samples/* crosstool-ng/samples/ \
+ && cd crosstool-ng \
+ && ./bootstrap \
+ && ./configure --enable-local \
+ && make -j$(nproc) \
+ && ./ct-ng ${TARGET_HOST} \
+ && echo "CT_ALLOW_BUILD_AS_ROOT=y" >> .config \
+ && echo "CT_ALLOW_BUILD_AS_ROOT_SURE=y" >> .config \
+ && ./ct-ng build \
+ && cd .. \
+ && rm -fr /crosstool-ng /samples
+
+ENV PATH="/root/x-tools/${TARGET_HOST}/bin:$PATH"
