@@ -1,9 +1,26 @@
-COPY crosstool-ng /
-
-ARG CT_NG_VERSION="crosstool-ng-1.26.0"
+ARG CT_NG_VERSION="crosstool-ng-1.28.0"
 
 RUN git clone https://github.com/crosstool-ng/crosstool-ng.git -b $CT_NG_VERSION --depth=1 \
- && cp -r samples/* crosstool-ng/samples/ \
+ && mkdir -p "crosstool-ng/samples/${TARGET_HOST}" \
+ && f="crosstool-ng/samples/${TARGET_HOST}/crosstool.config" \
+ && case "${TARGET_HOST}" in \
+      x86_64-linux-gnu) printf '%s\n' 'CT_ARCH_X86=y' 'CT_ARCH_64=y' > "$f" ;; \
+      i586-linux-gnu) printf '%s\n' 'CT_ARCH_X86=y' 'CT_ARCH_ARCH="i586"' > "$f" ;; \
+      arm-linux-gnueabihf) printf '%s\n' 'CT_ARCH_ARM=y' 'CT_ARCH_FLOAT_HW=y' > "$f" ;; \
+      arm-linux-gnueabi) printf '%s\n' 'CT_ARCH_ARM=y' 'CT_ARCH_FLOAT_SW=y' > "$f" ;; \
+      aarch64-linux-gnu) printf '%s\n' 'CT_ARCH_ARM=y' 'CT_ARCH_64=y' > "$f" ;; \
+      *) echo "unsupported TARGET_HOST=${TARGET_HOST}" >&2; exit 1 ;; \
+    esac \
+ && printf '%s\n' \
+      'CT_CONFIG_VERSION="4"' \
+      'CT_OMIT_TARGET_VENDOR=y' \
+      'CT_KERNEL_LINUX=y' \
+      'CT_LINUX_V_3_16=y' \
+      'CT_BINUTILS_PLUGINS=y' \
+      'CT_GLIBC_V_2_17=y' \
+      'CT_GLIBC_EXTRA_CONFIG_ARRAY="--disable-multi-arch"' \
+      'CT_CC_LANG_CXX=y' \
+      >> "$f" \
  && cd crosstool-ng \
  && ./bootstrap \
  && ./configure --enable-local \
@@ -11,8 +28,9 @@ RUN git clone https://github.com/crosstool-ng/crosstool-ng.git -b $CT_NG_VERSION
  && ./ct-ng ${TARGET_HOST} \
  && echo "CT_ALLOW_BUILD_AS_ROOT=y" >> .config \
  && echo "CT_ALLOW_BUILD_AS_ROOT_SURE=y" >> .config \
+ && echo "CT_LOG_PROGRESS_BAR=n" >> .config \
  && ./ct-ng build \
  && cd .. \
- && rm -fr /crosstool-ng /samples
+ && rm -fr /crosstool-ng
 
 ENV PATH="/root/x-tools/${TARGET_HOST}/bin:$PATH"

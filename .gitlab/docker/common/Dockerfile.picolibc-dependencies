@@ -1,27 +1,12 @@
-ARG PYTHON_VERSION="3.14.4"
-ARG OPENSSL_VERSION="3.6.2"
-ARG LIBB2_VERSION="0.98.1"
 ARG MESON_VERSION="1.10.2"
 ARG NINJA_VERSION="1.13.0"
 
-# install picolibc build dependencies
-RUN apt-get remove -y python3 \
-  && apt-get -y autoremove \
+# install picolibc build dependencies (venv avoids PEP 668 externally-managed-environment)
+RUN apt-get -o Acquire::Check-Valid-Until=false update \
+  && apt-get install -y --no-install-recommends python3 python3-venv python-is-python3 \
   && rm -rf /var/lib/apt/lists/* \
-  && git clone https://github.com/BLAKE2/libb2.git --depth=1 -b v${LIBB2_VERSION} \
-  && cd libb2 \
-  && ./autogen.sh > /dev/null \
-  && ./configure > /dev/null \
-  && make -j$(nproc) > /dev/null \
-  && make install > /dev/null \
-  && cd .. \
-  && rm -fr ./libb2 \
-  && git clone https://github.com/python/cpython.git --depth=1 -b v$PYTHON_VERSION \
-  && cd cpython \
-  && ./configure LDFLAGS=-L/usr/lib > /dev/null \
-  && make -j$(nproc) > /dev/null \
-  && make install > /dev/null \
-  && cd .. \
-  && rm -fr ./cpython \
-  && pip3 install --upgrade pip \
-  && pip3 install meson==${MESON_VERSION} ninja==${NINJA_VERSION}
+  && python3 -m venv /opt/picolibc-venv \
+  && /opt/picolibc-venv/bin/pip install --upgrade pip \
+  && /opt/picolibc-venv/bin/pip install meson==${MESON_VERSION} ninja==${NINJA_VERSION}
+
+ENV PATH="/opt/picolibc-venv/bin:${PATH}"

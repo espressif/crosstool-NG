@@ -8,3 +8,5 @@ INCLUDE+ ./common/Dockerfile.build-toolchain
 
 ARG RUST_TARGET_TRIPLETS="x86_64-unknown-linux-gnu"
 INCLUDE+ ./common/Dockerfile.binwrappers-dependencies
+
+INCLUDE+ ./common/Dockerfile.picolibc-dependencies
