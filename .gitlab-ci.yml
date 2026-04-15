@@ -452,8 +452,8 @@ win_manifest_riscv32_esp_win:
 
 xtensa_esp_lin_armel:
   extends: .template_lin_arm_cross
+  image: $CI_REGISTRY_IMAGE/build-linux-arm:latest
   variables:
-    image: $CI_REGISTRY_IMAGE/build-linux-arm:latest
     PLATFORM_NAME: "arm-linux-gnueabi"
     CONF_TARGET: "xtensa-esp-elf"
     CONF_HOST: "arm-linux-gnueabi"
@@ -461,8 +461,8 @@ xtensa_esp_lin_armel:
 
 riscv32_esp_lin_armel:
   extends: .template_lin_arm_cross
+  image: $CI_REGISTRY_IMAGE/build-linux-arm:latest
   variables:
-    image: $CI_REGISTRY_IMAGE/build-linux-arm:latest
     PLATFORM_NAME: "arm-linux-gnueabi"
     CONF_TARGET: "riscv32-esp-elf"
     CONF_HOST: "arm-linux-gnueabi"
@@ -472,8 +472,8 @@ riscv32_esp_lin_armel:
 
 xtensa_esp_lin_armhf:
   extends: .template_lin_arm_cross
+  image: $CI_REGISTRY_IMAGE/build-linux-armhf:latest
   variables:
-    image: $CI_REGISTRY_IMAGE/build-linux-armhf:latest
     PLATFORM_NAME: "arm-linux-gnueabihf"
     CONF_TARGET: "xtensa-esp-elf"
     CONF_HOST: "arm-linux-gnueabihf"
@@ -481,8 +481,8 @@ xtensa_esp_lin_armhf:
 
 riscv32_esp_lin_armhf:
   extends: .template_lin_arm_cross
+  image: $CI_REGISTRY_IMAGE/build-linux-armhf:latest
   variables:
-    image: $CI_REGISTRY_IMAGE/build-linux-armhf:latest
     PLATFORM_NAME: "arm-linux-gnueabihf"
     CONF_TARGET: "riscv32-esp-elf"
     CONF_HOST: "arm-linux-gnueabihf"
@@ -492,8 +492,8 @@ riscv32_esp_lin_armhf:
 
 xtensa_esp_lin_arm64:
   extends: .template_lin_arm_cross
+  image: $CI_REGISTRY_IMAGE/build-linux-arm64:latest
   variables:
-    image: $CI_REGISTRY_IMAGE/build-linux-arm64:latest
     PLATFORM_NAME: "aarch64-linux-gnu"
     CONF_TARGET: "xtensa-esp-elf"
     CONF_HOST: "aarch64-linux-gnu"
@@ -501,8 +501,8 @@ xtensa_esp_lin_arm64:
 
 riscv32_esp_lin_arm64:
   extends: .template_lin_arm_cross
+  image: $CI_REGISTRY_IMAGE/build-linux-arm64:latest
   variables:
-    image: $CI_REGISTRY_IMAGE/build-linux-arm64:latest
     PLATFORM_NAME: "aarch64-linux-gnu"
     CONF_TARGET: "riscv32-esp-elf"
     CONF_HOST: "aarch64-linux-gnu"
