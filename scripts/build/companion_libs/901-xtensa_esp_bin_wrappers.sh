@@ -54,7 +54,7 @@ do_xtensa_esp_bin_wrappers_get() {
 
     export RUSTUP_HOME=${CT_BUILD_DIR}/rust/rustup
     export CARGO_HOME=${CT_BUILD_DIR}/rust/cargo
-    RUST_VERSION=1.86.0
+    RUST_VERSION=1.94.1
 
     CT_mkdir_pushd "${CT_BUILD_DIR}/rust"
     CT_DoExecLog ALL curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o rustup.sh
