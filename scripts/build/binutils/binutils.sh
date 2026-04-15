@@ -129,7 +129,7 @@ do_binutils_install_bin_wrappers () {
     export CARGO_HOME=${CT_BUILD_DIR}/rust/cargo
     export CARGO_NET_GIT_FETCH_WITH_CLI=true
     export CARGO_TARGET_DIR=${CT_BUILD_DIR}/esp_bin_wrapper
-    RUST_VERSION=1.86.0
+    RUST_VERSION=1.94.1
 
     CT_mkdir_pushd "${CT_BUILD_DIR}/rust"
     CT_DoExecLog ALL curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o rustup.sh
