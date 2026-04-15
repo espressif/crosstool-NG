@@ -440,8 +440,6 @@ win_manifest_riscv32_esp_win:
 
 .template_lin_arm_cross:
   extends: .build_template
-  variables:
-    INSTALL_LIBC_DEV: "y"
   script:
     - *build_ctng
     - *configure_common
