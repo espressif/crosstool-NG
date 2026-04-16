@@ -527,34 +527,67 @@ generate_version:
   done
   FILES_LIST="${SHA256_FILE} ${FILES_LIST}"
 
-upload_to_internal:
+.needs_primary_distros: &needs_primary_distros
+  needs:
+    - generate_version
+    - riscv32_esp_lin_amd64
+    - xtensa_esp_lin_amd64
+
+.upload_to_dl_s3_template:
   stage: internal_deploy
-  <<: *needs_all_distros
+  image:
+    name: amazon/aws-cli:latest
+    entrypoint: [""]
+  artifacts:
+    reports:
+      dotenv: toolchain_sha256.env
   when: manual
   allow_failure: true
-  tags: [ "build", "amd64", "shiny" ]
+  tags: [ "deploy", "internet" ]
   variables:
     # don't use "GIT_STRATEGY: none", because we need cleaning old artifacts in 'dist/' that came from previous pipelines
     GIT_SUBMODULE_STRATEGY: none
-    CTNG_ESP_HELPERS_GIT: "${GIT_SERVER}/idf/ctng-esp-helpers.git"
-    TARGETS: "xtensa-esp-elf riscv32-esp-elf"
-    HOSTS: "x86_64-linux-gnu aarch64-linux-gnu arm-linux-gnueabi arm-linux-gnueabihf i586-linux-gnu x86_64-apple-darwin aarch64-apple-darwin i686-w64-mingw32 x86_64-w64-mingw32"
-  before_script:
-    - *use_ci_tools
+    UPLOAD_PATH: "toolchains/preview/baremetal/${DIST_VERSION_SHORT}"
+    S3_UPLOAD_DIR: "s3://${DL_BUCKET}/dl/${UPLOAD_PATH}"
+    S3_PUBLIC_DIR: "${STORAGE_BASE_URL}/${UPLOAD_PATH}"
+  before_script: []
   script:
     - cd dist
     # Create a checksum file
     - *gen_sha256_file
+
     # Upload all needed files
-    - HTTP_UPLOAD_DIR=${HTTP_UPLOAD_DIR}/${DIST_VERSION_FULL}
-    - HTTP_PUBLIC_DIR=${HTTP_PUBLIC_DIR}/${DIST_VERSION_FULL}
-    - cit_add_ssh_key "${HTTP_UPLOAD_KEY}"
-    - ssh ${HTTP_UPLOAD_DIR%:*} "mkdir -p ${HTTP_UPLOAD_DIR#*:}"
-    - scp ${FILES_LIST} ${HTTP_UPLOAD_DIR}
+    - |
+      for f in ${FILES_LIST}; do
+        echo aws s3 cp --acl=public-read --no-progress "$f" "${S3_UPLOAD_DIR}/"
+        aws s3 cp --acl=public-read --no-progress "$f" "${S3_UPLOAD_DIR}/"
+      done
+
     # Show download links
-    - echo -e "\nArchives were published there:\n\n$(for n in ${FILES_LIST}; do echo "${HTTP_PUBLIC_DIR}/${n}"; done)\n"
+    - |
+      echo ""
+      echo "Archives were published there:"
+      for f in ${FILES_LIST}; do
+        echo "${S3_PUBLIC_DIR}/${f}"
+      done
+      echo ""
     - echo "${SHA256_FILE}:"
     - cat ${SHA256_FILE}
+
+    # Save the download link for the checksum file
+    - echo ""
+    - echo "Save checksum file link to toolchain_sha256.env:"
+    - echo "TOOL_SHA256_URL=${S3_PUBLIC_DIR}/${SHA256_FILE}" > toolchain_sha256.env
+    - cat toolchain_sha256.env
+    - echo ""
+
+upload_all_to_dl_s3:
+  extends: .upload_to_dl_s3_template
+  <<: *needs_all_distros
+
+upload_primary_to_dl_s3:
+  extends: .upload_to_dl_s3_template
+  <<: *needs_primary_distros
 
 upload_to_github:
   stage: github_deploy
@@ -611,6 +644,12 @@ upload_to_github:
     - hub release
     - hub release show ${TAG} || { echo "Please create a release on GitHub with ${TAG} tag at first"; exit 1; }
     - for n in ${FILES_LIST}; do hub release edit -m "" -a "${n}" "${TAG}"; done
+    # Save the download link for the checksum file
+    - echo ""
+    - echo "Save checksum file link to toolchain_sha256.env:"
+    - echo "TOOL_SHA256_URL=${GH_REPO_URL}/releases/download/${CI_COMMIT_TAG}/${CI_PROJECT_NAME}-${DIST_VERSION_FULL}-checksum.sha256" > toolchain_sha256.env
+    - cat toolchain_sha256.env
+    - echo ""
 
 .update_idf_tools:
   allow_failure: true
@@ -618,6 +657,7 @@ upload_to_github:
     TOOL_NAME: "toolchain"
     TOOL_MEMBERS: "xtensa-esp-elf riscv32-esp-elf"
     TOOL_VERSION: ${DIST_VERSION_FULL}
+    TOOL_SHA256_URL: ${TOOL_SHA256_URL}
   trigger:
     project: idf/idf-tools-updater
     strategy: depend
@@ -625,10 +665,13 @@ upload_to_github:
 internal_update_idf_tools:
   extends: .update_idf_tools
   stage: internal_deploy
-  needs: [ generate_version, upload_to_internal ]
+  needs:
+    - generate_version
+    - job: upload_primary_to_dl_s3
+      optional: true
+    - job: upload_all_to_dl_s3
+      optional: true
   when: manual
-  variables:
-    TOOL_SHA256_URL: ${HTTP_PUBLIC_DIR}/${DIST_VERSION_FULL}/${CI_PROJECT_NAME}-${DIST_VERSION_FULL}-checksum.sha256
 
 github_update_idf_tools:
   extends: .update_idf_tools
@@ -637,8 +680,6 @@ github_update_idf_tools:
   rules:
     - if: $CI_COMMIT_TAG
       when: manual
-  variables:
-    TOOL_SHA256_URL: ${GH_REPO_URL}/releases/download/${CI_COMMIT_TAG}/${CI_PROJECT_NAME}-${DIST_VERSION_FULL}-checksum.sha256
 
 # We use prep_tests job to collect all test data and scripts in artifacts,
 # to avoid dependencies for git, because we run some tests on original images.
