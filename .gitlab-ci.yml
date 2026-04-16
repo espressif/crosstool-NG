@@ -332,16 +332,12 @@ macos_codesign_riscv32_esp_macos:
   extends: .template_macos_codesign
   needs: [ riscv32_esp_macos ]
 
-.template_win_cross:
+.template_win_cross_common:
   extends: .build_template
-  image: $CI_REGISTRY_IMAGE/build-win-x86:latest
   variables:
-    PLATFORM_NAME: "i686-w64-mingw32"
-    CONF_HOST: "i686-w64-mingw32"
     ARCHIVE_TOOL: "zip -9 -r"
     ARCHIVE_EXT: "zip"
-    EXTRA_BINS: "/usr/lib/gcc/i686-w64-mingw32/6.3-win32/libgcc_s_sjlj-1.dll /usr/lib/gcc/i686-w64-mingw32/6.3-win32/libstdc++-6.dll"
-    PLATFORMIO_SYSTEM: "\"windows_x86\""
+    EXTRA_BINS: "/usr/lib/gcc/*mingw32/*win32/libgcc*.dll /usr/lib/gcc/*mingw32/*win32/libstdc++-6.dll"
   script:
     - *build_ctng
     - *configure_common
@@ -352,6 +348,14 @@ macos_codesign_riscv32_esp_macos:
     - *add_extra_files
     - *gen_platformio_package_json
     - *package_toolchain
+
+.template_win_cross:
+  extends: .template_win_cross_common
+  image: $CI_REGISTRY_IMAGE/build-win-x86:latest
+  variables:
+    PLATFORM_NAME: "i686-w64-mingw32"
+    CONF_HOST: "i686-w64-mingw32"
+    PLATFORMIO_SYSTEM: "\"windows_x86\""
 
 xtensa_esp_win:
   extends: .template_win_cross
@@ -364,25 +368,12 @@ riscv32_esp_win:
     CONF_TARGET: "riscv32-esp-elf"
 
 .template_win64_cross:
-  extends: .build_template
+  extends: .template_win_cross_common
   image: $CI_REGISTRY_IMAGE/build-win-x86_64:latest
   variables:
     PLATFORM_NAME: "x86_64-w64-mingw32"
     CONF_HOST: "x86_64-w64-mingw32"
-    ARCHIVE_TOOL: "zip -9 -r"
-    ARCHIVE_EXT: "zip"
-    EXTRA_BINS: "/usr/lib/gcc/x86_64-w64-mingw32/6.3-win32/libgcc_s_seh-1.dll /usr/lib/gcc/x86_64-w64-mingw32/6.3-win32/libstdc++-6.dll"
     PLATFORMIO_SYSTEM: "\"windows_amd64\""
-  script:
-    - *build_ctng
-    - *configure_common
-    - *configure_docker
-    - *configure_crossbuild
-    - *configure_win_crossbuild
-    - *build_toolchain
-    - *add_extra_files
-    - *gen_platformio_package_json
-    - *package_toolchain
 
 xtensa_esp_win64:
   extends: .template_win64_cross
