@@ -53,6 +53,74 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)" \
              > "${CT_PREFIX_DIR}/toolchain.cmake"
 }
 
+CT_StripDebugForHost()
+{
+    local objcopy readelf f d dest rel rel_sum listfile scanlist
+    local debug_root sumfile
+    local -a scan_roots
+
+    CT_DoLog EXTRA "Stripping target debug info for ${CT_TARGET}"
+    objcopy="${CT_BUILDTOOLS_PREFIX_DIR}/${CT_TARGET}/bin/objcopy"
+    readelf="${CT_BUILDTOOLS_PREFIX_DIR}/${CT_TARGET}/bin/readelf"
+    CT_TestOrAbort "Missing ${objcopy} for STRIP_TARGET_TOOLCHAIN_LIBRARIES" -x "${objcopy}"
+    CT_TestOrAbort "Missing ${readelf} for STRIP_TARGET_TOOLCHAIN_LIBRARIES" -x "${readelf}"
+
+    if [ "${CT_STRIP_TARGET_TOOLCHAIN_LIBRARIES_SAVE_DEBUG}" = "y" ]; then
+        debug_root="$(dirname "${CT_PREFIX_DIR}")/${CT_TARGET}/debug-sections"
+        sumfile="${debug_root}/checksums.sha256sum"
+        listfile="${debug_root}/split-target-debug.list"
+        CT_DoLog EXTRA "Removing prior split-debug tree and checksum"
+        CT_DoForceRmdir "${debug_root}"
+        CT_DoExecLog ALL mkdir -p "${debug_root}"
+        rm -f "${sumfile}"
+        : > "${listfile}"
+    fi
+
+    scanlist="${CT_BUILD_DIR}/${CT_TARGET}-objects.list"
+    find "${CT_PREFIX_DIR}" -type f \( \
+        -name '*.o' -o -name '*.a' \
+    \) -print0 | LC_ALL=C sort -z -u > "${scanlist}"
+
+    while IFS= read -r -d '' f; do
+        "${readelf}" -h "${f}" >/dev/null 2>&1 || continue
+        if [ "${CT_STRIP_TARGET_TOOLCHAIN_LIBRARIES_SAVE_DEBUG}" = "y" ]; then
+            d="${f}.debug"
+            if ! "${objcopy}" --only-keep-debug "${f}" "${d}" >>"${CT_BUILD_LOG}" 2>&1; then
+                CT_DoLog EXTRA "objcopy --only-keep-debug failed (skipping): ${f}"
+                rm -f "${d}"
+                continue
+            fi
+            # Skip if debug file missing or empty (nothing to split out; do not strip ${f}).
+            if [ ! -s "${d}" ]; then
+                rm -f "${d}"
+                continue
+            fi
+        fi
+        CT_DoExecLog ALL "${objcopy}" --strip-debug "${f}"
+        if [ "${CT_STRIP_TARGET_TOOLCHAIN_LIBRARIES_SAVE_DEBUG}" = "y" ]; then
+            rel="${f#${CT_PREFIX_DIR}/}"
+            dest="${debug_root}/${CT_TARGET}/${rel}.debug"
+            CT_DoExecLog ALL mkdir -p "$(dirname "${dest}")"
+            CT_DoExecLog ALL mv "${d}" "${dest}"
+            printf '%s\n' "${CT_TARGET}/${rel}" >> "${listfile}"
+        fi
+    done < "${scanlist}"
+    rm -f "${scanlist}"
+
+    if [ -s "${listfile}" ]; then
+        LC_ALL=C sort -u "${listfile}" -o "${listfile}"
+        CT_DoLog EXTRA "Checksumming split-debug artifacts into ${sumfile}"
+        CT_Pushd "${CT_PREFIX_DIR}/.."
+        : > "${sumfile}"
+        while IFS= read -r rel_sum || [ -n "${rel_sum}" ]; do
+            [ -n "${rel_sum}" ] || continue
+            sha256sum "${rel_sum}" >> "${sumfile}"
+        done < "${listfile}"
+        CT_Popd
+    fi
+    rm -f "${listfile}"
+}
+
 # This step is called once all components were built, to remove
 # un-wanted files, to add tuple aliases, and to add the final
 # crosstool-NG-provided files.
@@ -65,6 +133,10 @@ do_finish() {
     local tarball
 
     CT_DoStep INFO "Finalizing the toolchain's directory"
+
+    if [ "${CT_STRIP_TARGET_TOOLCHAIN_LIBRARIES}" = "y" ]; then
+        CT_StripDebugForHost
+    fi
 
     if [ "${CT_CREATE_LDSO_CONF}" = "y" ]; then
         # Create /etc/ld.so.conf

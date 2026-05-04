@@ -138,6 +138,30 @@ config STRIP_TARGET_TOOLCHAIN_EXECUTABLES
       executables, and may install libraries with unneeded or debugging
       sections stripped. 
 
+config STRIP_TARGET_TOOLCHAIN_LIBRARIES
+    bool
+    prompt "Strip debug from target libs/objects (for host)"
+    default n
+    help
+      After the toolchain is built, the finish step strips debug from
+      target .o, .a, .so, and versioned .so.* under the toolchain prefix.
+      If STRIP_TARGET_TOOLCHAIN_LIBRARIES_SAVE_DEBUG is also set, debug
+      sections are extracted to companion files first, moved under
+      dirname(prefix)/<target>/debug-sections (mirroring paths relative
+      to the prefix), and checksums are written there.
+
+config STRIP_TARGET_TOOLCHAIN_LIBRARIES_SAVE_DEBUG
+    bool
+    prompt "Save split debug (.debug) beside toolchain"
+    depends on STRIP_TARGET_TOOLCHAIN_LIBRARIES
+    default y if STRIP_TARGET_TOOLCHAIN_LIBRARIES
+    help
+      When STRIP_TARGET_TOOLCHAIN_LIBRARIES is enabled, optionally extract debug
+      sections into companion files (objcopy --only-keep-debug), move them
+      under the debug-sections tree, and checksum them. If disabled,
+      only --strip-debug is applied in place (no side tree, no checksum
+      list).
+
 config TARBALL_RESULT
     bool
     depends on EXPERIMENTAL
