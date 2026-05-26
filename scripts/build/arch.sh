@@ -13,7 +13,7 @@ CT_DoArchMultilibList()
 }
 
 # Multilib: change the target triplet according to CFLAGS
-# Usage: CT_DoArchGlibcAdjustTuple <variable-name> <CFLAGS>
+# Usage: CT_DoArchMultilibTarget <variable-name> <CFLAGS>
 CT_DoArchMultilibTarget()
 {
     :
@@ -27,7 +27,7 @@ CT_DoArchGlibcAdjustTuple()
 }
 
 # Multilib: Adjust configure arguments for GLIBC
-# Usage: CT_DoArchGlibcAdjustConfigure <configure-args-array-name> <cflags>
+# Usage: CT_DoArchGlibcAdjustConfigure <configure-args-array-name> <cflags> <multilib-dir>
 CT_DoArchGlibcAdjustConfigure()
 {
     :

@@ -167,7 +167,7 @@ glibc_backend_once()
                 ;;
         esac
     done
-    CT_DoArchGlibcAdjustConfigure extra_config "${glibc_cflags}"
+    CT_DoArchGlibcAdjustConfigure extra_config "${glibc_cflags}" "${multi_dir}"
 
     # ./configure is mislead by our tools override wrapper for bash
     # so just tell it where the real bash is _on_the_target_!
