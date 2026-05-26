@@ -14,7 +14,7 @@ CT_DoArchUClibcConfig()
 }
 
 # Multilib: Adjust configure arguments for GLIBC
-# Usage: CT_DoArchGlibcAdjustConfigure <configure-args-array-name> <cflags>
+# Usage: CT_DoArchGlibcAdjustConfigure <configure-args-array-name> <cflags> <multilib-dir>
 #
 # From GCC's standpoint ARC's multilib items are defined by "mcpu" values
 # which we have quite a few and for all of them might be built optimized

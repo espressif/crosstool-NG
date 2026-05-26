@@ -111,7 +111,7 @@ CT_DoArchGlibcAdjustTuple() {
 }
 
 # Multilib: Adjust configure arguments for GLIBC
-# Usage: CT_DoArchGlibcAdjustConfigure <configure-args-array-name> <cflags>
+# Usage: CT_DoArchGlibcAdjustConfigure <configure-args-array-name> <cflags> <multilib-dir>
 CT_DoArchGlibcAdjustConfigure() {
     local -a add_args
     local array="${1}"
