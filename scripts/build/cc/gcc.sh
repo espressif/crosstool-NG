@@ -307,6 +307,16 @@ do_gcc_core_backend() {
             ;;
     esac
 
+    case "${host}" in
+        aarch64-*-mingw32)
+            if [ "${CT_GCC_older_than_13}" != "y" ]; then
+                # LLVM-MinGW lacks POSIX headers used by fixincludes
+                # (sys/wait.h, pipe, alarm, kill).
+                extra_config+=(--disable-fixincludes)
+            fi
+            ;;
+    esac
+
     if [ -z "${exec_prefix}" ]; then
         exec_prefix="${prefix}"
     fi
@@ -1021,6 +1031,16 @@ do_gcc_backend() {
             ;;
         *)
             CT_Abort "Internal Error: 'build_step' must be one of: 'gcc_build', 'gcc_host' or 'libstdcxx', not '${build_step:-(empty)}'"
+            ;;
+    esac
+
+    case "${host}" in
+        aarch64-*-mingw32)
+            if [ "${CT_GCC_older_than_13}" != "y" ]; then
+                # LLVM-MinGW lacks POSIX headers used by fixincludes
+                # (sys/wait.h, pipe, alarm, kill).
+                extra_config+=(--disable-fixincludes)
+            fi
             ;;
     esac
 
