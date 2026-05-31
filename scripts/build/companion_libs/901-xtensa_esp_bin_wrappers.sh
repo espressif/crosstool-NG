@@ -55,11 +55,14 @@ do_xtensa_esp_bin_wrappers_get() {
     export RUSTUP_HOME=${CT_BUILD_DIR}/rust/rustup
     export CARGO_HOME=${CT_BUILD_DIR}/rust/cargo
     RUST_VERSION=1.86.0
+    if [[ -n "$(command -v setarch)" ]]
+    then MAYBE_SETARCH="setarch ${BUILD-%%-*}"
+    fi
 
     CT_mkdir_pushd "${CT_BUILD_DIR}/rust"
     CT_DoExecLog ALL curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o rustup.sh
     CT_DoExecLog ALL chmod +x rustup.sh
-    setarch ${CT_BUILD%%-*} ./rustup.sh -y \
+    ${MAYBE_SETARCH} ./rustup.sh -y \
         --no-modify-path \
         --default-toolchain "$RUST_VERSION" 2>&1
     CT_DoExecLog ALL ${CT_BUILD_DIR}/rust/cargo/bin/rustup target add $(map_triplet_to_rust ${CT_HOST})
