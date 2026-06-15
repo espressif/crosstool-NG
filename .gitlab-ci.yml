@@ -137,7 +137,7 @@ default:
 .build_toolchain: &build_toolchain |
   ./ct-ng oldconfig
   apt-get remove --autoremove libncurses-dev || true
-  ./ct-ng build
+  ./ct-ng build.${MAKE_PARALLEL_JOBS:-2}
 
 .add_extra_files: &add_extra_files |
   if [ "${EXTRA_BINS:-}" ]; then
