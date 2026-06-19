@@ -1511,6 +1511,7 @@ CT_IterateMultilibs() {
     local root_suffix
     local dir_postfix
     local v
+    local defitem
 
     # Name used internally below
     if [ "${prefix}" = "sysroot-check" ]; then
@@ -1523,6 +1524,20 @@ CT_IterateMultilibs() {
     # If gcc is not configured for multilib, it still prints a single line
     # for the default settings
     multilibs=( $("${CT_TARGET}-${CT_CC}" -print-multi-lib 2>/dev/null) )
+
+    # Move the default multilib entry to the end of array. This allows files such as
+    # sysroot/lib/ld-linux-* to be replaced by those from the default configuration,
+    # which cannot be referenced in gcc/config/riscv/t-linux-multilib.
+    # The default configuration is assumed to be built for the generic target (rv64gc).
+    # The order of the other multilib entries must be defined in t-linux-multilib
+    # considering ld-linux-* replacement works correctly for configurations sharing the same mabi
+    if [[ ${multilibs[0]%%;*} == "." ]]; then
+        defitem=${multilibs[0]}
+        unset 'multilibs[0]'
+        multilibs+=( "$defitem" )
+        multilibs=( "${multilibs[@]}" ) # make no empty "unset" item
+    fi
+
     CT_DoExecLog ALL rm -rf "sysroot-check"
     for multilib in "${multilibs[@]}"; do
         # GCC makes the distinction between:
