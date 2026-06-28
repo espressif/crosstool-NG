@@ -89,6 +89,8 @@ default:
 
 # ct-ng options common for all platforms
 .configure_common: &configure_common |
+  echo "# CT_SHOW_CT_VERSION is not set" >> .config
+  echo "CT_TOOLCHAIN_PKGVERSION=\"${DIST_VERSION_FULL}\"" >> .config
   echo "# CT_LOG_PROGRESS_BAR is not set" >> .config
   echo "# CT_PREFIX_DIR_RO is not set" >> .config
   echo "CT_LOG_EXTRA=y" >> .config
