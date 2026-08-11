@@ -149,8 +149,8 @@ before_script:
     rm -rf "${CONF_TARGET}/debug-sections"
     echo "${DEBUG_ARCHIVE_NAME}" >> ../dist/dist_name_${CONF_TARGET}-debug-sections
   fi
-  rm -rf "${CONF_TARGET}/bin/*esp8266*" # esp8266 is not a default target for toolchain
-  ESP8266_ARCHIVE_FILES="$(find "${CONF_TARGET}" -name "*esp8266*" -print)"
+  rm -rf ${CONF_TARGET}/bin/*esp8266* # esp8266 is not a default target for toolchain
+  ESP8266_ARCHIVE_FILES="$(find "${CONF_TARGET}" -name "*esp8266*" ! -name "xtensa_esp8266.so" -print)"
   if [ -n "${ESP8266_ARCHIVE_FILES}" ]; then
     if [ "${PLATFORM_NAME}" = "x86_64-linux-gnu" ]; then
       ESP8266_ARCHIVE_NAME="${CONF_TARGET}-${DIST_VERSION_SHORT}-esp8266-multilib.${ARCHIVE_EXT}"
