@@ -173,7 +173,7 @@ before_script:
 .build_template:
   stage: build
   allow_failure: true
-  tags: [ "build", "amd64" ]
+  tags: [ "build", "amd64", "nocaps" ]
   variables:
     # Do not compress artifacts because we already use compressed archives
     ARTIFACT_COMPRESSION_LEVEL: "fastest"
