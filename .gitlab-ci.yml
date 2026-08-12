@@ -653,8 +653,8 @@ generate_version:
     # Save the download link for the checksum file
     - echo ""
     - echo "Save checksum file link to toolchain_sha256.env:"
-    - echo "TOOL_SHA256_URL=${S3_PUBLIC_DIR}/${SHA256_FILE}" > toolchain_sha256.env
-    - cat toolchain_sha256.env
+    - echo "TOOL_SHA256_URL=${S3_PUBLIC_DIR}/${SHA256_FILE}" > ${CI_PROJECT_DIR}/toolchain_sha256.env
+    - cat ${CI_PROJECT_DIR}/toolchain_sha256.env
     - echo ""
 
 upload_all_to_dl_s3:
@@ -671,6 +671,9 @@ upload_to_github:
   tags: [ "build", "amd64", "brew" ]
   <<: *needs_all_distros
   allow_failure: true
+  artifacts:
+    reports:
+      dotenv: toolchain_sha256.env
   rules:
     - if: $CI_COMMIT_TAG
       when: manual
@@ -723,8 +726,8 @@ upload_to_github:
     # Save the download link for the checksum file
     - echo ""
     - echo "Save checksum file link to toolchain_sha256.env:"
-    - echo "TOOL_SHA256_URL=${GH_REPO_URL}/releases/download/${CI_COMMIT_TAG}/${CI_PROJECT_NAME}-${DIST_VERSION_FULL}-checksum.sha256" > toolchain_sha256.env
-    - cat toolchain_sha256.env
+    - echo "TOOL_SHA256_URL=${GH_REPO_URL}/releases/download/${CI_COMMIT_TAG}/${CI_PROJECT_NAME}-${DIST_VERSION_FULL}-checksum.sha256" > ${CI_PROJECT_DIR}/toolchain_sha256.env
+    - cat ${CI_PROJECT_DIR}/toolchain_sha256.env
     - echo ""
 
 .update_idf_tools:
