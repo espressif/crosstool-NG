@@ -109,7 +109,7 @@ before_script:
 # Actual build
 .build_toolchain: &build_toolchain |
   ./ct-ng upgradeconfig
-  ./ct-ng build
+  ./ct-ng build.32
 
 .add_extra_files: &add_extra_files |
   if [ "${EXTRA_BINS:-}" ]; then
