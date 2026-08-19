@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y \
     openssh-client iputils-ping \
     patch \
     python3 \
+    python3-pip \
     timelimit \
     xz-utils zip unzip bzip2 lzip lzma \
   && rm -rf /var/lib/apt/lists/*
