@@ -136,6 +136,7 @@ fi # CT_LIBC_PICOLIBC -o CT_COMP_LIBS_PICOLIBC
 if [ "${CT_COMP_LIBS_PICOLIBC}" = "y" ]; then
 
 do_cc_libstdcxx_picolibc() { :; }
+do_cc_libstdcxx_picolibc_atomic_lock_policy() { :; }
 
 # Download picolibc
 do_picolibc_get() {
@@ -209,6 +210,138 @@ do_cc_libstdcxx_picolibc()
 
     CT_EndStep
 }
+
+# True if RISC-V march has the 'a' (atomic) extension.
+# Single-letter 'a' or implied-by-'g' in the base ISA, or zaamo/zalrsc.
+do_picolibc_multilib_has_a_ext()
+{
+    local march="${1}"
+    local base letters
+
+    [ -n "${march}" ] || return 1
+
+    base="${march%%_*}"
+    case "${base}" in
+        rv32*) letters="${base#rv32}" ;;
+        rv64*) letters="${base#rv64}" ;;
+        *) return 1 ;;
+    esac
+
+    case "${letters}" in
+        *g*|*a*) return 0 ;;
+    esac
+    case "_${march}_" in
+        *_zaamo_*|*_zalrsc_*) return 0 ;;
+    esac
+    return 1
+}
+
+do_picolibc_install_atomic_lock_policy_libs()
+{
+    local multi_flags multi_dir multi_os_dir multi_os_dir_gcc multi_root multi_index multi_count
+    local src_root dst_root
+    local march="" f src dst
+
+    for arg in "$@"; do
+        eval "${arg// /\\ }"
+    done
+
+    if [ "${multi_dir}" = "." ] || [ -z "${multi_dir}" ]; then
+        CT_DoLog EXTRA "Skipping libstdc++_atomic_lock_policy.a for root multilib '${multi_dir}'"
+        return 0
+    fi
+
+    for f in ${multi_flags}; do
+        case "${f}" in
+            -march=*) march="${f#-march=}" ;;
+        esac
+    done
+    if [ -z "${march}" ]; then
+        if [ "${multi_dir}" = "." ] || [ -z "${multi_dir}" ]; then
+            march="${CT_ARCH_ARCH}"
+        else
+            march="${multi_dir%%/*}"
+        fi
+    fi
+
+    if ! do_picolibc_multilib_has_a_ext "${march}"; then
+        CT_DoLog EXTRA "Skipping libstdc++_atomic_lock_policy.a for '${multi_dir}' (no 'a' extension)"
+        return 0
+    fi
+
+    src="${src_root}/${CT_TARGET}/lib/${multi_dir}/libstdc++.a"
+    dst="${dst_root}/${CT_TARGET}/lib/${multi_dir}/libstdc++_atomic_lock_policy.a"
+
+    if [ ! -f "${src}" ]; then
+        CT_DoLog WARN "Missing ${src}"
+        return 0
+    fi
+
+    CT_DoLog EXTRA "Installing libstdc++_atomic_lock_policy.a for '${multi_dir}'"
+    CT_DoExecLog ALL mkdir -p "$(dirname "${dst}")"
+    CT_DoExecLog ALL cp -f "${src}" "${dst}"
+}
+
+# Build atomic libstdc++ into a temp prefix (do_cc_libstdcxx_picolibc
+# unchanged), then install only libstdc++_atomic_lock_policy.a for 'a'
+# multilibs into the real picolibc tree.
+do_cc_libstdcxx_picolibc_atomic_lock_policy()
+{
+    local -a old_extra_config
+    local real_prefix tmp_prefix
+
+    if [ "${CT_LIBC_PICOLIBC_GCC_LIBSTDCXX_ATOMIC_LOCK_POLICY}" != "y" ]; then
+        return 0
+    fi
+
+    real_prefix="${CT_PREFIX_DIR}"
+    tmp_prefix="${CT_BUILD_DIR}/libstdcxx-picolibc-atomic-lock-policy"
+
+    CT_DoExecLog ALL mkdir -p "${tmp_prefix}/picolibc"
+    if [ -e "${real_prefix}/picolibc/include" ]; then
+        CT_DoExecLog ALL ln -sfn "${real_prefix}/picolibc/include" \
+            "${tmp_prefix}/picolibc/include"
+    fi
+    if [ -e "${real_prefix}/picolibc/${CT_TARGET}/include" ]; then
+        CT_DoExecLog ALL mkdir -p "${tmp_prefix}/picolibc/${CT_TARGET}"
+        CT_DoExecLog ALL ln -sfn "${real_prefix}/picolibc/${CT_TARGET}/include" \
+            "${tmp_prefix}/picolibc/${CT_TARGET}/include"
+    fi
+
+    old_extra_config=( "${CT_CC_GCC_EXTRA_CONFIG_ARRAY[@]}" )
+    CT_CC_GCC_EXTRA_CONFIG_ARRAY+=( "--with-libstdcxx-lock-policy=atomic" )
+    CT_PREFIX_DIR="${tmp_prefix}"
+    do_cc_libstdcxx_picolibc
+    CT_PREFIX_DIR="${real_prefix}"
+    CT_CC_GCC_EXTRA_CONFIG_ARRAY=( "${old_extra_config[@]}" )
+
+    CT_DoStep INFO "Installing libstdc++ picolibc atomic lock policy"
+    CT_IterateMultilibs do_picolibc_install_atomic_lock_policy_libs atomic_lock_policy \
+        "src_root=${tmp_prefix}/picolibc" \
+        "dst_root=${real_prefix}/picolibc"
+
+    CT_DoExecLog ALL mkdir -p "${CT_SYSROOT_DIR}/lib"
+    cat > "${CT_SYSROOT_DIR}/lib/atomic_lock_policy.specs" <<'EOF'
+%rename cpp atomic_lock_policy_cpp
+%rename cc1plus atomic_lock_policy_cc1plus
+%rename link atomic_lock_policy_link
+
+*cpp:
+-D_GLIBCXX_HAVE_ATOMIC_LOCK_POLICY=1 %(atomic_lock_policy_cpp)
+
+*cc1plus:
+-D_GLIBCXX_HAVE_ATOMIC_LOCK_POLICY=1 %(atomic_lock_policy_cc1plus)
+
+*link:
+%(atomic_lock_policy_link) %:replace-outfile(-lstdc++ -lstdc++_atomic_lock_policy)
+
+EOF
+
+    CT_EndStep
+
+    CT_DoExecLog ALL rm -rf "${tmp_prefix}" "${CT_BUILD_DIR}/build-cc-libstdcxx-picolibc"
+}
+
 fi # CT_LIBC_PICOLIBC_GCC_LIBSTDCXX
 
 do_picolibc_for_target() {
@@ -217,6 +350,7 @@ do_picolibc_for_target() {
     do_picolibc_common_install
     CT_Popd
     CT_EndStep
+    do_cc_libstdcxx_picolibc_atomic_lock_policy
     do_cc_libstdcxx_picolibc
 }
 

@@ -27,6 +27,26 @@ config LIBC_PICOLIBC_GCC_LIBSTDCXX
       the picolibc companion library. This version is linked when
       "--specs=picolibcpp.specs" is specified.
 
+config LIBC_PICOLIBC_GCC_LIBSTDCXX_ATOMIC_LOCK_POLICY
+    bool
+    prompt "Build libstdc++ atomic lock policy variant"
+    default n
+    depends on LIBC_PICOLIBC_GCC_LIBSTDCXX
+    depends on ARCH_RISCV
+    help
+      Build an extra picolibc libstdc++ with
+      --with-libstdcxx-lock-policy=atomic, installed as
+      libstdc++_atomic_lock_policy.a.
+
+      GCC defaults RISC-V libstdc++ to mutex-based shared_ptr locking
+      for ABI compatibility. This variant uses atomic locking instead.
+
+      The extra library is kept only for multilibs whose -march includes
+      the 'a' extension (or equivalent zaamo/zalrsc). Use with
+      "--specs=picolibcpp.specs --specs=atomic_lock_policy.specs" to
+      define _GLIBCXX_HAVE_ATOMIC_LOCK_POLICY and replace -lstdc++
+      with -lstdc++_atomic_lock_policy.
+
 config LIBC_PICOLIBC_GCC_LIBSTDCXX_TARGET_CXXFLAGS
     string
     prompt "Target CXXFLAGS for libstdc++ picolibc variant"
