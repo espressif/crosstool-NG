@@ -76,6 +76,11 @@ before_script:
   echo "CT_TOOLCHAIN_CMAKE_TOOLCHAIN_FILE=n" >> .config
   echo "CT_STRIP_TARGET_TOOLCHAIN_LIBRARIES=y" >> .config
 
+# Force C17 on Linux host GCC (C23 default breaks older sources)
+.configure_linux: &configure_linux |
+  echo "CT_EXTRA_CFLAGS_FOR_BUILD=\"-std=gnu17\"" >> .config
+  echo "CT_EXTRA_CFLAGS_FOR_HOST=\"-std=gnu17\"" >> .config
+
 # Configuration specific to Docker
 .configure_docker: &configure_docker |
   echo "CT_ALLOW_BUILD_AS_ROOT=y" >> .config
@@ -203,6 +208,7 @@ before_script:
     - *build_ctng
     - *configure_common
     - *configure_docker
+    - *configure_linux
     - *configure_linux_no_pie
     - *build_toolchain
     - *gen_platformio_package_json
@@ -500,6 +506,7 @@ win_manifest_riscv32_esp_win:
     - *build_ctng
     - *configure_common
     - *configure_docker
+    - *configure_linux
     - *configure_linux_no_pie
     - *configure_crossbuild
     - *build_toolchain
