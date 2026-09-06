@@ -25,3 +25,12 @@ CT_DoArchGlibcAdjustConfigure() {
 
     eval "${array}+=( \"\${add_args[@]}\" )"
 }
+
+CT_DoArchMUSLHeaderDir() {
+    local dir_var="${1}"
+    local cflags="${2}"
+
+    if [ -n "${cflags}" ]; then
+        eval "${dir_var}="$( ${CT_TARGET}-${CT_CC} -print-multi-directory ${cflags} )
+    fi
+}
