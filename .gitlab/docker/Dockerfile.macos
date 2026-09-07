@@ -47,7 +47,8 @@ RUN OSXCROSS_SRCS=/opt/osxcross \
   && export UNATTENDED=1 \
   && export ENABLE_COMPILER_RT_INSTALL=1 \
   && ./build.sh \
-  && sed -i "s|https://ftp.gnu.org|https://ftpmirror.gnu.org|g" build_binutils.sh \
+  && sed -i "s|https://ftp.gnu.org/gnu|https://mirrors.kernel.org/gnu|g" build_binutils.sh \
+  && sed -i 's/local curl_opts="-L -C - "/local curl_opts="-fL --retry 5 --retry-all-errors -C - "/' tools/tools.sh \
   && ./build_binutils.sh \
   ####################### fix issue when trying to download already downloaded ###################### \
   && rm ${OSXCROSS_SRCS}/tarballs/binutils-*.tar.gz \
