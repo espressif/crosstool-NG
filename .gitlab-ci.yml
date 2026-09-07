@@ -212,6 +212,7 @@ generate_version:
 
 # Common template for all builds
 .build_template:
+  tags: [ "build", "amd64", "nocaps" ]
   stage: build
   allow_failure: true
   variables:
