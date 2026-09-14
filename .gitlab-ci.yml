@@ -7,13 +7,11 @@ workflow:
       variables:
         IMAGE_TAG: "$CI_COMMIT_TAG"
         BUILD_IMAGE: 1
-        BUILD_SECONDARY_PLATFORMS: 1
     # Target branch: rebuild docker as a 'latest'
     # (can't use a variable inside 'if' for the branch name)
     - if: '$CI_COMMIT_BRANCH == "esp-linux-1.28.x-dev"'
       variables:
         BUILD_IMAGE: 1
-        BUILD_SECONDARY_PLATFORMS: 1
     # Feature branch, docker image has changed: an SHA-tagged image
     # (can't use a variable inside 'compare_to' for the branch name)
     - if: $CI_COMMIT_BRANCH
@@ -45,8 +43,8 @@ variables:
   RELEASE_BRANCH: "esp-linux-1.28.x-dev"
 
   BUILD_IMAGE: 0
-  # Secondary platforms only build for tags or the target branch
-  BUILD_SECONDARY_PLATFORMS: 0
+  PRIMARY_HOSTS_RE: '/^(x86_64-linux-gnu|aarch64-linux-gnu)$/'
+  PRIMARY_TARGETS_RE: '/^(riscv64-esp-linux-gnu)$/'
   IMAGE_TAG: "latest"
   IMAGE_REGISTRY: "${CI_REGISTRY_IMAGE}/${RELEASE_BRANCH}"
 
@@ -63,8 +61,6 @@ variables:
   GIT_SERVER: "${CI_SERVER_PROTOCOL}://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}:${CI_SERVER_PORT}"
   STORAGE_URL: "${STORAGE_BASE_URL}/toolchains/preview/riscv64"
 
-  CONF_TARGET: "riscv64-esp-linux-gnu"
-
 # ESPCI_HOMEBREW_PREFIX is set up in runner's config.toml
 .check_and_setup_homebrew: &check_and_setup_homebrew |
   if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -77,8 +73,10 @@ default:
   before_script:
     - *check_and_setup_homebrew
 
-.rules_secondary_platform: &rules_secondary_platform
-  - if: '$BUILD_SECONDARY_PLATFORMS == "1"'
+.rules_primary_builds: &rules_primary_builds
+  - if: '$CONF_HOST =~ $PRIMARY_HOSTS_RE && $CONF_TARGET =~ $PRIMARY_TARGETS_RE'
+  - if: '$CI_COMMIT_TAG'
+  - if: '$CI_COMMIT_BRANCH == $RELEASE_BRANCH'
 
 # Configure crosstool-NG
 .build_ctng: &build_ctng |
@@ -150,12 +148,14 @@ default:
 .package_toolchain: &package_toolchain |
   mkdir -p dist
   cd builds
+  ls -l
   rm -fv ${CONF_TARGET}/build.log*
   ${ARCHIVE_TOOL} ${ARCHIVE_NAME} ${CONF_TARGET}/ > tar-list.txt 2>&1
-  mv tar-list.txt ..
-  mv ${ARCHIVE_NAME} ../dist/
-  echo "${ARCHIVE_NAME}" > ../dist/dist_name_${PLATFORM_NAME}_${CONF_TARGET}
-  ls -l ../dist/
+  ls -l
+  mv -v tar-list.txt ${CI_PROJECT_DIR}/
+  mv -v ${ARCHIVE_NAME} ${CI_PROJECT_DIR}/dist/
+  echo "${ARCHIVE_NAME}" > ${CI_PROJECT_DIR}/dist/dist_name_${CONF_HOST}_${CONF_TARGET}
+  ls -l ${CI_PROJECT_DIR}/dist/
   cd -
   echo "Job disk usage $(du -hs ${CI_PROJECT_DIR})"
 
@@ -212,13 +212,14 @@ generate_version:
 
 # Common template for all builds
 .build_template:
+  rules: *rules_primary_builds
   tags: [ "build", "amd64", "nocaps" ]
   stage: build
   allow_failure: true
   variables:
     # Do not compress artifacts because we already use compressed archives
     ARTIFACT_COMPRESSION_LEVEL: "fastest"
-    ARCHIVE_NAME: ${CONF_TARGET}-${DIST_VERSION_SHORT}-${PLATFORM_NAME}.${ARCHIVE_EXT}
+    ARCHIVE_NAME: ${CONF_TARGET}-${DIST_VERSION_SHORT}-${CONF_HOST}.${ARCHIVE_EXT}
     CONF_BUILD: "x86_64-linux-gnu"
   artifacts:
     paths:
@@ -256,8 +257,8 @@ linux_x86_64_build:
       optional: true
     - generate_version
   variables:
-    PLATFORM_NAME: "x86_64-linux-gnu"
     CONF_HOST: "x86_64-linux-gnu"
+    CONF_TARGET: "riscv64-esp-linux-gnu"
 
 elf_x86_64_build:
   extends: .build_template_linux
@@ -267,21 +268,19 @@ elf_x86_64_build:
       optional: true
     - generate_version
   variables:
-    PLATFORM_NAME: "x86_64-linux-gnu"
     CONF_HOST: "x86_64-linux-gnu"
     CONF_TARGET: "riscv64-esp-elf"
 
 linux_i586_build:
   extends: .build_template_linux
-  rules: *rules_secondary_platform
   image: ${IMAGE_REGISTRY}-build-linux-i586:${IMAGE_TAG}
   needs:
     - job: build-linux-i586_image
       optional: true
     - generate_version
   variables:
-    PLATFORM_NAME: "i586-linux-gnu"
     CONF_HOST: "i586-linux-gnu"
+    CONF_TARGET: "riscv64-esp-linux-gnu"
 
 .template_lin_arm_cross:
   extends: .build_template
@@ -301,91 +300,21 @@ linux_i586_build:
 
 linux_aarch64_build:
   extends: .template_lin_arm_cross
-  rules: *rules_secondary_platform
   variables:
-    PLATFORM_NAME: "aarch64-linux-gnu"
     CONF_HOST: "aarch64-linux-gnu"
+    CONF_TARGET: "riscv64-esp-linux-gnu"
 
 linux_armhf_build:
   extends: .template_lin_arm_cross
-  rules: *rules_secondary_platform
   variables:
-    PLATFORM_NAME: "arm-linux-gnueabihf"
     CONF_HOST: "arm-linux-gnueabihf"
+    CONF_TARGET: "riscv64-esp-linux-gnu"
 
 linux_armel_build:
   extends: .template_lin_arm_cross
-  rules: *rules_secondary_platform
   variables:
-    PLATFORM_NAME: "arm-linux-gnueabi"
     CONF_HOST: "arm-linux-gnueabi"
-
-# Fix osxcross library paths in built binaries
-.fix_macos_library_paths: &fix_macos_library_paths |
-  pushd builds
-  MACH_O_FILES=$(for file in $(find ${CONF_TARGET} -type f) ; do file $file; done | grep 'Mach-O' | awk '{print $1}' | sed 's/://g')
-  for file in $MACH_O_FILES; do
-    LIB_LIST=$(${CONF_HOST}-otool -L $file | awk '{print $1}' | grep osxcross || true);
-    if [ "${LIB_LIST:-}" = "" ]; then
-      continue;
-    fi
-    for lib in $LIB_LIST; do
-      if [ $(basename $lib) != "libstdc++.6.dylib" ]; then
-        echo "Unexpected library: $lib";
-        exit 1;
-      fi
-      echo "Fixing library path $lib for file $file"
-      ${CONF_HOST}-install_name_tool -change $lib "/usr/lib/$(basename $lib)" $file || ( echo "install_name_tool error... exiting" && exit 1 )
-    done
-  done
-  popd
-
-.template_macos_cross:
-  extends: .build_template
-  image: $CI_REGISTRY_IMAGE/build-macos:latest
-  needs:
-    - generate_version
-  script:
-    - *build_ctng
-    - *configure_common
-    - *configure_docker
-    - *configure_crossbuild
-    - *build_toolchain
-    - *fix_macos_library_paths
-    - *package_toolchain
-
-# TODO: GCC-420. Disabled due to 'SDK/MacOSX15.5.sdk/usr/include/_stdio.h | :l318o:c7a:l  error: iexpected identifier'
-.build_for_macos_x86_64:
-  extends: .template_macos_cross
-  variables:
-    PLATFORM_NAME: "x86_64-apple-darwin"
-    CONF_HOST: "x86_64-apple-darwin24.5"
-    MACOSX_DEPLOYMENT_TARGET: "10.12"
-
-# TODO: GCC-420. Disabled due to 'SDK/MacOSX15.5.sdk/usr/include/_stdio.h | :l318o:c7a:l  error: iexpected identifier'
-.build_for_macos_arm64:
-  extends: .template_macos_cross
-  variables:
-    PLATFORM_NAME: "aarch64-apple-darwin"
-    CONF_HOST: "aarch64-apple-darwin24.5"
-    MACOSX_DEPLOYMENT_TARGET: "10.13"
-
-# TODO: GCC-434, add windows build
-
-.needs_primary_distros: &needs_primary_distros
-  needs:
-    - generate_version
-    - linux_x86_64_build
-    - elf_x86_64_build
-
-.needs_all_distros: &needs_all_distros
-  needs:
-    - generate_version
-    - linux_x86_64_build
-    - linux_i586_build
-    - linux_aarch64_build
-    - linux_armhf_build
-    - linux_armel_build
+    CONF_TARGET: "riscv64-esp-linux-gnu"
 
 .gen_sha256_file: &gen_sha256_file |
   FILES_LIST=$(find . -name dist_name_\* -exec cat {} \+)
@@ -434,14 +363,22 @@ linux_armel_build:
     - echo "${SHA256_FILE}:"
     - cat ${SHA256_FILE}
 
-upload_all_to_dl_s3:
+upload_to_dl_s3:
   extends: .upload_to_dl_s3_template
-  <<: *needs_all_distros
-  rules: *rules_secondary_platform
-
-upload_primary_to_dl_s3:
-  extends: .upload_to_dl_s3_template
-  <<: *needs_primary_distros
+  needs:
+    - generate_version
+    - job: linux_x86_64_build
+      optional: true
+    - job: elf_x86_64_build
+      optional: true
+    - job: linux_i586_build
+      optional: true
+    - job: linux_aarch64_build
+      optional: true
+    - job: linux_armhf_build
+      optional: true
+    - job: linux_armel_build
+      optional: true
 
 # Getting sources and tests
 
@@ -504,6 +441,7 @@ gcc_sources:
     SOURCE_NAME: "gcc"
     SOURCE_REPO_URL: "${GIT_SERVER}/idf/gcc.git"
     BRANCH_VAR: "CT_GCC_DEVEL_BRANCH"
+    CONF_TARGET: "riscv64-esp-linux-gnu"
   before_script:
     - set +u
     - . "${CI_PROJECT_DIR}/samples/${CONF_TARGET}/crosstool.config"
@@ -516,6 +454,7 @@ binutils_sources:
     SOURCE_NAME: "binutils"
     SOURCE_REPO_URL: "${GIT_SERVER}/idf/binutils-gdb.git"
     BRANCH_VAR: "CT_BINUTILS_DEVEL_BRANCH"
+    CONF_TARGET: "riscv64-esp-linux-gnu"
   before_script:
     - set +u
     - . "${CI_PROJECT_DIR}/samples/${CONF_TARGET}/crosstool.config"
@@ -528,6 +467,7 @@ gdb_sources:
     SOURCE_NAME: "gdb"
     SOURCE_REPO_URL: "${GIT_SERVER}/idf/binutils-gdb.git"
     BRANCH_VAR: "CT_GDB_DEVEL_BRANCH"
+    CONF_TARGET: "riscv64-esp-linux-gnu"
   before_script:
     - set +u
     - . "${CI_PROJECT_DIR}/samples/${CONF_TARGET}/crosstool.config"
@@ -539,6 +479,7 @@ gdb_sources:
 #
 
 .template_compiler_tests:
+  rules: *rules_primary_builds
   stage: test
   artifacts:
     when: always
@@ -549,7 +490,7 @@ gdb_sources:
     GIT_STRATEGY: none
   script:
     # From x_build
-    - ARCHIVE_NAME=$(cat dist/dist_name_${PLATFORM_NAME}_${CONF_TARGET})
+    - ARCHIVE_NAME=$(cat dist/dist_name_${CONF_HOST}_${CONF_TARGET})
     - ${UNARCHIVE_TOOL} dist/${ARCHIVE_NAME}
     - export PATH="${CI_PROJECT_DIR}/${CONF_TARGET}/bin:${PATH}"
     - export CONF_TARGET="${CONF_TARGET_WRAPPER:-$CONF_TARGET}"
@@ -587,20 +528,22 @@ linux_compiler_tests:
   extends: .template_compiler_tests
   needs: [ linux_x86_64_build, esp_compiler_tests_sources ]
   variables:
-    PLATFORM_NAME: "x86_64-linux-gnu"
+    CONF_HOST: "x86_64-linux-gnu"
+    CONF_TARGET: "riscv64-esp-linux-gnu"
 
 elf_compiler_tests:
   extends: .template_compiler_tests
   needs: [ elf_x86_64_build, esp_compiler_tests_sources ]
   variables:
-    PLATFORM_NAME: "x86_64-linux-gnu"
+    CONF_HOST: "x86_64-linux-gnu"
     CONF_TARGET: "riscv64-esp-elf"
 
 .dejagnu_test_template:
+  rules: *rules_primary_builds
   stage: test
   tags: [ "build", "amd64", "brew" ]
   variables:
-    PLATFORM_NAME: "x86_64-linux-gnu"
+    CONF_HOST: "x86_64-linux-gnu"
     WORKDIR: "workdir"
     TOOL_TRIPLET: ${CONF_TARGET}
     # Empty for all tests
@@ -621,7 +564,7 @@ elf_compiler_tests:
     - ls -l sources/*
 
     # From X_build
-    - ARCHIVE_NAME=$(cat dist/dist_name_${PLATFORM_NAME}_${CONF_TARGET})
+    - ARCHIVE_NAME=$(cat dist/dist_name_${CONF_HOST}_${CONF_TARGET})
     - export TOOLCHAIN_DIST_TARBALL=dist/${ARCHIVE_NAME}
 
     # From esp_compiler_tests_sources
@@ -636,6 +579,7 @@ linux_dejagnu_gcc_test:
   extends: .dejagnu_test_template
   needs: [ linux_x86_64_build, esp_compiler_tests_sources, gcc_sources ]
   variables:
+    CONF_TARGET: "riscv64-esp-linux-gnu"
     TOOL_NAME: "gcc"
     TOOL_SOURCE_TESTSUITE_DIR: "gcc/gcc/testsuite"
   before_script:
@@ -658,6 +602,7 @@ linux_dejagnu_gxx_test:
   extends: .dejagnu_test_template
   needs: [ linux_x86_64_build, esp_compiler_tests_sources, gcc_sources ]
   variables:
+    CONF_TARGET: "riscv64-esp-linux-gnu"
     TOOL_NAME: "g++"
     TOOL_SOURCE_TESTSUITE_DIR: "gcc/gcc/testsuite"
   before_script:
@@ -680,6 +625,7 @@ linux_dejagnu_gas_test:
   extends: .dejagnu_test_template
   needs: [ linux_x86_64_build, esp_compiler_tests_sources, binutils_sources ]
   variables:
+    CONF_TARGET: "riscv64-esp-linux-gnu"
     TOOL_NAME: "gas"
     TOOL_SOURCE_TESTSUITE_DIR: "binutils-gdb/gas/testsuite"
   before_script:
@@ -701,6 +647,7 @@ linux_dejagnu_ld_test:
   extends: .dejagnu_test_template
   needs: [ linux_x86_64_build, esp_compiler_tests_sources, binutils_sources ]
   variables:
+    CONF_TARGET: "riscv64-esp-linux-gnu"
     TOOL_NAME: "ld"
     TOOL_SOURCE_TESTSUITE_DIR: "binutils-gdb/ld/testsuite"
   before_script:
@@ -722,6 +669,7 @@ linux_dejagnu_gdb_test:
   extends: .dejagnu_test_template
   needs: [ linux_x86_64_build, esp_compiler_tests_sources, gdb_sources ]
   variables:
+    CONF_TARGET: "riscv64-esp-linux-gnu"
     TOOL_NAME: "gdb"
     TOOL_SOURCE_TESTSUITE_DIR: "binutils-gdb/gdb/testsuite"
     INCLUDE_TEST: "gdb.base/break.exp"
@@ -732,14 +680,34 @@ linux_dejagnu_gdb_test:
 create_release:
   stage: release
   image: registry.gitlab.com/gitlab-org/cli:latest
-  needs: [ generate_version, upload_all_to_dl_s3 ]
+  needs:
+    - generate_version
+    - job: upload_to_dl_s3
+      artifacts: false
+    - job: linux_x86_64_build
+      artifacts: false
+    - job: elf_x86_64_build
+      artifacts: false
+    - job: linux_i586_build
+      artifacts: false
+    - job: linux_aarch64_build
+      artifacts: false
+    - job: linux_armhf_build
+      artifacts: false
+    - job: linux_armel_build
+      artifacts: false
   rules:
     - if: $CI_COMMIT_TAG
       when: manual
   allow_failure: true
   variables:
     S3_PUBLIC_DIR: "${STORAGE_URL}/${DIST_VERSION_SHORT}"
-    DIST_NAME: "${CONF_TARGET}-${DIST_VERSION_SHORT}"
+    RELEASE_ASSET_GNU_X86_64: "riscv64-esp-linux-gnu-${DIST_VERSION_SHORT}-x86_64-linux-gnu.${ARCHIVE_EXT}"
+    RELEASE_ASSET_ELF_X86_64: "riscv64-esp-elf-${DIST_VERSION_SHORT}-x86_64-linux-gnu.${ARCHIVE_EXT}"
+    RELEASE_ASSET_GNU_I586: "riscv64-esp-linux-gnu-${DIST_VERSION_SHORT}-i586-linux-gnu.${ARCHIVE_EXT}"
+    RELEASE_ASSET_GNU_AARCH64: "riscv64-esp-linux-gnu-${DIST_VERSION_SHORT}-aarch64-linux-gnu.${ARCHIVE_EXT}"
+    RELEASE_ASSET_GNU_ARMHF: "riscv64-esp-linux-gnu-${DIST_VERSION_SHORT}-arm-linux-gnueabihf.${ARCHIVE_EXT}"
+    RELEASE_ASSET_GNU_ARMEL: "riscv64-esp-linux-gnu-${DIST_VERSION_SHORT}-arm-linux-gnueabi.${ARCHIVE_EXT}"
   before_script: []
   script:
     - echo "Creating release ${DIST_VERSION_FULL}"
@@ -749,36 +717,44 @@ create_release:
     description: "Espressif RISC-V 64-bit Linux GCC toolchain, release ${DIST_VERSION_FULL}"
     assets:
       links:
-        - name: "${DIST_NAME}-x86_64-linux-gnu.${ARCHIVE_EXT}"
-          url: "${S3_PUBLIC_DIR}/${DIST_NAME}-x86_64-linux-gnu.${ARCHIVE_EXT}"
+        - name: "${RELEASE_ASSET_GNU_X86_64}"
+          url: "${S3_PUBLIC_DIR}/${RELEASE_ASSET_GNU_X86_64}"
           link_type: other
-        - name: "${DIST_NAME}-i586-linux-gnu.${ARCHIVE_EXT}"
-          url: "${S3_PUBLIC_DIR}/${DIST_NAME}-i586-linux-gnu.${ARCHIVE_EXT}"
+        - name: "${RELEASE_ASSET_ELF_X86_64}"
+          url: "${S3_PUBLIC_DIR}/${RELEASE_ASSET_ELF_X86_64}"
           link_type: other
-        - name: "${DIST_NAME}-aarch64-linux-gnu.${ARCHIVE_EXT}"
-          url: "${S3_PUBLIC_DIR}/${DIST_NAME}-aarch64-linux-gnu.${ARCHIVE_EXT}"
+        - name: "${RELEASE_ASSET_GNU_I586}"
+          url: "${S3_PUBLIC_DIR}/${RELEASE_ASSET_GNU_I586}"
           link_type: other
-        - name: "${DIST_NAME}-arm-linux-gnueabihf.${ARCHIVE_EXT}"
-          url: "${S3_PUBLIC_DIR}/${DIST_NAME}-arm-linux-gnueabihf.${ARCHIVE_EXT}"
+        - name: "${RELEASE_ASSET_GNU_AARCH64}"
+          url: "${S3_PUBLIC_DIR}/${RELEASE_ASSET_GNU_AARCH64}"
           link_type: other
-        - name: "${DIST_NAME}-arm-linux-gnueabi.${ARCHIVE_EXT}"
-          url: "${S3_PUBLIC_DIR}/${DIST_NAME}-arm-linux-gnueabi.${ARCHIVE_EXT}"
+        - name: "${RELEASE_ASSET_GNU_ARMHF}"
+          url: "${S3_PUBLIC_DIR}/${RELEASE_ASSET_GNU_ARMHF}"
+          link_type: other
+        - name: "${RELEASE_ASSET_GNU_ARMEL}"
+          url: "${S3_PUBLIC_DIR}/${RELEASE_ASSET_GNU_ARMEL}"
           link_type: other
         - name: "${CI_PROJECT_NAME}-${DIST_VERSION_FULL}-checksum.sha256"
           url: "${S3_PUBLIC_DIR}/${CI_PROJECT_NAME}-${DIST_VERSION_FULL}-checksum.sha256"
           link_type: other
 
-# This image contains a prebuilt toolchain intended for testing other projects
+#
+# The dist images contain a prebuilt toolchain intended for testing other projects
+#
+
 linux_x86_64_docker:
   extends: .build_image_template
   stage: docker
+  rules: *rules_primary_builds
   needs: [ generate_version, linux_x86_64_build ]
   when: manual
   allow_failure: true
   variables:
-    PLATFORM_NAME: "x86_64-linux-gnu"
+    CONF_HOST: "x86_64-linux-gnu"
+    CONF_TARGET: "riscv64-esp-linux-gnu"
     BUILD_IMAGE: 1
     BUILD_IMAGE_URI: "${CI_REGISTRY_IMAGE}/dist-${CONF_TARGET}:${DIST_VERSION_SHORT}"
-    BUILD_IMAGE_DOCKERFILE: ".gitlab/docker/dist/Dockerfile"
+    BUILD_IMAGE_DOCKERFILE: ".gitlab/docker/dist/Dockerfile-gnu"
   before_script:
-    - mv -v "dist/$(cat dist/dist_name_${PLATFORM_NAME}_${CONF_TARGET})" .gitlab/docker/dist/dist.tar.xz
+    - mv -v "dist/$(cat dist/dist_name_${CONF_HOST}_${CONF_TARGET})" .gitlab/docker/dist/dist.tar.xz
