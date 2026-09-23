@@ -18,7 +18,7 @@ workflow:
       changes:
         compare_to: 'refs/heads/esp-linux-1.28.x-dev'
         paths:
-          - .gitlab/docker/**/*
+          - .gitlab/docker/ci/**/*
       variables:
         IMAGE_TAG: "$CI_COMMIT_SHORT_SHA"
         BUILD_IMAGE: 1
@@ -164,7 +164,7 @@ default_image:
   stage: images
   variables:
     BUILD_IMAGE_URI: ${IMAGE_REGISTRY}-default:${IMAGE_TAG}
-    BUILD_IMAGE_DOCKERFILE: ".gitlab/docker/default/Dockerfile"
+    BUILD_IMAGE_DOCKERFILE: ".gitlab/docker/ci/Dockerfile.default"
   before_script: []
 
 build-linux-x86_64_image:
@@ -172,7 +172,7 @@ build-linux-x86_64_image:
   stage: images
   variables:
     BUILD_IMAGE_URI: ${IMAGE_REGISTRY}-build-linux-x86_64:${IMAGE_TAG}
-    BUILD_IMAGE_DOCKERFILE: ".gitlab/docker/build-linux-x86_64/Dockerfile"
+    BUILD_IMAGE_DOCKERFILE: ".gitlab/docker/ci/Dockerfile.linux-x86_64"
   before_script: []
 
 build-linux-i586_image:
@@ -180,7 +180,7 @@ build-linux-i586_image:
   stage: images
   variables:
     BUILD_IMAGE_URI: ${IMAGE_REGISTRY}-build-linux-i586:${IMAGE_TAG}
-    BUILD_IMAGE_DOCKERFILE: ".gitlab/docker/build-linux-i586/Dockerfile"
+    BUILD_IMAGE_DOCKERFILE: ".gitlab/docker/ci/Dockerfile.linux-i586"
   before_script: []
 
 build-linux-arm-cross_image:
@@ -188,7 +188,7 @@ build-linux-arm-cross_image:
   stage: images
   variables:
     BUILD_IMAGE_URI: ${IMAGE_REGISTRY}-build-linux-arm-cross:${IMAGE_TAG}
-    BUILD_IMAGE_DOCKERFILE: ".gitlab/docker/build-linux-arm-cross/Dockerfile"
+    BUILD_IMAGE_DOCKERFILE: ".gitlab/docker/ci/Dockerfile.linux-arm-cross"
   before_script: []
 
 generate_version:
