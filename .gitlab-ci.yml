@@ -755,6 +755,8 @@ linux_x86_64_docker:
     CONF_TARGET: "riscv64-esp-linux-gnu"
     BUILD_IMAGE: 1
     BUILD_IMAGE_URI: "${CI_REGISTRY_IMAGE}/dist-${CONF_TARGET}:${DIST_VERSION_SHORT}"
-    BUILD_IMAGE_DOCKERFILE: ".gitlab/docker/dist/Dockerfile-gnu"
+    BUILD_IMAGE_DOCKERFILE: ".gitlab/docker/dist/Dockerfile"
+    BUILD_IMAGE_EXTRA_ARGS: "--build-arg TARGET=${CONF_TARGET}"
   before_script:
-    - mv -v "dist/$(cat dist/dist_name_${CONF_HOST}_${CONF_TARGET})" .gitlab/docker/dist/dist.tar.xz
+    - cd .gitlab/docker/dist/
+    - tar -xf "${CI_PROJECT_DIR}/dist/$(cat dist/dist_name_${CONF_HOST}_${CONF_TARGET})"

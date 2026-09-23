@@ -14,10 +14,10 @@ RUN apt-get update && \
     xz-utils \
   && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /opt
-COPY dist.tar.xz /opt/
-RUN tar -xf dist.tar.xz && rm -v dist.tar.xz && ls -l /opt/*
-ENV PATH=/opt/riscv64-esp-linux-gnu/bin:$PATH
+ARG TARGET="riscv64-esp-linux-musl"
 
-ENV CROSS_COMPILE=riscv64-esp-linux-gnu-
+COPY "${TARGET}/" "/opt/${TARGET}/"
+ENV PATH=/opt/${TARGET}/bin:$PATH
+
+ENV CROSS_COMPILE="${TARGET}-"
 ENV ARCH=riscv
