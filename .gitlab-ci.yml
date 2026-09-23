@@ -760,3 +760,5 @@ linux_x86_64_docker:
   before_script:
     - cd .gitlab/docker/dist/
     - tar -xf "${CI_PROJECT_DIR}/dist/$(cat dist/dist_name_${CONF_HOST}_${CONF_TARGET})"
+  after_script:
+    - rm -rv "${CI_PROJECT_DIR}/.gitlab/docker/dist/${CONF_TARGET}" | tail -2
