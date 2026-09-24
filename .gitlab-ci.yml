@@ -111,6 +111,9 @@ default:
   echo "CT_ALLOW_BUILD_AS_ROOT=y" >> .config
   echo "CT_ALLOW_BUILD_AS_ROOT_SURE=y" >> .config
   echo "CT_CONNECT_TIMEOUT=30" >> .config
+  if [ "${CFLAGS_FOR_BUILD:-}" ]; then
+    echo "CT_EXTRA_CFLAGS_FOR_BUILD=\"${CFLAGS_FOR_BUILD}\"" >> .config
+  fi
 
 # If PIE is enabled by default in build GCC, add a flag to disable it
 # For example, it appears on Ubuntu 17.04 or Debian 9
@@ -272,6 +275,7 @@ musl_i586_build:
   variables:
     CONF_HOST: "i586-linux-gnu"
     CONF_TARGET: "riscv64-esp-linux-musl"
+    CFLAGS_FOR_BUILD: "-O1"
 
 .template_lin_arm_cross:
   extends: .build_template
