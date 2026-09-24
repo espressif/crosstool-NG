@@ -688,9 +688,10 @@ create_release:
     BUILD_IMAGE_EXTRA_ARGS: "--build-arg TARGET=${CONF_TARGET}"
   before_script:
     - cd .gitlab/docker/dist/
-    - tar -xf "${CI_PROJECT_DIR}/dist/$(cat dist/dist_name_${CONF_HOST}_${CONF_TARGET})"
+    - tar -xf "${CI_PROJECT_DIR}/dist/$(cat ${CI_PROJECT_DIR}/dist/dist_name_${CONF_HOST}_${CONF_TARGET})"
+    - cd -
   after_script:
-    - rm -rv "${CI_PROJECT_DIR}/.gitlab/docker/dist/${CONF_TARGET}" | tail -2
+    - rm -rv "${CI_PROJECT_DIR}/.gitlab/docker/dist/${CONF_TARGET}" | tail -1
 
 musl_x86_64_docker:
   extends: .dist_docker_template
