@@ -132,7 +132,7 @@ default:
 # Actual build
 .build_toolchain: &build_toolchain |
   ./ct-ng oldconfig
-  apt-get remove --autoremove libncurses-dev || true
+  DEBIAN_FRONTEND=noninteractive apt-get remove --autoremove -y libncurses-dev || true
   ./ct-ng build.${MAKE_PARALLEL_JOBS:-2}
 
 .add_extra_files: &add_extra_files |
