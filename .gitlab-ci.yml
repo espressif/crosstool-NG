@@ -251,7 +251,6 @@ linux_x86_64_build:
 
 musl_x86_64_build:
   extends: .build_template_linux
-  rules: *rules_primary_builds
   image: ${IMAGE_REGISTRY}-build-linux-x86_64:${IMAGE_TAG}
   needs:
     - job: build-linux-x86_64_image
@@ -319,7 +318,6 @@ linux_aarch64_build:
 
 musl_aarch64_build:
   extends: .template_lin_arm_cross
-  rules: *rules_primary_builds
   variables:
     CONF_HOST: "aarch64-linux-gnu"
     CONF_TARGET: "riscv64-esp-linux-musl"
@@ -477,44 +475,88 @@ esp_compiler_tests_sources:
     SOURCE_REPO_BRANCH: ${RELEASE_BRANCH}
   before_script: []
 
-gcc_sources:
+.gcc_sources:
   extends: .prepare_sources_template
+  rules: *rules_primary_builds
   variables:
+    # Lets rules_primary_builds match the x86_64 builds under test.
+    CONF_HOST: "x86_64-linux-gnu"
     SOURCE_NAME: "gcc"
     SOURCE_REPO_URL: "${GIT_SERVER}/idf/gcc.git"
     BRANCH_VAR: "CT_GCC_DEVEL_BRANCH"
-    CONF_TARGET: "riscv64-esp-linux-gnu"
   before_script:
     - set +u
     - . "${CI_PROJECT_DIR}/samples/${CONF_TARGET}/crosstool.config"
     - set -u
     - SOURCE_REPO_BRANCH=${!BRANCH_VAR}
 
-binutils_sources:
-  extends: .prepare_sources_template
+gcc_linux_sources:
+  extends: .gcc_sources
   variables:
+    CONF_TARGET: "riscv64-esp-linux-gnu"
+
+gcc_musl_sources:
+  extends: .gcc_sources
+  variables:
+    CONF_TARGET: "riscv64-esp-linux-musl"
+
+gcc_elf_sources:
+  extends: .gcc_sources
+  variables:
+    CONF_TARGET: "riscv64-esp-elf"
+
+.binutils_sources:
+  extends: .prepare_sources_template
+  rules: *rules_primary_builds
+  variables:
+    CONF_HOST: "x86_64-linux-gnu"
     SOURCE_NAME: "binutils"
     SOURCE_REPO_URL: "${GIT_SERVER}/idf/binutils-gdb.git"
     BRANCH_VAR: "CT_BINUTILS_DEVEL_BRANCH"
-    CONF_TARGET: "riscv64-esp-linux-gnu"
   before_script:
     - set +u
     - . "${CI_PROJECT_DIR}/samples/${CONF_TARGET}/crosstool.config"
     - set -u
     - SOURCE_REPO_BRANCH=${!BRANCH_VAR}
 
-gdb_sources:
-  extends: .prepare_sources_template
+binutils_linux_sources:
+  extends: .binutils_sources
   variables:
+    CONF_TARGET: "riscv64-esp-linux-gnu"
+
+binutils_musl_sources:
+  extends: .binutils_sources
+  variables:
+    CONF_TARGET: "riscv64-esp-linux-musl"
+
+binutils_elf_sources:
+  extends: .binutils_sources
+  variables:
+    CONF_TARGET: "riscv64-esp-elf"
+
+.gdb_sources:
+  extends: .prepare_sources_template
+  rules: *rules_primary_builds
+  variables:
+    CONF_HOST: "x86_64-linux-gnu"
     SOURCE_NAME: "gdb"
     SOURCE_REPO_URL: "${GIT_SERVER}/idf/binutils-gdb.git"
     BRANCH_VAR: "CT_GDB_DEVEL_BRANCH"
-    CONF_TARGET: "riscv64-esp-linux-gnu"
   before_script:
     - set +u
     - . "${CI_PROJECT_DIR}/samples/${CONF_TARGET}/crosstool.config"
     - set -u
     - SOURCE_REPO_BRANCH=${!BRANCH_VAR}
+
+gdb_linux_sources:
+  extends: .gdb_sources
+  variables:
+    CONF_TARGET: "riscv64-esp-linux-gnu"
+
+gdb_musl_sources:
+  extends: .gdb_sources
+  variables:
+    CONF_TARGET: "riscv64-esp-linux-musl"
 
 #
 # Compiler tests: build-only and just-run-tools
@@ -626,160 +668,160 @@ elf_compiler_tests:
 
 linux_dejagnu_gcc_test:
   extends: .dejagnu_test_template
-  needs: [ linux_x86_64_build, esp_compiler_tests_sources, gcc_sources ]
+  needs: [ linux_x86_64_build, esp_compiler_tests_sources, gcc_linux_sources ]
   variables:
     CONF_TARGET: "riscv64-esp-linux-gnu"
     TOOL_NAME: "gcc"
     TOOL_SOURCE_TESTSUITE_DIR: "gcc/gcc/testsuite"
   before_script:
-    # From gcc_sources
+    # From gcc_*_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_GCC_TARBALL}
 
 musl_dejagnu_gcc_test:
   extends: .dejagnu_test_template
-  needs: [ musl_x86_64_build, esp_compiler_tests_sources, gcc_sources ]
+  needs: [ musl_x86_64_build, esp_compiler_tests_sources, gcc_musl_sources ]
   variables:
     CONF_TARGET: "riscv64-esp-linux-musl"
     TOOL_NAME: "gcc"
     TOOL_SOURCE_TESTSUITE_DIR: "gcc/gcc/testsuite"
   before_script:
-    # From gcc_sources
+    # From gcc_*_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_GCC_TARBALL}
 
 elf_dejagnu_gcc_test:
   extends: .dejagnu_test_template
-  needs: [ elf_x86_64_build, esp_compiler_tests_sources, gcc_sources ]
+  needs: [ elf_x86_64_build, esp_compiler_tests_sources, gcc_elf_sources ]
   variables:
     CONF_TARGET: "riscv64-esp-elf"
     TOOL_NAME: "gcc"
     TOOL_SOURCE_TESTSUITE_DIR: "gcc/gcc/testsuite"
     INCLUDE_TEST: "compile.exp"
   before_script:
-    # From gcc_sources
+    # From gcc_*_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_GCC_TARBALL}
 
 linux_dejagnu_gxx_test:
   extends: .dejagnu_test_template
-  needs: [ linux_x86_64_build, esp_compiler_tests_sources, gcc_sources ]
+  needs: [ linux_x86_64_build, esp_compiler_tests_sources, gcc_linux_sources ]
   variables:
     CONF_TARGET: "riscv64-esp-linux-gnu"
     TOOL_NAME: "g++"
     TOOL_SOURCE_TESTSUITE_DIR: "gcc/gcc/testsuite"
   before_script:
-    # From gcc_sources
+    # From gcc_*_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_GCC_TARBALL}
 
 musl_dejagnu_gxx_test:
   extends: .dejagnu_test_template
-  needs: [ musl_x86_64_build, esp_compiler_tests_sources, gcc_sources ]
+  needs: [ musl_x86_64_build, esp_compiler_tests_sources, gcc_musl_sources ]
   variables:
     CONF_TARGET: "riscv64-esp-linux-musl"
     TOOL_NAME: "g++"
     TOOL_SOURCE_TESTSUITE_DIR: "gcc/gcc/testsuite"
   before_script:
-    # From gcc_sources
+    # From gcc_*_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_GCC_TARBALL}
 
 elf_dejagnu_gxx_test:
   extends: .dejagnu_test_template
-  needs: [ elf_x86_64_build, esp_compiler_tests_sources, gcc_sources ]
+  needs: [ elf_x86_64_build, esp_compiler_tests_sources, gcc_elf_sources ]
   variables:
     CONF_TARGET: "riscv64-esp-elf"
     TOOL_NAME: "g++"
     TOOL_SOURCE_TESTSUITE_DIR: "gcc/gcc/testsuite"
     INCLUDE_TEST: "compat.exp"
   before_script:
-    # From gcc_sources
+    # From gcc_*_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_GCC_TARBALL}
 
 linux_dejagnu_gas_test:
   extends: .dejagnu_test_template
-  needs: [ linux_x86_64_build, esp_compiler_tests_sources, binutils_sources ]
+  needs: [ linux_x86_64_build, esp_compiler_tests_sources, binutils_linux_sources ]
   variables:
     CONF_TARGET: "riscv64-esp-linux-gnu"
     TOOL_NAME: "gas"
     TOOL_SOURCE_TESTSUITE_DIR: "binutils-gdb/gas/testsuite"
   before_script:
-    # From binutils_sources
+    # From binutils_*_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_BINUTILS_TARBALL}
 
 musl_dejagnu_gas_test:
   extends: .dejagnu_test_template
-  needs: [ musl_x86_64_build, esp_compiler_tests_sources, binutils_sources ]
+  needs: [ musl_x86_64_build, esp_compiler_tests_sources, binutils_musl_sources ]
   variables:
     CONF_TARGET: "riscv64-esp-linux-musl"
     TOOL_NAME: "gas"
     TOOL_SOURCE_TESTSUITE_DIR: "binutils-gdb/gas/testsuite"
   before_script:
-    # From binutils_sources
+    # From binutils_*_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_BINUTILS_TARBALL}
 
 elf_dejagnu_gas_test:
   extends: .dejagnu_test_template
-  needs: [ elf_x86_64_build, esp_compiler_tests_sources, binutils_sources ]
+  needs: [ elf_x86_64_build, esp_compiler_tests_sources, binutils_elf_sources ]
   variables:
     CONF_TARGET: "riscv64-esp-elf"
     TOOL_NAME: "gas"
     TOOL_SOURCE_TESTSUITE_DIR: "binutils-gdb/gas/testsuite"
   before_script:
-    # From binutils_sources
+    # From binutils_*_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_BINUTILS_TARBALL}
 
 linux_dejagnu_ld_test:
   extends: .dejagnu_test_template
-  needs: [ linux_x86_64_build, esp_compiler_tests_sources, binutils_sources ]
+  needs: [ linux_x86_64_build, esp_compiler_tests_sources, binutils_linux_sources ]
   variables:
     CONF_TARGET: "riscv64-esp-linux-gnu"
     TOOL_NAME: "ld"
     TOOL_SOURCE_TESTSUITE_DIR: "binutils-gdb/ld/testsuite"
   before_script:
-    # From binutils_sources
+    # From binutils_*_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_BINUTILS_TARBALL}
 
 musl_dejagnu_ld_test:
   extends: .dejagnu_test_template
-  needs: [ musl_x86_64_build, esp_compiler_tests_sources, binutils_sources ]
+  needs: [ musl_x86_64_build, esp_compiler_tests_sources, binutils_musl_sources ]
   variables:
     CONF_TARGET: "riscv64-esp-linux-musl"
     TOOL_NAME: "ld"
     TOOL_SOURCE_TESTSUITE_DIR: "binutils-gdb/ld/testsuite"
   before_script:
-    # From binutils_sources
+    # From binutils_*_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_BINUTILS_TARBALL}
 
 elf_dejagnu_ld_test:
   extends: .dejagnu_test_template
-  needs: [ elf_x86_64_build, esp_compiler_tests_sources, binutils_sources ]
+  needs: [ elf_x86_64_build, esp_compiler_tests_sources, binutils_elf_sources ]
   variables:
     CONF_TARGET: "riscv64-esp-elf"
     TOOL_NAME: "ld"
     TOOL_SOURCE_TESTSUITE_DIR: "binutils-gdb/ld/testsuite"
   before_script:
-    # From binutils_sources
+    # From binutils_*_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_BINUTILS_TARBALL}
 
 linux_dejagnu_gdb_test:
   extends: .dejagnu_test_template
-  needs: [ linux_x86_64_build, esp_compiler_tests_sources, gdb_sources ]
+  needs: [ linux_x86_64_build, esp_compiler_tests_sources, gdb_linux_sources ]
   variables:
     CONF_TARGET: "riscv64-esp-linux-gnu"
     TOOL_NAME: "gdb"
     TOOL_SOURCE_TESTSUITE_DIR: "binutils-gdb/gdb/testsuite"
     INCLUDE_TEST: "gdb.base/break.exp"
   before_script:
-    # From gdb_sources
+    # From gdb_*_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_GDB_TARBALL}
 
 musl_dejagnu_gdb_test:
   extends: .dejagnu_test_template
-  needs: [ musl_x86_64_build, esp_compiler_tests_sources, gdb_sources ]
+  needs: [ musl_x86_64_build, esp_compiler_tests_sources, gdb_musl_sources ]
   variables:
     CONF_TARGET: "riscv64-esp-linux-musl"
     TOOL_NAME: "gdb"
     TOOL_SOURCE_TESTSUITE_DIR: "binutils-gdb/gdb/testsuite"
     INCLUDE_TEST: "gdb.base/break.exp"
   before_script:
-    # From gdb_sources
+    # From gdb_*_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_GDB_TARBALL}
 
 create_release:
