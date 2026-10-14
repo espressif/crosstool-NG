@@ -122,13 +122,6 @@ default:
   echo "CT_HOST_PREFIX=\"${CONF_HOST}-\"" >> .config
   echo "CT_HOST_SUFFIX=\"\"" >> .config
 
-.configure_win_crossbuild: &configure_win_crossbuild |
-  # Append option
-  ( \
-    KV=$(grep "CT_CC_GCC_EXTRA_CONFIG_ARRAY" .config) \
-    && echo "${KV%\"} --with-gnu-ld\"" >> .config; \
-  )
-
 # Actual build
 .build_toolchain: &build_toolchain |
   ./ct-ng oldconfig
