@@ -61,17 +61,9 @@ variables:
   GIT_SERVER: "${CI_SERVER_PROTOCOL}://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}:${CI_SERVER_PORT}"
   STORAGE_URL: "${STORAGE_BASE_URL}/toolchains/preview/riscv64"
 
-# ESPCI_HOMEBREW_PREFIX is set up in runner's config.toml
-.check_and_setup_homebrew: &check_and_setup_homebrew |
-  if [[ "$OSTYPE" == "darwin"* ]]; then
-    eval "$(${ESPCI_HOMEBREW_PREFIX}/bin/brew shellenv)"
-  fi
-
 default:
   tags: [ "build", "amd64" ]
   image: ${IMAGE_REGISTRY}-default:${IMAGE_TAG}
-  before_script:
-    - *check_and_setup_homebrew
 
 .rules_primary_builds: &rules_primary_builds
   - if: '$CONF_HOST =~ $PRIMARY_HOSTS_RE && $CONF_TARGET =~ $PRIMARY_TARGETS_RE'
