@@ -829,7 +829,7 @@ create_release:
   rules:
     - if: $CI_COMMIT_TAG
       when: manual
-  allow_failure: true
+      allow_failure: true
   variables:
     S3_PUBLIC_DIR: "${STORAGE_URL}/${DIST_VERSION_SHORT}"
     RELEASE_ASSET_GNU_X86_64: "riscv64-esp-linux-gnu-${DIST_VERSION_SHORT}-x86_64-linux-gnu.${ARCHIVE_EXT}"
