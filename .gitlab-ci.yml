@@ -151,7 +151,7 @@ default_image:
     BUILD_IMAGE_DOCKERFILE: ".gitlab/docker/ci/Dockerfile.default"
   before_script: []
 
-build-linux-x86_64_image:
+build_linux_x86_64_image:
   extends: .build_image_template
   stage: images
   variables:
@@ -159,7 +159,7 @@ build-linux-x86_64_image:
     BUILD_IMAGE_DOCKERFILE: ".gitlab/docker/ci/Dockerfile.linux-x86_64"
   before_script: []
 
-build-linux-i586_image:
+build_linux_i586_image:
   extends: .build_image_template
   stage: images
   variables:
@@ -167,7 +167,7 @@ build-linux-i586_image:
     BUILD_IMAGE_DOCKERFILE: ".gitlab/docker/ci/Dockerfile.linux-i586"
   before_script: []
 
-build-linux-arm-cross_image:
+build_linux_arm_cross_image:
   extends: .build_image_template
   stage: images
   variables:
@@ -223,7 +223,8 @@ generate_version:
     - git clean -dxff >/dev/null
     - echo "Job disk usage $(du -hs ${CI_PROJECT_DIR})"
 
-.build_template_linux:
+# build for amd64 linux host
+.build_linux_template:
   extends: .build_template
   script:
     - *build_ctng
@@ -233,11 +234,11 @@ generate_version:
     - *build_toolchain
     - *package_toolchain
 
-linux_x86_64_build:
-  extends: .build_template_linux
+glibc_x86_64_build:
+  extends: .build_linux_template
   image: ${IMAGE_REGISTRY}-build-linux-x86_64:${IMAGE_TAG}
   needs:
-    - job: build-linux-x86_64_image
+    - job: build_linux_x86_64_image
       optional: true
     - generate_version
   variables:
@@ -245,10 +246,10 @@ linux_x86_64_build:
     CONF_TARGET: "riscv64-esp-linux-gnu"
 
 musl_x86_64_build:
-  extends: .build_template_linux
+  extends: .build_linux_template
   image: ${IMAGE_REGISTRY}-build-linux-x86_64:${IMAGE_TAG}
   needs:
-    - job: build-linux-x86_64_image
+    - job: build_linux_x86_64_image
       optional: true
     - generate_version
   variables:
@@ -256,21 +257,21 @@ musl_x86_64_build:
     CONF_TARGET: "riscv64-esp-linux-musl"
 
 elf_x86_64_build:
-  extends: .build_template_linux
+  extends: .build_linux_template
   image: ${IMAGE_REGISTRY}-build-linux-x86_64:${IMAGE_TAG}
   needs:
-    - job: build-linux-x86_64_image
+    - job: build_linux_x86_64_image
       optional: true
     - generate_version
   variables:
     CONF_HOST: "x86_64-linux-gnu"
     CONF_TARGET: "riscv64-esp-elf"
 
-linux_i586_build:
-  extends: .build_template_linux
+glibc_i586_build:
+  extends: .build_linux_template
   image: ${IMAGE_REGISTRY}-build-linux-i586:${IMAGE_TAG}
   needs:
-    - job: build-linux-i586_image
+    - job: build_linux_i586_image
       optional: true
     - generate_version
   variables:
@@ -278,10 +279,10 @@ linux_i586_build:
     CONF_TARGET: "riscv64-esp-linux-gnu"
 
 musl_i586_build:
-  extends: .build_template_linux
+  extends: .build_linux_template
   image: ${IMAGE_REGISTRY}-build-linux-i586:${IMAGE_TAG}
   needs:
-    - job: build-linux-i586_image
+    - job: build_linux_i586_image
       optional: true
     - generate_version
   variables:
@@ -289,11 +290,12 @@ musl_i586_build:
     CONF_TARGET: "riscv64-esp-linux-musl"
     CFLAGS_FOR_BUILD: "-O1"
 
-.template_lin_arm_cross:
+# build for arm linux host
+.build_arm_cross_template:
   extends: .build_template
   image: ${IMAGE_REGISTRY}-build-linux-arm-cross:${IMAGE_TAG}
   needs:
-    - job: build-linux-arm-cross_image
+    - job: build_linux_arm_cross_image
       optional: true
     - generate_version
   script:
@@ -305,38 +307,38 @@ musl_i586_build:
     - *build_toolchain
     - *package_toolchain
 
-linux_aarch64_build:
-  extends: .template_lin_arm_cross
+glibc_aarch64_build:
+  extends: .build_arm_cross_template
   variables:
     CONF_HOST: "aarch64-linux-gnu"
     CONF_TARGET: "riscv64-esp-linux-gnu"
 
 musl_aarch64_build:
-  extends: .template_lin_arm_cross
+  extends: .build_arm_cross_template
   variables:
     CONF_HOST: "aarch64-linux-gnu"
     CONF_TARGET: "riscv64-esp-linux-musl"
 
-linux_armhf_build:
-  extends: .template_lin_arm_cross
+glibc_armhf_build:
+  extends: .build_arm_cross_template
   variables:
     CONF_HOST: "arm-linux-gnueabihf"
     CONF_TARGET: "riscv64-esp-linux-gnu"
 
 musl_armhf_build:
-  extends: .template_lin_arm_cross
+  extends: .build_arm_cross_template
   variables:
     CONF_HOST: "arm-linux-gnueabihf"
     CONF_TARGET: "riscv64-esp-linux-musl"
 
-linux_armel_build:
-  extends: .template_lin_arm_cross
+glibc_armel_build:
+  extends: .build_arm_cross_template
   variables:
     CONF_HOST: "arm-linux-gnueabi"
     CONF_TARGET: "riscv64-esp-linux-gnu"
 
 musl_armel_build:
-  extends: .template_lin_arm_cross
+  extends: .build_arm_cross_template
   variables:
     CONF_HOST: "arm-linux-gnueabi"
     CONF_TARGET: "riscv64-esp-linux-musl"
@@ -392,25 +394,25 @@ upload_to_dl_s3:
   extends: .upload_to_dl_s3_template
   needs:
     - generate_version
-    - job: linux_x86_64_build
+    - job: glibc_x86_64_build
       optional: true
     - job: musl_x86_64_build
       optional: true
     - job: elf_x86_64_build
       optional: true
-    - job: linux_i586_build
+    - job: glibc_i586_build
       optional: true
     - job: musl_i586_build
       optional: true
-    - job: linux_aarch64_build
+    - job: glibc_aarch64_build
       optional: true
     - job: musl_aarch64_build
       optional: true
-    - job: linux_armhf_build
+    - job: glibc_armhf_build
       optional: true
     - job: musl_armhf_build
       optional: true
-    - job: linux_armel_build
+    - job: glibc_armel_build
       optional: true
     - job: musl_armel_build
       optional: true
@@ -470,7 +472,7 @@ esp_compiler_tests_sources:
     SOURCE_REPO_BRANCH: ${RELEASE_BRANCH}
   before_script: []
 
-.gcc_sources:
+.gcc_sources_template:
   extends: .prepare_sources_template
   rules: *rules_primary_builds
   variables:
@@ -485,22 +487,22 @@ esp_compiler_tests_sources:
     - set -u
     - SOURCE_REPO_BRANCH=${!BRANCH_VAR}
 
-gcc_linux_sources:
-  extends: .gcc_sources
+gcc_glibc_sources:
+  extends: .gcc_sources_template
   variables:
     CONF_TARGET: "riscv64-esp-linux-gnu"
 
 gcc_musl_sources:
-  extends: .gcc_sources
+  extends: .gcc_sources_template
   variables:
     CONF_TARGET: "riscv64-esp-linux-musl"
 
 gcc_elf_sources:
-  extends: .gcc_sources
+  extends: .gcc_sources_template
   variables:
     CONF_TARGET: "riscv64-esp-elf"
 
-.binutils_sources:
+.binutils_sources_template:
   extends: .prepare_sources_template
   rules: *rules_primary_builds
   variables:
@@ -514,22 +516,22 @@ gcc_elf_sources:
     - set -u
     - SOURCE_REPO_BRANCH=${!BRANCH_VAR}
 
-binutils_linux_sources:
-  extends: .binutils_sources
+binutils_glibc_sources:
+  extends: .binutils_sources_template
   variables:
     CONF_TARGET: "riscv64-esp-linux-gnu"
 
 binutils_musl_sources:
-  extends: .binutils_sources
+  extends: .binutils_sources_template
   variables:
     CONF_TARGET: "riscv64-esp-linux-musl"
 
 binutils_elf_sources:
-  extends: .binutils_sources
+  extends: .binutils_sources_template
   variables:
     CONF_TARGET: "riscv64-esp-elf"
 
-.gdb_sources:
+.gdb_sources_template:
   extends: .prepare_sources_template
   rules: *rules_primary_builds
   variables:
@@ -543,13 +545,13 @@ binutils_elf_sources:
     - set -u
     - SOURCE_REPO_BRANCH=${!BRANCH_VAR}
 
-gdb_linux_sources:
-  extends: .gdb_sources
+gdb_glibc_sources:
+  extends: .gdb_sources_template
   variables:
     CONF_TARGET: "riscv64-esp-linux-gnu"
 
 gdb_musl_sources:
-  extends: .gdb_sources
+  extends: .gdb_sources_template
   variables:
     CONF_TARGET: "riscv64-esp-linux-musl"
 
@@ -557,7 +559,7 @@ gdb_musl_sources:
 # Compiler tests: build-only and just-run-tools
 #
 
-.template_compiler_tests:
+.espcompiler_test_template:
   rules: *rules_primary_builds
   stage: test
   artifacts:
@@ -603,22 +605,22 @@ gdb_musl_sources:
         ./run-all.sh
       )
 
-linux_compiler_tests:
-  extends: .template_compiler_tests
-  needs: [ linux_x86_64_build, esp_compiler_tests_sources ]
+espcompiler_glibc_test:
+  extends: .espcompiler_test_template
+  needs: [ glibc_x86_64_build, esp_compiler_tests_sources ]
   variables:
     CONF_HOST: "x86_64-linux-gnu"
     CONF_TARGET: "riscv64-esp-linux-gnu"
 
-musl_compiler_tests:
-  extends: .template_compiler_tests
+espcompiler_musl_test:
+  extends: .espcompiler_test_template
   needs: [ musl_x86_64_build, esp_compiler_tests_sources ]
   variables:
     CONF_HOST: "x86_64-linux-gnu"
     CONF_TARGET: "riscv64-esp-linux-musl"
 
-elf_compiler_tests:
-  extends: .template_compiler_tests
+espcompiler_elf_test:
+  extends: .espcompiler_test_template
   needs: [ elf_x86_64_build, esp_compiler_tests_sources ]
   variables:
     CONF_HOST: "x86_64-linux-gnu"
@@ -661,9 +663,9 @@ elf_compiler_tests:
     - xz ${WORKDIR}/${TOOL_NAME}.sum
     - xz ${WORKDIR}/dbg.log
 
-linux_dejagnu_gcc_test:
+dejagnu_gcc_glibc_test:
   extends: .dejagnu_test_template
-  needs: [ linux_x86_64_build, esp_compiler_tests_sources, gcc_linux_sources ]
+  needs: [ glibc_x86_64_build, esp_compiler_tests_sources, gcc_glibc_sources ]
   variables:
     CONF_TARGET: "riscv64-esp-linux-gnu"
     TOOL_NAME: "gcc"
@@ -672,7 +674,7 @@ linux_dejagnu_gcc_test:
     # From gcc_*_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_GCC_TARBALL}
 
-musl_dejagnu_gcc_test:
+dejagnu_gcc_musl_test:
   extends: .dejagnu_test_template
   needs: [ musl_x86_64_build, esp_compiler_tests_sources, gcc_musl_sources ]
   variables:
@@ -683,7 +685,7 @@ musl_dejagnu_gcc_test:
     # From gcc_*_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_GCC_TARBALL}
 
-elf_dejagnu_gcc_test:
+dejagnu_gcc_elf_test:
   extends: .dejagnu_test_template
   needs: [ elf_x86_64_build, esp_compiler_tests_sources, gcc_elf_sources ]
   variables:
@@ -695,9 +697,9 @@ elf_dejagnu_gcc_test:
     # From gcc_*_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_GCC_TARBALL}
 
-linux_dejagnu_gxx_test:
+dejagnu_gxx_glibc_test:
   extends: .dejagnu_test_template
-  needs: [ linux_x86_64_build, esp_compiler_tests_sources, gcc_linux_sources ]
+  needs: [ glibc_x86_64_build, esp_compiler_tests_sources, gcc_glibc_sources ]
   variables:
     CONF_TARGET: "riscv64-esp-linux-gnu"
     TOOL_NAME: "g++"
@@ -706,7 +708,7 @@ linux_dejagnu_gxx_test:
     # From gcc_*_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_GCC_TARBALL}
 
-musl_dejagnu_gxx_test:
+dejagnu_gxx_musl_test:
   extends: .dejagnu_test_template
   needs: [ musl_x86_64_build, esp_compiler_tests_sources, gcc_musl_sources ]
   variables:
@@ -717,7 +719,7 @@ musl_dejagnu_gxx_test:
     # From gcc_*_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_GCC_TARBALL}
 
-elf_dejagnu_gxx_test:
+dejagnu_gxx_elf_test:
   extends: .dejagnu_test_template
   needs: [ elf_x86_64_build, esp_compiler_tests_sources, gcc_elf_sources ]
   variables:
@@ -729,9 +731,9 @@ elf_dejagnu_gxx_test:
     # From gcc_*_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_GCC_TARBALL}
 
-linux_dejagnu_gas_test:
+dejagnu_gas_glibc_test:
   extends: .dejagnu_test_template
-  needs: [ linux_x86_64_build, esp_compiler_tests_sources, binutils_linux_sources ]
+  needs: [ glibc_x86_64_build, esp_compiler_tests_sources, binutils_glibc_sources ]
   variables:
     CONF_TARGET: "riscv64-esp-linux-gnu"
     TOOL_NAME: "gas"
@@ -740,7 +742,7 @@ linux_dejagnu_gas_test:
     # From binutils_*_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_BINUTILS_TARBALL}
 
-musl_dejagnu_gas_test:
+dejagnu_gas_musl_test:
   extends: .dejagnu_test_template
   needs: [ musl_x86_64_build, esp_compiler_tests_sources, binutils_musl_sources ]
   variables:
@@ -751,7 +753,7 @@ musl_dejagnu_gas_test:
     # From binutils_*_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_BINUTILS_TARBALL}
 
-elf_dejagnu_gas_test:
+dejagnu_gas_elf_test:
   extends: .dejagnu_test_template
   needs: [ elf_x86_64_build, esp_compiler_tests_sources, binutils_elf_sources ]
   variables:
@@ -762,9 +764,9 @@ elf_dejagnu_gas_test:
     # From binutils_*_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_BINUTILS_TARBALL}
 
-linux_dejagnu_ld_test:
+dejagnu_ld_glibc_test:
   extends: .dejagnu_test_template
-  needs: [ linux_x86_64_build, esp_compiler_tests_sources, binutils_linux_sources ]
+  needs: [ glibc_x86_64_build, esp_compiler_tests_sources, binutils_glibc_sources ]
   variables:
     CONF_TARGET: "riscv64-esp-linux-gnu"
     TOOL_NAME: "ld"
@@ -773,7 +775,7 @@ linux_dejagnu_ld_test:
     # From binutils_*_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_BINUTILS_TARBALL}
 
-musl_dejagnu_ld_test:
+dejagnu_ld_musl_test:
   extends: .dejagnu_test_template
   needs: [ musl_x86_64_build, esp_compiler_tests_sources, binutils_musl_sources ]
   variables:
@@ -784,7 +786,7 @@ musl_dejagnu_ld_test:
     # From binutils_*_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_BINUTILS_TARBALL}
 
-elf_dejagnu_ld_test:
+dejagnu_ld_elf_test:
   extends: .dejagnu_test_template
   needs: [ elf_x86_64_build, esp_compiler_tests_sources, binutils_elf_sources ]
   variables:
@@ -795,9 +797,9 @@ elf_dejagnu_ld_test:
     # From binutils_*_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_BINUTILS_TARBALL}
 
-linux_dejagnu_gdb_test:
+dejagnu_gdb_glibc_test:
   extends: .dejagnu_test_template
-  needs: [ linux_x86_64_build, esp_compiler_tests_sources, gdb_linux_sources ]
+  needs: [ glibc_x86_64_build, esp_compiler_tests_sources, gdb_glibc_sources ]
   variables:
     CONF_TARGET: "riscv64-esp-linux-gnu"
     TOOL_NAME: "gdb"
@@ -807,7 +809,7 @@ linux_dejagnu_gdb_test:
     # From gdb_*_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_GDB_TARBALL}
 
-musl_dejagnu_gdb_test:
+dejagnu_gdb_musl_test:
   extends: .dejagnu_test_template
   needs: [ musl_x86_64_build, esp_compiler_tests_sources, gdb_musl_sources ]
   variables:
@@ -826,25 +828,25 @@ create_release:
     - generate_version
     - job: upload_to_dl_s3
       artifacts: false
-    - job: linux_x86_64_build
+    - job: glibc_x86_64_build
       artifacts: false
     - job: musl_x86_64_build
       artifacts: false
     - job: elf_x86_64_build
       artifacts: false
-    - job: linux_i586_build
+    - job: glibc_i586_build
       artifacts: false
     - job: musl_i586_build
       artifacts: false
-    - job: linux_aarch64_build
+    - job: glibc_aarch64_build
       artifacts: false
     - job: musl_aarch64_build
       artifacts: false
-    - job: linux_armhf_build
+    - job: glibc_armhf_build
       artifacts: false
     - job: musl_armhf_build
       artifacts: false
-    - job: linux_armel_build
+    - job: glibc_armel_build
       artifacts: false
     - job: musl_armel_build
       artifacts: false
@@ -854,16 +856,16 @@ create_release:
       allow_failure: true
   variables:
     S3_PUBLIC_DIR: "${STORAGE_URL}/${DIST_VERSION_SHORT}"
-    RELEASE_ASSET_GNU_X86_64: "riscv64-esp-linux-gnu-${DIST_VERSION_SHORT}-x86_64-linux-gnu.${ARCHIVE_EXT}"
+    RELEASE_ASSET_GLIBC_X86_64: "riscv64-esp-linux-gnu-${DIST_VERSION_SHORT}-x86_64-linux-gnu.${ARCHIVE_EXT}"
     RELEASE_ASSET_MUSL_X86_64: "riscv64-esp-linux-musl-${DIST_VERSION_SHORT}-x86_64-linux-gnu.${ARCHIVE_EXT}"
     RELEASE_ASSET_ELF_X86_64: "riscv64-esp-elf-${DIST_VERSION_SHORT}-x86_64-linux-gnu.${ARCHIVE_EXT}"
-    RELEASE_ASSET_GNU_I586: "riscv64-esp-linux-gnu-${DIST_VERSION_SHORT}-i586-linux-gnu.${ARCHIVE_EXT}"
+    RELEASE_ASSET_GLIBC_I586: "riscv64-esp-linux-gnu-${DIST_VERSION_SHORT}-i586-linux-gnu.${ARCHIVE_EXT}"
     RELEASE_ASSET_MUSL_I586: "riscv64-esp-linux-musl-${DIST_VERSION_SHORT}-i586-linux-gnu.${ARCHIVE_EXT}"
-    RELEASE_ASSET_GNU_AARCH64: "riscv64-esp-linux-gnu-${DIST_VERSION_SHORT}-aarch64-linux-gnu.${ARCHIVE_EXT}"
+    RELEASE_ASSET_GLIBC_AARCH64: "riscv64-esp-linux-gnu-${DIST_VERSION_SHORT}-aarch64-linux-gnu.${ARCHIVE_EXT}"
     RELEASE_ASSET_MUSL_AARCH64: "riscv64-esp-linux-musl-${DIST_VERSION_SHORT}-aarch64-linux-gnu.${ARCHIVE_EXT}"
-    RELEASE_ASSET_GNU_ARMHF: "riscv64-esp-linux-gnu-${DIST_VERSION_SHORT}-arm-linux-gnueabihf.${ARCHIVE_EXT}"
+    RELEASE_ASSET_GLIBC_ARMHF: "riscv64-esp-linux-gnu-${DIST_VERSION_SHORT}-arm-linux-gnueabihf.${ARCHIVE_EXT}"
     RELEASE_ASSET_MUSL_ARMHF: "riscv64-esp-linux-musl-${DIST_VERSION_SHORT}-arm-linux-gnueabihf.${ARCHIVE_EXT}"
-    RELEASE_ASSET_GNU_ARMEL: "riscv64-esp-linux-gnu-${DIST_VERSION_SHORT}-arm-linux-gnueabi.${ARCHIVE_EXT}"
+    RELEASE_ASSET_GLIBC_ARMEL: "riscv64-esp-linux-gnu-${DIST_VERSION_SHORT}-arm-linux-gnueabi.${ARCHIVE_EXT}"
     RELEASE_ASSET_MUSL_ARMEL: "riscv64-esp-linux-musl-${DIST_VERSION_SHORT}-arm-linux-gnueabi.${ARCHIVE_EXT}"
   before_script: []
   script:
@@ -874,8 +876,8 @@ create_release:
     description: "Espressif RISC-V 64-bit Linux GCC toolchain, release ${DIST_VERSION_FULL}"
     assets:
       links:
-        - name: "${RELEASE_ASSET_GNU_X86_64}"
-          url: "${S3_PUBLIC_DIR}/${RELEASE_ASSET_GNU_X86_64}"
+        - name: "${RELEASE_ASSET_GLIBC_X86_64}"
+          url: "${S3_PUBLIC_DIR}/${RELEASE_ASSET_GLIBC_X86_64}"
           link_type: other
         - name: "${RELEASE_ASSET_MUSL_X86_64}"
           url: "${S3_PUBLIC_DIR}/${RELEASE_ASSET_MUSL_X86_64}"
@@ -883,26 +885,26 @@ create_release:
         - name: "${RELEASE_ASSET_ELF_X86_64}"
           url: "${S3_PUBLIC_DIR}/${RELEASE_ASSET_ELF_X86_64}"
           link_type: other
-        - name: "${RELEASE_ASSET_GNU_I586}"
-          url: "${S3_PUBLIC_DIR}/${RELEASE_ASSET_GNU_I586}"
+        - name: "${RELEASE_ASSET_GLIBC_I586}"
+          url: "${S3_PUBLIC_DIR}/${RELEASE_ASSET_GLIBC_I586}"
           link_type: other
         - name: "${RELEASE_ASSET_MUSL_I586}"
           url: "${S3_PUBLIC_DIR}/${RELEASE_ASSET_MUSL_I586}"
           link_type: other
-        - name: "${RELEASE_ASSET_GNU_AARCH64}"
-          url: "${S3_PUBLIC_DIR}/${RELEASE_ASSET_GNU_AARCH64}"
+        - name: "${RELEASE_ASSET_GLIBC_AARCH64}"
+          url: "${S3_PUBLIC_DIR}/${RELEASE_ASSET_GLIBC_AARCH64}"
           link_type: other
         - name: "${RELEASE_ASSET_MUSL_AARCH64}"
           url: "${S3_PUBLIC_DIR}/${RELEASE_ASSET_MUSL_AARCH64}"
           link_type: other
-        - name: "${RELEASE_ASSET_GNU_ARMHF}"
-          url: "${S3_PUBLIC_DIR}/${RELEASE_ASSET_GNU_ARMHF}"
+        - name: "${RELEASE_ASSET_GLIBC_ARMHF}"
+          url: "${S3_PUBLIC_DIR}/${RELEASE_ASSET_GLIBC_ARMHF}"
           link_type: other
         - name: "${RELEASE_ASSET_MUSL_ARMHF}"
           url: "${S3_PUBLIC_DIR}/${RELEASE_ASSET_MUSL_ARMHF}"
           link_type: other
-        - name: "${RELEASE_ASSET_GNU_ARMEL}"
-          url: "${S3_PUBLIC_DIR}/${RELEASE_ASSET_GNU_ARMEL}"
+        - name: "${RELEASE_ASSET_GLIBC_ARMEL}"
+          url: "${S3_PUBLIC_DIR}/${RELEASE_ASSET_GLIBC_ARMEL}"
           link_type: other
         - name: "${RELEASE_ASSET_MUSL_ARMEL}"
           url: "${S3_PUBLIC_DIR}/${RELEASE_ASSET_MUSL_ARMEL}"
@@ -934,9 +936,9 @@ create_release:
   after_script:
     - rm -rv "${CI_PROJECT_DIR}/.gitlab/docker/dist/${CONF_TARGET}" | tail -1
 
-gnu_x86_64_docker:
+glibc_x86_64_docker:
   extends: .dist_docker_template
-  needs: [ generate_version, linux_x86_64_build ]
+  needs: [ generate_version, glibc_x86_64_build ]
   variables:
     CONF_TARGET: "riscv64-esp-linux-gnu"
 
