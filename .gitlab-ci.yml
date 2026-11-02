@@ -418,6 +418,14 @@ esp_compiler_tests_sources:
     SOURCE_REPO_BRANCH: ${RELEASE_BRANCH}
   before_script: []
 
+libctest_sources:
+  extends: .prepare_sources_template
+  variables:
+    SOURCE_NAME: "libc-test"
+    SOURCE_REPO_URL: "${GIT_SERVER}/idf/libc-test.git"
+    SOURCE_REPO_BRANCH: ${RELEASE_BRANCH}
+  before_script: []
+
 .gcc_sources_template:
   extends: .prepare_sources_template
   rules: *rules_primary_builds
@@ -571,6 +579,30 @@ espcompiler_elf_test:
   variables:
     CONF_HOST: "x86_64-linux-gnu"
     CONF_TARGET: "riscv64-esp-elf"
+
+libctest_musl_test:
+  rules: *rules_primary_builds
+  stage: test
+  needs: [ musl_x86_64_build, libctest_sources, esp_compiler_tests_sources ]
+  variables:
+    CONF_HOST: "x86_64-linux-gnu"
+    CONF_TARGET: "riscv64-esp-linux-musl"
+    GIT_STRATEGY: none
+  artifacts:
+    when: always
+    paths:
+      - libc-test/src/REPORT
+      - libc-test/REPORT-output
+      - esp-compiler-tests/libc-test/REPORT-expected
+  script:
+    - ARCHIVE_NAME=$(cat dist/dist_name_${CONF_HOST}_${CONF_TARGET})
+    - ${UNARCHIVE_TOOL} dist/${ARCHIVE_NAME}
+    - export PATH="${CI_PROJECT_DIR}/${CONF_TARGET}/bin:${PATH}"
+    - ${UNARCHIVE_TOOL} ${SOURCE_LIBC_TEST_TARBALL}
+    - ${UNARCHIVE_TOOL} ${SOURCE_ESP_COMPILER_TESTS_TARBALL}
+    - export CONF_TARGET
+    - export LIBC_TEST_DIR="libc-test"
+    - ./esp-compiler-tests/libc-test/run.sh
 
 .dejagnu_test_template:
   rules: *rules_primary_builds
