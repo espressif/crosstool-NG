@@ -128,11 +128,6 @@ default:
   DEBIAN_FRONTEND=noninteractive apt-get remove --autoremove -y libncurses-dev || true
   ./ct-ng build.${MAKE_PARALLEL_JOBS:-2}
 
-.add_extra_files: &add_extra_files |
-  if [ "${EXTRA_BINS:-}" ]; then
-    cp -v ${EXTRA_BINS} builds/${CONF_TARGET}/bin/
-  fi
-
 # Package the toolchain
 .package_toolchain: &package_toolchain |
   mkdir -p dist
