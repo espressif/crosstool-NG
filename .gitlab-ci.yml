@@ -44,7 +44,7 @@ variables:
 
   BUILD_IMAGE: 0
   PRIMARY_HOSTS_RE: '/^(x86_64-linux-gnu|aarch64-linux-gnu)$/'
-  PRIMARY_TARGETS_RE: '/^(riscv64-esp-linux-musl)$/'
+  PRIMARY_TARGETS_RE: '/^(riscv64-esp-linux-musl|riscv64-esp-linux-gnu)$/'
   IMAGE_TAG: "latest"
   IMAGE_REGISTRY: "${CI_REGISTRY_IMAGE}/${RELEASE_BRANCH}"
 
@@ -103,9 +103,6 @@ default:
   echo "CT_ALLOW_BUILD_AS_ROOT=y" >> .config
   echo "CT_ALLOW_BUILD_AS_ROOT_SURE=y" >> .config
   echo "CT_CONNECT_TIMEOUT=30" >> .config
-  if [ "${CFLAGS_FOR_BUILD:-}" ]; then
-    echo "CT_EXTRA_CFLAGS_FOR_BUILD=\"${CFLAGS_FOR_BUILD}\"" >> .config
-  fi
 
 # If PIE is enabled by default in build GCC, add a flag to disable it
 # For example, it appears on Ubuntu 17.04 or Debian 9
@@ -157,14 +154,6 @@ build_linux_x86_64_image:
   variables:
     BUILD_IMAGE_URI: ${IMAGE_REGISTRY}-build-linux-x86_64:${IMAGE_TAG}
     BUILD_IMAGE_DOCKERFILE: ".gitlab/docker/ci/Dockerfile.linux-x86_64"
-  before_script: []
-
-build_linux_i586_image:
-  extends: .build_image_template
-  stage: images
-  variables:
-    BUILD_IMAGE_URI: ${IMAGE_REGISTRY}-build-linux-i586:${IMAGE_TAG}
-    BUILD_IMAGE_DOCKERFILE: ".gitlab/docker/ci/Dockerfile.linux-i586"
   before_script: []
 
 build_linux_arm_cross_image:
@@ -267,29 +256,6 @@ elf_x86_64_build:
     CONF_HOST: "x86_64-linux-gnu"
     CONF_TARGET: "riscv64-esp-elf"
 
-glibc_i586_build:
-  extends: .build_linux_template
-  image: ${IMAGE_REGISTRY}-build-linux-i586:${IMAGE_TAG}
-  needs:
-    - job: build_linux_i586_image
-      optional: true
-    - generate_version
-  variables:
-    CONF_HOST: "i586-linux-gnu"
-    CONF_TARGET: "riscv64-esp-linux-gnu"
-
-musl_i586_build:
-  extends: .build_linux_template
-  image: ${IMAGE_REGISTRY}-build-linux-i586:${IMAGE_TAG}
-  needs:
-    - job: build_linux_i586_image
-      optional: true
-    - generate_version
-  variables:
-    CONF_HOST: "i586-linux-gnu"
-    CONF_TARGET: "riscv64-esp-linux-musl"
-    CFLAGS_FOR_BUILD: "-O1"
-
 # build for arm linux host
 .build_arm_cross_template:
   extends: .build_template
@@ -329,18 +295,6 @@ musl_armhf_build:
   extends: .build_arm_cross_template
   variables:
     CONF_HOST: "arm-linux-gnueabihf"
-    CONF_TARGET: "riscv64-esp-linux-musl"
-
-glibc_armel_build:
-  extends: .build_arm_cross_template
-  variables:
-    CONF_HOST: "arm-linux-gnueabi"
-    CONF_TARGET: "riscv64-esp-linux-gnu"
-
-musl_armel_build:
-  extends: .build_arm_cross_template
-  variables:
-    CONF_HOST: "arm-linux-gnueabi"
     CONF_TARGET: "riscv64-esp-linux-musl"
 
 .gen_sha256_file: &gen_sha256_file |
@@ -400,10 +354,6 @@ upload_to_dl_s3:
       optional: true
     - job: elf_x86_64_build
       optional: true
-    - job: glibc_i586_build
-      optional: true
-    - job: musl_i586_build
-      optional: true
     - job: glibc_aarch64_build
       optional: true
     - job: musl_aarch64_build
@@ -411,10 +361,6 @@ upload_to_dl_s3:
     - job: glibc_armhf_build
       optional: true
     - job: musl_armhf_build
-      optional: true
-    - job: glibc_armel_build
-      optional: true
-    - job: musl_armel_build
       optional: true
 
 # Getting sources and tests
@@ -834,10 +780,6 @@ create_release:
       artifacts: false
     - job: elf_x86_64_build
       artifacts: false
-    - job: glibc_i586_build
-      artifacts: false
-    - job: musl_i586_build
-      artifacts: false
     - job: glibc_aarch64_build
       artifacts: false
     - job: musl_aarch64_build
@@ -845,10 +787,6 @@ create_release:
     - job: glibc_armhf_build
       artifacts: false
     - job: musl_armhf_build
-      artifacts: false
-    - job: glibc_armel_build
-      artifacts: false
-    - job: musl_armel_build
       artifacts: false
   rules:
     - if: $CI_COMMIT_TAG
@@ -859,14 +797,10 @@ create_release:
     RELEASE_ASSET_GLIBC_X86_64: "riscv64-esp-linux-gnu-${DIST_VERSION_SHORT}-x86_64-linux-gnu.${ARCHIVE_EXT}"
     RELEASE_ASSET_MUSL_X86_64: "riscv64-esp-linux-musl-${DIST_VERSION_SHORT}-x86_64-linux-gnu.${ARCHIVE_EXT}"
     RELEASE_ASSET_ELF_X86_64: "riscv64-esp-elf-${DIST_VERSION_SHORT}-x86_64-linux-gnu.${ARCHIVE_EXT}"
-    RELEASE_ASSET_GLIBC_I586: "riscv64-esp-linux-gnu-${DIST_VERSION_SHORT}-i586-linux-gnu.${ARCHIVE_EXT}"
-    RELEASE_ASSET_MUSL_I586: "riscv64-esp-linux-musl-${DIST_VERSION_SHORT}-i586-linux-gnu.${ARCHIVE_EXT}"
     RELEASE_ASSET_GLIBC_AARCH64: "riscv64-esp-linux-gnu-${DIST_VERSION_SHORT}-aarch64-linux-gnu.${ARCHIVE_EXT}"
     RELEASE_ASSET_MUSL_AARCH64: "riscv64-esp-linux-musl-${DIST_VERSION_SHORT}-aarch64-linux-gnu.${ARCHIVE_EXT}"
     RELEASE_ASSET_GLIBC_ARMHF: "riscv64-esp-linux-gnu-${DIST_VERSION_SHORT}-arm-linux-gnueabihf.${ARCHIVE_EXT}"
     RELEASE_ASSET_MUSL_ARMHF: "riscv64-esp-linux-musl-${DIST_VERSION_SHORT}-arm-linux-gnueabihf.${ARCHIVE_EXT}"
-    RELEASE_ASSET_GLIBC_ARMEL: "riscv64-esp-linux-gnu-${DIST_VERSION_SHORT}-arm-linux-gnueabi.${ARCHIVE_EXT}"
-    RELEASE_ASSET_MUSL_ARMEL: "riscv64-esp-linux-musl-${DIST_VERSION_SHORT}-arm-linux-gnueabi.${ARCHIVE_EXT}"
   before_script: []
   script:
     - echo "Creating release ${DIST_VERSION_FULL}"
@@ -885,12 +819,6 @@ create_release:
         - name: "${RELEASE_ASSET_ELF_X86_64}"
           url: "${S3_PUBLIC_DIR}/${RELEASE_ASSET_ELF_X86_64}"
           link_type: other
-        - name: "${RELEASE_ASSET_GLIBC_I586}"
-          url: "${S3_PUBLIC_DIR}/${RELEASE_ASSET_GLIBC_I586}"
-          link_type: other
-        - name: "${RELEASE_ASSET_MUSL_I586}"
-          url: "${S3_PUBLIC_DIR}/${RELEASE_ASSET_MUSL_I586}"
-          link_type: other
         - name: "${RELEASE_ASSET_GLIBC_AARCH64}"
           url: "${S3_PUBLIC_DIR}/${RELEASE_ASSET_GLIBC_AARCH64}"
           link_type: other
@@ -902,12 +830,6 @@ create_release:
           link_type: other
         - name: "${RELEASE_ASSET_MUSL_ARMHF}"
           url: "${S3_PUBLIC_DIR}/${RELEASE_ASSET_MUSL_ARMHF}"
-          link_type: other
-        - name: "${RELEASE_ASSET_GLIBC_ARMEL}"
-          url: "${S3_PUBLIC_DIR}/${RELEASE_ASSET_GLIBC_ARMEL}"
-          link_type: other
-        - name: "${RELEASE_ASSET_MUSL_ARMEL}"
-          url: "${S3_PUBLIC_DIR}/${RELEASE_ASSET_MUSL_ARMEL}"
           link_type: other
         - name: "${CI_PROJECT_NAME}-${DIST_VERSION_FULL}-checksum.sha256"
           url: "${S3_PUBLIC_DIR}/${CI_PROJECT_NAME}-${DIST_VERSION_FULL}-checksum.sha256"
