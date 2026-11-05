@@ -580,20 +580,18 @@ espcompiler_elf_test:
     CONF_HOST: "x86_64-linux-gnu"
     CONF_TARGET: "riscv64-esp-elf"
 
-libctest_musl_test:
+.libctest_template:
   rules: *rules_primary_builds
   stage: test
-  needs: [ musl_x86_64_build, libctest_sources, esp_compiler_tests_sources ]
   variables:
     CONF_HOST: "x86_64-linux-gnu"
-    CONF_TARGET: "riscv64-esp-linux-musl"
     GIT_STRATEGY: none
   artifacts:
     when: always
     paths:
       - libc-test/src/REPORT
       - libc-test/REPORT-output
-      - esp-compiler-tests/libc-test/REPORT-expected
+      - esp-compiler-tests/libc-test/REPORT*-expected
   script:
     - ARCHIVE_NAME=$(cat dist/dist_name_${CONF_HOST}_${CONF_TARGET})
     - ${UNARCHIVE_TOOL} dist/${ARCHIVE_NAME}
@@ -603,6 +601,18 @@ libctest_musl_test:
     - export CONF_TARGET
     - export LIBC_TEST_DIR="libc-test"
     - ./esp-compiler-tests/libc-test/run.sh
+
+libctest_musl_test:
+  extends: .libctest_template
+  needs: [ musl_x86_64_build, libctest_sources, esp_compiler_tests_sources ]
+  variables:
+    CONF_TARGET: "riscv64-esp-linux-musl"
+
+libctest_glibc_test:
+  extends: .libctest_template
+  needs: [ glibc_x86_64_build, libctest_sources, esp_compiler_tests_sources ]
+  variables:
+    CONF_TARGET: "riscv64-esp-linux-gnu"
 
 .dejagnu_test_template:
   rules: *rules_primary_builds
