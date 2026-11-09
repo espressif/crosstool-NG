@@ -245,17 +245,6 @@ musl_x86_64_build:
     CONF_HOST: "x86_64-linux-gnu"
     CONF_TARGET: "riscv64-esp-linux-musl"
 
-elf_x86_64_build:
-  extends: .build_linux_template
-  image: ${IMAGE_REGISTRY}-build-linux-x86_64:${IMAGE_TAG}
-  needs:
-    - job: build_linux_x86_64_image
-      optional: true
-    - generate_version
-  variables:
-    CONF_HOST: "x86_64-linux-gnu"
-    CONF_TARGET: "riscv64-esp-elf"
-
 # build for arm linux host
 .build_arm_cross_template:
   extends: .build_template
@@ -351,8 +340,6 @@ upload_to_dl_s3:
     - job: glibc_x86_64_build
       optional: true
     - job: musl_x86_64_build
-      optional: true
-    - job: elf_x86_64_build
       optional: true
     - job: glibc_aarch64_build
       optional: true
@@ -451,11 +438,6 @@ gcc_musl_sources:
   variables:
     CONF_TARGET: "riscv64-esp-linux-musl"
 
-gcc_elf_sources:
-  extends: .gcc_sources_template
-  variables:
-    CONF_TARGET: "riscv64-esp-elf"
-
 .binutils_sources_template:
   extends: .prepare_sources_template
   rules: *rules_primary_builds
@@ -479,11 +461,6 @@ binutils_musl_sources:
   extends: .binutils_sources_template
   variables:
     CONF_TARGET: "riscv64-esp-linux-musl"
-
-binutils_elf_sources:
-  extends: .binutils_sources_template
-  variables:
-    CONF_TARGET: "riscv64-esp-elf"
 
 .gdb_sources_template:
   extends: .prepare_sources_template
@@ -572,13 +549,6 @@ espcompiler_musl_test:
   variables:
     CONF_HOST: "x86_64-linux-gnu"
     CONF_TARGET: "riscv64-esp-linux-musl"
-
-espcompiler_elf_test:
-  extends: .espcompiler_test_template
-  needs: [ elf_x86_64_build, esp_compiler_tests_sources ]
-  variables:
-    CONF_HOST: "x86_64-linux-gnu"
-    CONF_TARGET: "riscv64-esp-elf"
 
 .libctest_template:
   rules: *rules_primary_builds
@@ -673,18 +643,6 @@ dejagnu_gcc_musl_test:
     # From gcc_*_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_GCC_TARBALL}
 
-dejagnu_gcc_elf_test:
-  extends: .dejagnu_test_template
-  needs: [ elf_x86_64_build, esp_compiler_tests_sources, gcc_elf_sources ]
-  variables:
-    CONF_TARGET: "riscv64-esp-elf"
-    TOOL_NAME: "gcc"
-    TOOL_SOURCE_TESTSUITE_DIR: "gcc/gcc/testsuite"
-    INCLUDE_TEST: "compile.exp"
-  before_script:
-    # From gcc_*_sources
-    - export TOOL_SOURCE_TARBALL=${SOURCE_GCC_TARBALL}
-
 dejagnu_gxx_glibc_test:
   extends: .dejagnu_test_template
   needs: [ glibc_x86_64_build, esp_compiler_tests_sources, gcc_glibc_sources ]
@@ -703,18 +661,6 @@ dejagnu_gxx_musl_test:
     CONF_TARGET: "riscv64-esp-linux-musl"
     TOOL_NAME: "g++"
     TOOL_SOURCE_TESTSUITE_DIR: "gcc/gcc/testsuite"
-  before_script:
-    # From gcc_*_sources
-    - export TOOL_SOURCE_TARBALL=${SOURCE_GCC_TARBALL}
-
-dejagnu_gxx_elf_test:
-  extends: .dejagnu_test_template
-  needs: [ elf_x86_64_build, esp_compiler_tests_sources, gcc_elf_sources ]
-  variables:
-    CONF_TARGET: "riscv64-esp-elf"
-    TOOL_NAME: "g++"
-    TOOL_SOURCE_TESTSUITE_DIR: "gcc/gcc/testsuite"
-    INCLUDE_TEST: "compat.exp"
   before_script:
     # From gcc_*_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_GCC_TARBALL}
@@ -741,17 +687,6 @@ dejagnu_gas_musl_test:
     # From binutils_*_sources
     - export TOOL_SOURCE_TARBALL=${SOURCE_BINUTILS_TARBALL}
 
-dejagnu_gas_elf_test:
-  extends: .dejagnu_test_template
-  needs: [ elf_x86_64_build, esp_compiler_tests_sources, binutils_elf_sources ]
-  variables:
-    CONF_TARGET: "riscv64-esp-elf"
-    TOOL_NAME: "gas"
-    TOOL_SOURCE_TESTSUITE_DIR: "binutils-gdb/gas/testsuite"
-  before_script:
-    # From binutils_*_sources
-    - export TOOL_SOURCE_TARBALL=${SOURCE_BINUTILS_TARBALL}
-
 dejagnu_ld_glibc_test:
   extends: .dejagnu_test_template
   needs: [ glibc_x86_64_build, esp_compiler_tests_sources, binutils_glibc_sources ]
@@ -768,17 +703,6 @@ dejagnu_ld_musl_test:
   needs: [ musl_x86_64_build, esp_compiler_tests_sources, binutils_musl_sources ]
   variables:
     CONF_TARGET: "riscv64-esp-linux-musl"
-    TOOL_NAME: "ld"
-    TOOL_SOURCE_TESTSUITE_DIR: "binutils-gdb/ld/testsuite"
-  before_script:
-    # From binutils_*_sources
-    - export TOOL_SOURCE_TARBALL=${SOURCE_BINUTILS_TARBALL}
-
-dejagnu_ld_elf_test:
-  extends: .dejagnu_test_template
-  needs: [ elf_x86_64_build, esp_compiler_tests_sources, binutils_elf_sources ]
-  variables:
-    CONF_TARGET: "riscv64-esp-elf"
     TOOL_NAME: "ld"
     TOOL_SOURCE_TESTSUITE_DIR: "binutils-gdb/ld/testsuite"
   before_script:
@@ -820,8 +744,6 @@ create_release:
       artifacts: false
     - job: musl_x86_64_build
       artifacts: false
-    - job: elf_x86_64_build
-      artifacts: false
     - job: glibc_aarch64_build
       artifacts: false
     - job: musl_aarch64_build
@@ -838,7 +760,6 @@ create_release:
     S3_PUBLIC_DIR: "${STORAGE_URL}/${DIST_VERSION_SHORT}"
     RELEASE_ASSET_GLIBC_X86_64: "riscv64-esp-linux-gnu-${DIST_VERSION_SHORT}-x86_64-linux-gnu.${ARCHIVE_EXT}"
     RELEASE_ASSET_MUSL_X86_64: "riscv64-esp-linux-musl-${DIST_VERSION_SHORT}-x86_64-linux-gnu.${ARCHIVE_EXT}"
-    RELEASE_ASSET_ELF_X86_64: "riscv64-esp-elf-${DIST_VERSION_SHORT}-x86_64-linux-gnu.${ARCHIVE_EXT}"
     RELEASE_ASSET_GLIBC_AARCH64: "riscv64-esp-linux-gnu-${DIST_VERSION_SHORT}-aarch64-linux-gnu.${ARCHIVE_EXT}"
     RELEASE_ASSET_MUSL_AARCH64: "riscv64-esp-linux-musl-${DIST_VERSION_SHORT}-aarch64-linux-gnu.${ARCHIVE_EXT}"
     RELEASE_ASSET_GLIBC_ARMHF: "riscv64-esp-linux-gnu-${DIST_VERSION_SHORT}-arm-linux-gnueabihf.${ARCHIVE_EXT}"
@@ -857,9 +778,6 @@ create_release:
           link_type: other
         - name: "${RELEASE_ASSET_MUSL_X86_64}"
           url: "${S3_PUBLIC_DIR}/${RELEASE_ASSET_MUSL_X86_64}"
-          link_type: other
-        - name: "${RELEASE_ASSET_ELF_X86_64}"
-          url: "${S3_PUBLIC_DIR}/${RELEASE_ASSET_ELF_X86_64}"
           link_type: other
         - name: "${RELEASE_ASSET_GLIBC_AARCH64}"
           url: "${S3_PUBLIC_DIR}/${RELEASE_ASSET_GLIBC_AARCH64}"
