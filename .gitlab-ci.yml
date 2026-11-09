@@ -721,7 +721,7 @@ upload_to_github:
     - echo "${REPO_URL}"
     - git remote add github ${REPO_URL}
     - hub release
-    - hub release show ${TAG} || { echo "Please create a release on GitHub with ${TAG} tag at first"; exit 1; }
+    - hub release show ${TAG} || hub release create -m "${TAG}" -t "${CI_COMMIT_SHA}" "${TAG}"
     - for n in ${FILES_LIST}; do hub release edit -m "" -a "${n}" "${TAG}"; done
     # Save the download link for the checksum file
     - echo ""
